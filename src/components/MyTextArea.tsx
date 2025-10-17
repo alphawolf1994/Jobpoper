@@ -22,22 +22,34 @@ interface MyTextAreaProps {
     | Merge<FieldError, FieldErrorsImpl<any>>
     | undefined;
   onChange?: (text: string) => void;
+  onChangeText?: (text: string) => void;
+  containerStyle?: any;
+  numberOfLines?: number;
 }
 
-const MyTextArea = ({ placeholder, value, label, error, onChange }: MyTextAreaProps) => {
+const MyTextArea = ({ 
+  placeholder, 
+  value, 
+  label, 
+  error, 
+  onChange, 
+  onChangeText, 
+  containerStyle, 
+  numberOfLines = 4 
+}: MyTextAreaProps) => {
   return (
     <>
       {label ? <Text style={styles.label}>{label}</Text> : null}
-      <View style={styles.container}>
+      <View style={[styles.container, containerStyle]}>
         <TextInput
           style={styles.textArea}
           placeholder={placeholder}
           placeholderTextColor="#ddd"
-          onChangeText={onChange}
+          onChangeText={onChangeText || onChange}
           value={value}
           multiline
-          numberOfLines={4} // Adjust height of text area
-          textAlignVertical="top" // Align text at the top
+          numberOfLines={numberOfLines}
+          textAlignVertical="top"
         />
       </View>
       {error && <ErrorText error={error} />}

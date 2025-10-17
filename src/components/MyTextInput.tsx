@@ -3,10 +3,10 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  Touchable,
   TouchableOpacity,
   View,
   ViewStyle,
+  Platform,
 } from "react-native";
 import React, { useState } from "react";
 import { Colors } from "../utils";
@@ -15,27 +15,22 @@ import { Colors } from "../utils";
 import { Entypo } from "@expo/vector-icons";
 import ErrorText from "./ErrorText";
 
-import { FieldError, FieldErrorsImpl, Merge } from "react-hook-form";
+// import { FieldError, FieldErrorsImpl, Merge } from "react-hook-form";
 
 interface MyTextInputProps {
   placeholder: string;
   secureTextEntry?: boolean;
-  searchIcon?:boolean;
+  searchIcon?: boolean;
+  leftIcon?: React.ReactNode; // <-- added leftIcon prop
   value?: string;
   label?: string;
-  error?:
-    | string
-    | null
-    | undefined
-    | FieldError
-    | Merge<FieldError, FieldErrorsImpl<any>>
-    | undefined;
+  error?: string | null | undefined;
   onChange?: (text: string) => void;
   onSearchPress?: () => void;
   editable?: boolean; // New Prop
   keyboardType?: KeyboardTypeOptions; // New Prop
   containerStyle?: ViewStyle; // New Prop
-  firstContainerStyle?:ViewStyle
+  firstContainerStyle?: ViewStyle;
 }
 
 const MyTextInput = ({
@@ -45,12 +40,13 @@ const MyTextInput = ({
   label,
   error,
   searchIcon,
+  leftIcon, // <-- receive leftIcon
   onChange,
   onSearchPress,
   editable = true, // Default is editable
   keyboardType = "default", // Default keyboard type
   containerStyle, // Custom styles for container
-  firstContainerStyle
+  firstContainerStyle,
 }: MyTextInputProps) => {
   const [show, setShow] = useState(secureTextEntry);
 
@@ -58,21 +54,20 @@ const MyTextInput = ({
     <View style={[firstContainerStyle]}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <View style={[styles.container, containerStyle]}>
+        {leftIcon ? <View style={styles.leftIconWrapper}>{leftIcon}</View> : null}
         <TextInput
           style={styles.input}
           secureTextEntry={show}
           placeholder={placeholder}
-          placeholderTextColor="#ddd"
+          placeholderTextColor="gray"
           onChangeText={onChange}
           value={value}
-          editable={editable} 
+          editable={editable}
           keyboardType={keyboardType}
         />
-         {searchIcon ? (
+        {searchIcon ? (
           <TouchableOpacity onPress={onSearchPress}>
-           
-              <Entypo name="menu" size={20} color="black" />
-           
+            <Entypo name="menu" size={20} color="black" />
           </TouchableOpacity>
         ) : (
           <></>
@@ -90,29 +85,40 @@ const MyTextInput = ({
         )}
       </View>
       {error && <ErrorText error={error} />}
-      </View>
+    </View>
   );
 };
 
 export default MyTextInput;
 
 const styles = StyleSheet.create({
-  container:{
+  container: {
     flexDirection: "row",
     alignItems: "center",
-    borderColor:Colors.gray,
-    borderWidth:1,
-    borderRadius:10,
-    padding:10,
-    marginTop:10,
-    height:50
+    borderColor: Colors.gray,
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 10,
+    minHeight: 50,
+    justifyContent: 'center',
+  },
+  leftIconWrapper: {
+    marginRight: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
   input: {
     flex: 1,
     fontSize: 16,
     color: Colors.black,
-   
-  
+    paddingVertical: Platform.OS === 'android' ? 0 : 8,
+    paddingHorizontal: 0,
+    textAlignVertical: 'center',
+    ...(Platform.OS === 'android' && { includeFontPadding: false }),
+    lineHeight: Platform.OS === 'android' ? 20 : 22,
+    height: Platform.OS === 'android' ? 34 : 'auto',
   },
   label: {
     fontSize: 14,

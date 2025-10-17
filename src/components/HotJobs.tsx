@@ -1,11 +1,16 @@
-import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, FlatList } from "react-native";
-import { Colors } from "../../utils";
-import { SafeAreaView } from "react-native-safe-area-context";
-import Header from "../../components/Header";
-import MyTextInput from "../../components/MyTextInput";
-import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '../utils';
+import { useNavigation } from '@react-navigation/native';
+
 interface Job {
   id: string;
   title: string;
@@ -16,8 +21,10 @@ interface Job {
   tags: string[];
   isHot: boolean;
 }
-const HotJobsScreen = () => {
+
+const HotJobs: React.FC = () => {
   const navigation = useNavigation();
+  // Dummy data for hot jobs
   const hotJobs: Job[] = [
     {
       id: '1',
@@ -70,8 +77,9 @@ const HotJobsScreen = () => {
       isHot: true,
     },
   ];
-  const renderJobCard = ({ item }: { item: Job }) => (
-    <TouchableOpacity style={styles.jobCard} activeOpacity={0.8} onPress={()=>{navigation.navigate('JobDetailsScreen')}}>
+
+  const renderJobCard = (job: Job) => (
+    <TouchableOpacity key={job.id} style={styles.jobCard} activeOpacity={0.8} onPress={()=>{navigation.navigate('JobDetailsScreen')}}>
       {/* Hot/Fire Label */}
       <View style={styles.hotLabel}>
         <Ionicons name="flame" size={16} color={Colors.orange} />
@@ -81,17 +89,17 @@ const HotJobsScreen = () => {
       {/* Avatar and Title Row */}
       <View style={styles.avatarTitleRow}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{item.avatar}</Text>
+          <Text style={styles.avatarText}>{job.avatar}</Text>
         </View>
         <View style={styles.titleContainer}>
-          <Text style={styles.jobTitle}>{item.title}</Text>
-          <Text style={styles.posterName}>{item.poster}</Text>
+          <Text style={styles.jobTitle}>{job.title}</Text>
+          <Text style={styles.posterName}>{job.poster}</Text>
         </View>
       </View>
 
       {/* Tags */}
       <View style={styles.tagsContainer}>
-        {item.tags.map((tag, index) => (
+        {job.tags.map((tag, index) => (
           <View key={index} style={styles.tag}>
             <Text style={styles.tagText}>{tag}</Text>
           </View>
@@ -100,76 +108,67 @@ const HotJobsScreen = () => {
 
       {/* Bottom Row - Cost and Location */}
       <View style={styles.bottomRow}>
-        <Text style={styles.cost}>{item.cost}</Text>
-        <Text style={styles.location}>{item.location}</Text>
+        <Text style={styles.cost}>{job.cost}</Text>
+        <Text style={styles.location}>{job.location}</Text>
       </View>
     </TouchableOpacity>
   );
-  return (
-    <SafeAreaView edges={['top','bottom','left','right']} style={{flex:1,}}>
-      <Header />
 
-       {/* search row */}
-       <View style={styles.searchRow}>
-        <View style={styles.inputWrapper}>
-          <MyTextInput
-            placeholder="Search a job"
-            containerStyle={styles.searchInput}
-            leftIcon={<Ionicons name="search-outline" size={20} color="#9AA0A6" />}
-          />
-        </View>
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Hot Jobs</Text>
+        <TouchableOpacity>
+          <Text style={styles.seeAllText}>See all</Text>
+        </TouchableOpacity>
       </View>
-<View style={{paddingTop:16,paddingBottom:100}}>
-      <FlatList
-        data={hotJobs}
-        renderItem={renderJobCard}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
+
+      {/* Job Cards ScrollView */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-      />
-      </View>
-      </SafeAreaView>
+        decelerationRate="fast"
+        snapToInterval={300} // Width of card + margin
+        snapToAlignment="start"
+      >
+        {hotJobs.map(renderJobCard)}
+      </ScrollView>
+    </View>
   );
 };
 
-export default HotJobsScreen;
-
 const styles = StyleSheet.create({
-  container: { flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: Colors.white },
-  text: { color: Colors.gray, fontSize: 18 },
-  searchRow: {
-    flexDirection: "row",
-    alignItems: "center",
+  container: {
+    marginTop: 24,
     paddingHorizontal: 16,
-    // paddingVertical: 12,
-   
   },
-  inputWrapper: {
-    flex: 1,
-    marginRight: 12,
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
   },
-  searchInput: {
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: '#e9e9eaff',
-    paddingHorizontal: 14,
-    borderWidth: 0,
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: Colors.black,
+  },
+  seeAllText: {
+    fontSize: 14,
+    color: Colors.gray,
   },
   scrollContent: {
- 
-    paddingHorizontal: 16,
-    // paddingVertical: 16,
-  },
-  separator: {
-    height: 20,
+    paddingRight: 16,
   },
   jobCard: {
-    width: '100%',
+    width: 280,
     height: 185,
     backgroundColor: Colors.primary,
     borderRadius: 25,
     padding: 15,
+    marginRight: 20,
     position: 'relative',
     shadowColor: '#000',
     shadowOpacity: 0.12,
@@ -274,4 +273,4 @@ const styles = StyleSheet.create({
   },
 });
 
-
+export default HotJobs;

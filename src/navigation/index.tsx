@@ -12,6 +12,8 @@ import HomeScreen from "./screens/HomeScreen";
 import HotJobsScreen from "./screens/HotJobsScreen";
 import MyJobsScreen from "./screens/MyJobsScreen";
 import ProfileScreen from "./screens/ProfileScreen";
+import PostJobScreen from "./screens/PostJobScreen";
+import JobDetailsScreen from "./screens/JobDetailsScreen";
 import { NotFound } from "./screens/NotFound";
 import LoginScreen from "./screens/LoginScreen";
 import SplashScreen from "./screens/SplashScreen";
@@ -104,6 +106,18 @@ const RootStack = createNativeStackNavigator({
     },
     Register: {
       screen: RegisterScreen,
+      options: {
+        headerShown: false,
+      },
+    },
+    PostJobScreen: {
+      screen: PostJobScreen,
+      options: {
+        headerShown: false,
+      },
+    },
+    JobDetailsScreen: {
+      screen: JobDetailsScreen,
       options: {
         headerShown: false,
       },

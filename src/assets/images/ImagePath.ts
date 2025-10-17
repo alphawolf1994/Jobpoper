@@ -4,6 +4,7 @@ export default {
 
  
 newLogo: require("./newLogo.png"),
+avatarIcon: require("./default-avatar.png"),
   // Onboarding
   Image1: require("./onboarding/1.png"),
   Image2: require("./onboarding/2.png"),

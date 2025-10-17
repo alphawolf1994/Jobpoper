@@ -1,4 +1,4 @@
-package com.anonymous.jobpoper
+package com.anonymous.Jobpoper
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build
