@@ -7,25 +7,26 @@ import ImagePath from "../../assets/images/ImagePath";
 import { height } from "../../utils/responsive";
 import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { SafeAreaView } from "react-native-safe-area-context";
 // import AsyncStorage from '@react-native-async-storage/async-storage';
 const data = [
   {
-    title: "Search your job",
+    title: "Find Gigs Around You 🔍",
     subtitle:
-      "Figure out your top five priorities whether it is company culture, salary.",
+      "Discover hundreds of quick jobs nearby! From small errands to skilled tasks — pick what suits you and start earning instantly.",
     image: ImagePath.Image1,
     bgColor: Colors.white,
   },
   {
-    title: "Apply to best jobs",
-    subtitle: "You can apply to your desirable jobs very quickly and easily with ease.",
+    title: "Post Jobs in Seconds ⚡",
+    subtitle: "Need help? Post your gig in just a few taps! Connect with reliable people ready to get it done fast and efficiently.",
     image: ImagePath.Image2,
     bgColor: Colors.white,
   },
   {
-    title: "Make your career",
+    title: "Work. Earn. Repeat. 💸",
     subtitle:
-      "We help you find your dream job based on your skills, location, demand.",
+      "Complete gigs, get paid quickly, and grow your income anytime, anywhere — because with Jobpoper, every task pays.",
     image: ImagePath.Image3,
     bgColor: Colors.white,
   },
@@ -50,7 +51,7 @@ function IntroScreen() {
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: Colors.white }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.white }}>
       <Carousel
         ref={ref}
         width={width}
@@ -71,16 +72,18 @@ function IntroScreen() {
                   flex: 1,
                   justifyContent: "space-between",
                   alignItems: "center",
-                  paddingVertical: 40,
+                  paddingBottom: heightToDp(12),
                   paddingHorizontal: 24,
                 }}
               >
                 <Image
                   style={{
-                    width: widthToDp(80),
-                    height: heightToDp(35),
-                    resizeMode: "contain",
-                    marginTop: 20,
+                    width: widthToDp(100),
+                    height: heightToDp(45),
+                    resizeMode: "cover",
+                    // marginTop: 20,
+                    // borderBottomLeftRadius:30,
+                    // borderBottomRightRadius:30
                     
                   }}
                   source={item?.image}
@@ -165,7 +168,7 @@ function IntroScreen() {
           </>
         )}
       />
-    </View>
+    </SafeAreaView>
   );
 }
 

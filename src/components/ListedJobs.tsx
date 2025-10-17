@@ -18,10 +18,12 @@ interface ListedJob {
   cost: string;
   location: string;
   isHot: boolean;
+  date: string; // e.g., 2025-10-17
+  time: string; // e.g., 14:30
 }
 
 const ListedJobs: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<any>();
   // Dummy data for listed jobs
   const listedJobs: ListedJob[] = [
     {
@@ -32,6 +34,8 @@ const ListedJobs: React.FC = () => {
       cost: '$45/day',
       location: 'Brooklyn, NYC',
       isHot: false,
+      date: '2025-10-17',
+      time: '09:30',
     },
     {
       id: '2',
@@ -41,6 +45,8 @@ const ListedJobs: React.FC = () => {
       cost: '$180/project',
       location: 'Queens, NYC',
       isHot: false,
+      date: '2025-10-18',
+      time: '11:00',
     },
     {
       id: '3',
@@ -50,6 +56,8 @@ const ListedJobs: React.FC = () => {
       cost: '$65/day',
       location: 'Manhattan, NYC',
       isHot: false,
+      date: '2025-10-19',
+      time: '08:15',
     },
     {
       id: '4',
@@ -59,6 +67,8 @@ const ListedJobs: React.FC = () => {
       cost: '$30/hour',
       location: 'Bronx, NYC',
       isHot: false,
+      date: '2025-10-20',
+      time: '14:45',
     },
     {
       id: '5',
@@ -68,6 +78,8 @@ const ListedJobs: React.FC = () => {
       cost: '$35/day',
       location: 'Staten Island, NYC',
       isHot: false,
+      date: '2025-10-21',
+      time: '07:00',
     },
     {
       id: '6',
@@ -77,6 +89,8 @@ const ListedJobs: React.FC = () => {
       cost: '$120/project',
       location: 'Long Island, NYC',
       isHot: false,
+      date: '2025-10-22',
+      time: '16:20',
     },
   ];
 
@@ -95,8 +109,11 @@ const ListedJobs: React.FC = () => {
 
       {/* Right Side - Cost and Location */}
       <View style={styles.rightSection}>
-        <Text style={styles.cost}>{item.cost}</Text>
-        <Text style={styles.location}>{item.location}</Text>
+        <View style={styles.rightTopGroup}>
+          <Text style={styles.cost}>{item.cost}</Text>
+          <Text style={styles.location}>{item.location}</Text>
+        </View>
+        <Text style={styles.dateTime}>{item.date} • {item.time}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -197,6 +214,11 @@ const styles = StyleSheet.create({
   },
   rightSection: {
     alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    height: 48, // match avatar height so vertical centering context is consistent
+  },
+  rightTopGroup: {
+    alignItems: 'flex-end',
   },
   cost: {
     fontSize: 15,
@@ -208,6 +230,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.gray,
     fontWeight: '500',
+  },
+  dateTime: {
+    fontSize: 12,
+    color: Colors.gray,
+    fontWeight: '500',
+    marginTop: 2,
   },
 });
 

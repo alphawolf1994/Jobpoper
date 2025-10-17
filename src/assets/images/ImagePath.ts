@@ -6,9 +6,9 @@ export default {
 newLogo: require("./newLogo.png"),
 avatarIcon: require("./default-avatar.png"),
   // Onboarding
-  Image1: require("./onboarding/1.png"),
-  Image2: require("./onboarding/2.png"),
-  Image3: require("./onboarding/3.png"),
+  Image1: require("./onboarding/1.jpeg"),
+  Image2: require("./onboarding/2.jpeg"),
+  Image3: require("./onboarding/3.jpeg"),
   hostel1: require("./onboarding/hostel05.jpg"),
   hostel2: require("./onboarding/hostel01.jpg"),
   hostel3: require("./onboarding/hostel02.jpg"),

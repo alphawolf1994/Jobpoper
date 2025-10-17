@@ -4,6 +4,7 @@ import { Colors } from "../../utils";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../components/Header";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from '@react-navigation/native';
 
 interface MyJob {
   id: string;
@@ -17,6 +18,7 @@ interface MyJob {
 }
 
 const MyJobsScreen = () => {
+  const navigation = useNavigation<any>();
   const [myJobs, setMyJobs] = useState<MyJob[]>([
     {
       id: '1',
@@ -168,8 +170,17 @@ const MyJobsScreen = () => {
       
       {/* Header Section */}
       <View style={styles.headerSection}>
-        <Text style={styles.headerTitle}>My Posted Jobs</Text>
-        <Text style={styles.headerSubtitle}>{myJobs.length} jobs posted</Text>
+        <View style={styles.headerLeft}>
+          <Text style={styles.headerTitle}>My Posted Jobs</Text>
+          <Text style={styles.headerSubtitle}>{myJobs.length} jobs posted</Text>
+        </View>
+        <TouchableOpacity 
+          style={styles.plusButton} 
+          activeOpacity={0.7}
+          onPress={() => navigation.navigate('PostJobScreen')}
+        >
+          <Ionicons name="add" size={24} color={Colors.white} />
+        </TouchableOpacity>
       </View>
 
       {/* Jobs List */}
@@ -199,6 +210,14 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     borderBottomWidth: 1,
     borderBottomColor: Colors.lightGray,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerLeft: {
+    flexDirection: 'column',
+    flex: 1,
+    paddingRight: 12,
   },
   headerTitle: {
     fontSize: 24,
@@ -209,6 +228,19 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 14,
     color: Colors.gray,
+  },
+  plusButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   scrollContent: {
     paddingHorizontal: 16,

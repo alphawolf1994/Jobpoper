@@ -55,9 +55,9 @@ const styles = StyleSheet.create({
     tintColor: Colors.white,
   },
   brandText: {
-    marginTop: heightToDp(2),
+    marginTop: heightToDp(0),
     color: Colors.white,
-    fontSize: 28,
+    fontSize: 50,
     fontWeight: "700",
   },
   signInText: {

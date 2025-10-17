@@ -607,10 +607,11 @@ const styles = StyleSheet.create({
   },
   contactButtonContainer: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
+    // paddingVertic: 36,
+    paddingBottom:50,
     backgroundColor: Colors.white,
-    borderTopWidth: 1,
-    borderTopColor: Colors.lightGray,
+    // borderTopWidth: 1,
+    // borderTopColor: Colors.lightGray,
   },
   contactButton: {
     backgroundColor: Colors.primary,

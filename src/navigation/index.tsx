@@ -16,6 +16,7 @@ import PostJobScreen from "./screens/PostJobScreen";
 import JobDetailsScreen from "./screens/JobDetailsScreen";
 import { NotFound } from "./screens/NotFound";
 import LoginScreen from "./screens/LoginScreen";
+import OTPScreen from "./screens/OTPScreen";
 import SplashScreen from "./screens/SplashScreen";
 
 import IntroScreen from "./screens/IntroScreen";
@@ -100,6 +101,12 @@ const RootStack = createNativeStackNavigator({
     },
     Login: {
       screen: LoginScreen,
+      options: {
+        headerShown: false,
+      },
+    },
+    OTP: {
+      screen: OTPScreen,
       options: {
         headerShown: false,
       },

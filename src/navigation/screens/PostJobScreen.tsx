@@ -7,6 +7,9 @@ import { MyTextInput, MyTextArea, Button } from "../../components";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import DropDownPicker from 'react-native-dropdown-picker';
+import DateTimePicker from "@react-native-community/datetimepicker";
+import * as ImagePicker from 'expo-image-picker';
+import { Image } from 'expo-image';
 
 const PostJobScreen = () => {
     const navigation = useNavigation();
@@ -21,35 +24,22 @@ const PostJobScreen = () => {
   });
 
   const [loading, setLoading] = useState(false);
-  
-  // Dropdown states
-  const [dayOpen, setDayOpen] = useState(false);
-  const [dayValue, setDayValue] = useState(null);
-  const [dayItems, setDayItems] = useState([
-    {label: 'Today', value: 'Today'},
-    {label: 'Tomorrow', value: 'Tomorrow'},
-    {label: 'This Week', value: 'This Week'},
-    {label: 'Next Week', value: 'Next Week'},
-    {label: 'Weekend', value: 'Weekend'},
-    {label: 'Flexible', value: 'Flexible'},
-  ]);
 
-  const [timeOpen, setTimeOpen] = useState(false);
-  const [timeValue, setTimeValue] = useState(null);
-  const [timeItems, setTimeItems] = useState([
-    {label: '9:00 AM', value: '9:00 AM'},
-    {label: '10:00 AM', value: '10:00 AM'},
-    {label: '11:00 AM', value: '11:00 AM'},
-    {label: '12:00 PM', value: '12:00 PM'},
-    {label: '1:00 PM', value: '1:00 PM'},
-    {label: '2:00 PM', value: '2:00 PM'},
-    {label: '3:00 PM', value: '3:00 PM'},
-    {label: '4:00 PM', value: '4:00 PM'},
-    {label: '5:00 PM', value: '5:00 PM'},
-    {label: '6:00 PM', value: '6:00 PM'},
-    {label: '7:00 PM', value: '7:00 PM'},
-    {label: 'Flexible', value: 'Flexible'},
-  ]);
+  // Date & Time pickers state
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [tempDate, setTempDate] = useState<Date | null>(null);
+  const [selectedTime, setSelectedTime] = useState<Date | null>(null);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [tempTime, setTempTime] = useState<Date | null>(null);
+  const [attachments, setAttachments] = useState<string[]>([]);
+
+  const getTomorrow = () => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + 1);
+    return d;
+  };
 
   const [urgencyOpen, setUrgencyOpen] = useState(false);
   const [urgencyValue, setUrgencyValue] = useState(null);
@@ -66,6 +56,40 @@ const PostJobScreen = () => {
       ...prev,
       [field]: value
     }));
+  };
+
+  const formatDate = (date: Date) => {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = String(date.getFullYear());
+    return `${day} ${month} ${year}`;
+  };
+
+  const formatTime = (date: Date) => {
+    let hours = date.getHours();
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+    return `${String(hours).padStart(2, '0')}:${minutes} ${ampm}`;
+  };
+
+  const handlePickImages = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission required', 'Please allow photo library access to add attachments.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      selectionLimit: 5,
+      quality: 0.7,
+    });
+    if (!result.canceled) {
+      const uris = result.assets?.map(a => a.uri).filter(Boolean) as string[];
+      setAttachments(uris);
+    }
   };
 
   const handleSubmit = async () => {
@@ -86,11 +110,11 @@ const PostJobScreen = () => {
       Alert.alert('Error', 'Please enter the location');
       return;
     }
-    if (!dayValue) {
+    if (!selectedDate) {
       Alert.alert('Error', 'Please select when you need this job done');
       return;
     }
-    if (!timeValue) {
+    if (!selectedTime) {
       Alert.alert('Error', 'Please select a preferred time');
       return;
     }
@@ -122,9 +146,9 @@ const PostJobScreen = () => {
                 time: '',
                 urgency: '',
               });
-              // Reset dropdown values
-              setDayValue(null);
-              setTimeValue(null);
+              // Reset date/time values
+              setSelectedDate(null);
+              setSelectedTime(null);
               setUrgencyValue(null);
               // Navigate back
               navigation.goBack();
@@ -156,8 +180,8 @@ const PostJobScreen = () => {
       
       {/* Header Section */}
       <View style={styles.headerSection}>
-        <Text style={styles.headerTitle}>Post a New Job</Text>
-        <Text style={styles.headerSubtitle}>Fill in the details to post your job</Text>
+        <Text style={styles.headerTitle}>Post Jobs Super Fast </Text>
+        <Text style={styles.headerSubtitle}>Post it in seconds and let nearby helpers pop in to get it done.</Text>
       </View>
 
       {/* Form */}
@@ -165,6 +189,7 @@ const PostJobScreen = () => {
         style={styles.formContainer}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
+        scrollEnabled={!showDatePicker && !showTimePicker}
       >
         {/* Job Title */}
         <View style={styles.inputGroup}>
@@ -218,44 +243,85 @@ const PostJobScreen = () => {
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Job Timing *</Text>
           
-          {/* Day Selection */}
+          {/* Day Selection (Date Picker) */}
           <View style={styles.pickerContainer}>
             <Text style={styles.pickerLabel}>When do you need this done?</Text>
-            <DropDownPicker
-              open={dayOpen}
-              value={dayValue}
-              items={dayItems}
-              setOpen={setDayOpen}
-              setValue={setDayValue}
-              setItems={setDayItems}
-              placeholder="Select day..."
-              style={styles.dropdown}
-              dropDownContainerStyle={styles.dropdownContainer}
-              placeholderStyle={styles.placeholder}
-              textStyle={styles.dropdownText}
-              zIndex={3000}
-              zIndexInverse={1000}
-            />
+            <TouchableOpacity activeOpacity={0.8} onPress={() => { const base = selectedDate && selectedDate >= getTomorrow() ? selectedDate : getTomorrow(); setTempDate(base); setShowDatePicker(true); }}>
+              <View style={[styles.dropdown, styles.inputRow]}>
+                <Text style={selectedDate ? styles.dropdownText : styles.placeholder}>
+                  {selectedDate ? formatDate(selectedDate) : 'Select date...'}
+                </Text>
+                <AntDesign name="calendar" size={18} color="#9AA0A6" />
+              </View>
+            </TouchableOpacity>
+            {showDatePicker && (
+              <View>
+                <DateTimePicker
+                  mode="date"
+                  value={tempDate ?? getTomorrow()}
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  minimumDate={getTomorrow()}
+                  onChange={(_, date) => {
+                    if (date) setTempDate(date);
+                  }}
+                />
+                <View style={styles.pickerActions}>
+                  <TouchableOpacity onPress={() => { setShowDatePicker(false); setTempDate(null); }}>
+                    <Text style={styles.actionText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => {
+                    if (tempDate) {
+                      const valid = tempDate >= getTomorrow() ? tempDate : getTomorrow();
+                      setSelectedDate(valid);
+                      handleInputChange('day', formatDate(valid));
+                    }
+                    setShowDatePicker(false);
+                  }}>
+                    <Text style={[styles.actionText, styles.actionPrimary]}>OK</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </View>
 
-          {/* Time Selection */}
+          {/* Time Selection (Time Picker) */}
           <View style={styles.pickerContainer}>
             <Text style={styles.pickerLabel}>Preferred time?</Text>
-            <DropDownPicker
-              open={timeOpen}
-              value={timeValue}
-              items={timeItems}
-              setOpen={setTimeOpen}
-              setValue={setTimeValue}
-              setItems={setTimeItems}
-              placeholder="Select time..."
-              style={styles.dropdown}
-              dropDownContainerStyle={styles.dropdownContainer}
-              placeholderStyle={styles.placeholder}
-              textStyle={styles.dropdownText}
-              zIndex={2000}
-              zIndexInverse={2000}
-            />
+            <TouchableOpacity activeOpacity={0.8} onPress={() => { setTempTime(selectedTime ?? new Date()); setShowTimePicker(true); }}>
+              <View style={[styles.dropdown, styles.inputRow]}>
+                <Text style={selectedTime ? styles.dropdownText : styles.placeholder}>
+                  {selectedTime ? formatTime(selectedTime) : 'Select time...'}
+                </Text>
+                <Ionicons name="time-outline" size={18} color="#9AA0A6" />
+              </View>
+            </TouchableOpacity>
+            {showTimePicker && (
+              <View>
+                <DateTimePicker
+                  mode="time"
+                  value={tempTime ?? new Date()}
+                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                  minuteInterval={1}
+                  onChange={(_, date) => {
+                    if (date) setTempTime(date);
+                  }}
+                />
+                <View style={styles.pickerActions}>
+                  <TouchableOpacity onPress={() => { setShowTimePicker(false); setTempTime(null); }}>
+                    <Text style={styles.actionText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => {
+                    if (tempTime) {
+                      setSelectedTime(tempTime);
+                      handleInputChange('time', formatTime(tempTime));
+                    }
+                    setShowTimePicker(false);
+                  }}>
+                    <Text style={[styles.actionText, styles.actionPrimary]}>OK</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </View>
 
           {/* Urgency Selection */}
@@ -293,10 +359,32 @@ const PostJobScreen = () => {
           </Text>
         </View> */}
 
+        {/* Attachments */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>Attachments (add any supporting images if needed)</Text>
+          <TouchableOpacity activeOpacity={0.8} onPress={handlePickImages}>
+            <View style={[styles.dropdown, styles.inputRow]}>
+              <Text style={attachments.length ? styles.dropdownText : styles.placeholder}>
+                {attachments.length ? `${attachments.length} selected` : 'Select attachments...'}
+              </Text>
+              <Ionicons name="image-outline" size={18} color="#9AA0A6" />
+            </View>
+          </TouchableOpacity>
+          {attachments.length > 0 && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+              {attachments.map((uri, idx) => (
+                <View key={`${uri}-${idx}`} style={styles.thumbWrap}>
+                  <Image source={{ uri }} style={styles.thumb} contentFit="cover" />
+                </View>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+
         {/* Submit Button */}
         <View style={styles.buttonContainer}>
           <Button
-            label={loading ? "Posting..." : "Post Job"}
+            label={loading ? "Posting..." : "Post Now"}
             onPress={handleSubmit}
             disabled={loading}
             style={styles.submitButton}
@@ -428,6 +516,43 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.gray,
     lineHeight: 20,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    minHeight: 50,
+  },
+  pickerActions: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  actionText: {
+    fontSize: 16,
+    color: Colors.gray,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  actionPrimary: {
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  thumbWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 8,
+    overflow: 'hidden',
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+    backgroundColor: '#f8f9fa',
+  },
+  thumb: {
+    width: '100%',
+    height: '100%',
   },
   buttonContainer: {
     marginBottom: 20,

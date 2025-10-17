@@ -22,7 +22,7 @@ const HomeScreen = ({ navigation }: any) => {
       <View style={styles.searchRow}>
         <View style={styles.inputWrapper}>
           <MyTextInput
-            placeholder="Search a job or position"
+            placeholder="Find cool gigs around you"
             // pass containerStyle if your component expects a different prop name adjust accordingly
             containerStyle={styles.searchInput}
             leftIcon={<Ionicons name="search-outline" size={20} color="#9AA0A6" />}

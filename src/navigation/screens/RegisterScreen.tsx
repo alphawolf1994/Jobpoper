@@ -22,10 +22,18 @@ const RegisterScreen = () => {
   const [showPicker, setShowPicker] = useState(false);
   const [agree, setAgree] = useState(false);
 
+  const formatDate = (date: Date) => {
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = String(date.getFullYear());
+    return `${day} ${month} ${year}`;
+  };
+
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
       <SafeAreaView edges={['top','bottom','left','right']} style={{flex:1}}>
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+      <View style={styles.headerContainer}>
         <TouchableOpacity style={styles.backBtn} onPress={() => (navigation as any).goBack()}>
         <AntDesign
               name="arrow-left"
@@ -37,12 +45,13 @@ const RegisterScreen = () => {
               color={Colors.black}
             />
         </TouchableOpacity>
-        <Text style={styles.title}>Registration 👍</Text>
-        <Text style={styles.subtitle}>Let's Register. Apply to jobs!</Text>
+        <Text style={styles.title}>Complete Your Profile 👍</Text>
+        </View>
+<Text style={styles.subtitle}>Finish setting up your profile to start applying!</Text>
 
         <MyTextInput label="Full Name" placeholder="Enter your full name" value={fullName} onChange={setFullName} firstContainerStyle={{ marginTop: 24 }} />
         <MyTextInput label="Email" placeholder="Enter your email" value={email} onChange={setEmail} keyboardType="email-address" />
-        <MyTextInput label="Phone Number" placeholder="Your phone number" value={phone} onChange={setPhone} editable={false} />
+        {/* <MyTextInput label="Phone Number" placeholder="Your phone number" value={phone} onChange={setPhone} editable={false} /> */}
         <MyTextInput label="Country" placeholder="Enter country" value={country} onChange={setCountry} />
         <MyTextInput label="State" placeholder="Enter state" value={stateVal} onChange={setStateVal} />
         <MyTextInput label="City" placeholder="Enter city" value={city} onChange={setCity} />
@@ -52,7 +61,7 @@ const RegisterScreen = () => {
             <MyTextInput
               label="Age"
               placeholder="Select date of birth"
-              value={dob ? dob.toDateString() : ""}
+              value={dob ? formatDate(dob) : ""}
               editable={false}
             />
             <AntDesign
@@ -89,16 +98,22 @@ const RegisterScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.white },
   content: { padding: 20, paddingTop: 12 },
-  backBtn: { position: 'absolute', left: 16, top: 0, zIndex: 1 },
+  backBtn: { marginRight: 12 },
   logoWrap: { alignItems: "center", marginTop: 40, marginBottom: 24 },
   logo: { width: 80, height: 250, resizeMode: "contain", tintColor: Colors.primary },
-  title: { fontSize: 30, fontWeight: "bold", color: Colors.black, marginTop: 20 },
+  title: { fontSize: 20, fontWeight: "bold", color: Colors.black,  },
   subtitle: { fontSize: 14, color: Colors.gray, marginTop: 6 },
   termsRow: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 16 },
   termsText: { marginLeft: 10, color: Colors.SlateGray, flex: 1 },
   link: { color: Colors.primary, fontWeight: '600' },
   inputWrapperRelative: { position: 'relative' },
   trailingIcon: { position: 'absolute', right: 16, bottom: 16 },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    // paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
 });
 
 export default RegisterScreen;
