@@ -1,3 +1,4 @@
+import 'react-native-get-random-values';
 import { Assets as NavigationAssets } from "@react-navigation/elements";
 import { Asset } from "expo-asset";
 import * as SplashScreen from "expo-splash-screen";

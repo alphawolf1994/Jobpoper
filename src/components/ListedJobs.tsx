@@ -34,8 +34,8 @@ const ListedJobs: React.FC = () => {
       cost: '$45/day',
       location: 'Brooklyn, NYC',
       isHot: false,
-      date: '2025-10-17',
-      time: '09:30',
+      date: '17-10-2025',
+      time: '09:30 AM',
     },
     {
       id: '2',
@@ -45,8 +45,8 @@ const ListedJobs: React.FC = () => {
       cost: '$180/project',
       location: 'Queens, NYC',
       isHot: false,
-      date: '2025-10-18',
-      time: '11:00',
+      date: '18-10-2025',
+      time: '12:30 PM',
     },
     {
       id: '3',
@@ -56,8 +56,8 @@ const ListedJobs: React.FC = () => {
       cost: '$65/day',
       location: 'Manhattan, NYC',
       isHot: false,
-      date: '2025-10-19',
-      time: '08:15',
+      date: '17-10-2025',
+      time: '09:30 AM',
     },
     {
       id: '4',
@@ -67,8 +67,8 @@ const ListedJobs: React.FC = () => {
       cost: '$30/hour',
       location: 'Bronx, NYC',
       isHot: false,
-      date: '2025-10-20',
-      time: '14:45',
+      date: '19-10-2025',
+      time: '09:30 PM',
     },
     {
       id: '5',
@@ -78,8 +78,8 @@ const ListedJobs: React.FC = () => {
       cost: '$35/day',
       location: 'Staten Island, NYC',
       isHot: false,
-      date: '2025-10-21',
-      time: '07:00',
+      date: '17-10-2025',
+      time: '09:30 AM',
     },
     {
       id: '6',
@@ -89,8 +89,8 @@ const ListedJobs: React.FC = () => {
       cost: '$120/project',
       location: 'Long Island, NYC',
       isHot: false,
-      date: '2025-10-22',
-      time: '16:20',
+      date: '20-10-2025',
+      time: '09:30 AM',
     },
   ];
 

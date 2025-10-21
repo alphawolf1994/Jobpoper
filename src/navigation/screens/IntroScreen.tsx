@@ -104,7 +104,7 @@ function IntroScreen() {
                     <Text
                       style={{
                         textAlign: "center",
-                        fontSize: 14,
+                        fontSize: 16,
                         marginTop: 10,
                         color: Colors.gray,
                         lineHeight: 20,

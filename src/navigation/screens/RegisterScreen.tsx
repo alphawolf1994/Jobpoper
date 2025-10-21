@@ -1,9 +1,11 @@
+import 'react-native-get-random-values';
 import React, { useState } from "react";
 import { View, Text, StyleSheet, Image, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from "../../utils";
 import MyTextInput from "../../components/MyTextInput";
 import Button from "../../components/Button";
+import LocationAutocomplete from "../../components/LocationAutocomplete";
 import ImagePath from "../../assets/images/ImagePath";
 import Checkbox from "expo-checkbox";
 import DateTimePicker from "@react-native-community/datetimepicker";
@@ -15,9 +17,12 @@ const RegisterScreen = () => {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [country, setCountry] = useState("");
-  const [stateVal, setStateVal] = useState("");
-  const [city, setCity] = useState("");
+  const [location, setLocation] = useState({
+    city: "",
+    state: "",
+    country: "",
+    fullAddress: ""
+  });
   const [dob, setDob] = useState<Date | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [agree, setAgree] = useState(false);
@@ -52,9 +57,11 @@ const RegisterScreen = () => {
         <MyTextInput label="Full Name" placeholder="Enter your full name" value={fullName} onChange={setFullName} firstContainerStyle={{ marginTop: 24 }} />
         <MyTextInput label="Email" placeholder="Enter your email" value={email} onChange={setEmail} keyboardType="email-address" />
         {/* <MyTextInput label="Phone Number" placeholder="Your phone number" value={phone} onChange={setPhone} editable={false} /> */}
-        <MyTextInput label="Country" placeholder="Enter country" value={country} onChange={setCountry} />
-        <MyTextInput label="State" placeholder="Enter state" value={stateVal} onChange={setStateVal} />
-        <MyTextInput label="City" placeholder="Enter city" value={city} onChange={setCity} />
+        <LocationAutocomplete 
+          label="Location" 
+          placeholder="Search for your city, state, country" 
+          onLocationSelect={(locationData) => setLocation(locationData)}
+        />
 
         <TouchableOpacity onPress={() => setShowPicker(true)} activeOpacity={0.8}>
           <View style={styles.inputWrapperRelative}>

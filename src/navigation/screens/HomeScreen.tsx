@@ -68,8 +68,9 @@ const styles = StyleSheet.create({
     borderWidth: 0,
   },
   plusButton: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
+    marginTop:10,
     borderRadius: 12,
     backgroundColor: Colors.primary,
     alignItems: "center",

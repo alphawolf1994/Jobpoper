@@ -80,16 +80,29 @@ const PostJobScreen = () => {
       Alert.alert('Permission required', 'Please allow photo library access to add attachments.');
       return;
     }
+    
+    // Calculate remaining slots for new images
+    const remainingSlots = 5 - attachments.length;
+    if (remainingSlots <= 0) {
+      Alert.alert('Limit reached', 'You can only select up to 5 images.');
+      return;
+    }
+    
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
-      selectionLimit: 5,
+      selectionLimit: remainingSlots,
       quality: 0.7,
     });
     if (!result.canceled) {
       const uris = result.assets?.map(a => a.uri).filter(Boolean) as string[];
-      setAttachments(uris);
+      // Add new images to existing ones instead of replacing
+      setAttachments(prev => [...prev, ...uris]);
     }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, idx) => idx !== index));
   };
 
   const handleSubmit = async () => {
@@ -150,6 +163,8 @@ const PostJobScreen = () => {
               setSelectedDate(null);
               setSelectedTime(null);
               setUrgencyValue(null);
+              // Reset attachments
+              setAttachments([]);
               // Navigate back
               navigation.goBack();
             }
@@ -166,7 +181,8 @@ const PostJobScreen = () => {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
     <SafeAreaView edges={['top','bottom','left','right']} style={{flex:1}}>
-    <TouchableOpacity style={styles.backBtn} onPress={() => (navigation as any).goBack()}>
+    <View style={styles.headerContainer}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => (navigation as any).goBack()}>
         <AntDesign
               name="arrow-left"
               size={24}
@@ -177,10 +193,13 @@ const PostJobScreen = () => {
               color={Colors.black}
             />
         </TouchableOpacity>
+        <Text style={styles.headerTitle}>Post Jobs Super Fast </Text>
+        </View>
+  
       
       {/* Header Section */}
       <View style={styles.headerSection}>
-        <Text style={styles.headerTitle}>Post Jobs Super Fast </Text>
+        {/* <Text style={styles.headerTitle}>Post Jobs Super Fast </Text> */}
         <Text style={styles.headerSubtitle}>Post it in seconds and let nearby helpers pop in to get it done.</Text>
       </View>
 
@@ -261,25 +280,39 @@ const PostJobScreen = () => {
                   value={tempDate ?? getTomorrow()}
                   display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                   minimumDate={getTomorrow()}
-                  onChange={(_, date) => {
-                    if (date) setTempDate(date);
+                  onChange={(event, date) => {
+                    if (Platform.OS === 'android') {
+                      setShowDatePicker(false);
+                      setTempDate(null);
+                      // On Android, check event type to see if user confirmed or cancelled
+                      if (event.type === 'set' && date) {
+                        const valid = date >= getTomorrow() ? date : getTomorrow();
+                        setSelectedDate(valid);
+                        handleInputChange('day', formatDate(valid));
+                      }
+                    } else {
+                      // iOS - just update temp date
+                      if (date) setTempDate(date);
+                    }
                   }}
                 />
-                <View style={styles.pickerActions}>
-                  <TouchableOpacity onPress={() => { setShowDatePicker(false); setTempDate(null); }}>
-                    <Text style={styles.actionText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => {
-                    if (tempDate) {
-                      const valid = tempDate >= getTomorrow() ? tempDate : getTomorrow();
-                      setSelectedDate(valid);
-                      handleInputChange('day', formatDate(valid));
-                    }
-                    setShowDatePicker(false);
-                  }}>
-                    <Text style={[styles.actionText, styles.actionPrimary]}>OK</Text>
-                  </TouchableOpacity>
-                </View>
+                {Platform.OS === 'ios' && (
+                  <View style={styles.pickerActions}>
+                    <TouchableOpacity onPress={() => { setShowDatePicker(false); setTempDate(null); }}>
+                      <Text style={styles.actionText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => {
+                      if (tempDate) {
+                        const valid = tempDate >= getTomorrow() ? tempDate : getTomorrow();
+                        setSelectedDate(valid);
+                        handleInputChange('day', formatDate(valid));
+                      }
+                      setShowDatePicker(false);
+                    }}>
+                      <Text style={[styles.actionText, styles.actionPrimary]}>OK</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             )}
           </View>
@@ -302,24 +335,37 @@ const PostJobScreen = () => {
                   value={tempTime ?? new Date()}
                   display={Platform.OS === 'ios' ? 'spinner' : 'default'}
                   minuteInterval={1}
-                  onChange={(_, date) => {
-                    if (date) setTempTime(date);
+                  onChange={(event, date) => {
+                    if (Platform.OS === 'android') {
+                      setShowTimePicker(false);
+                      setTempTime(null);
+                      // On Android, check event type to see if user confirmed or cancelled
+                      if (event.type === 'set' && date) {
+                        setSelectedTime(date);
+                        handleInputChange('time', formatTime(date));
+                      }
+                    } else {
+                      // iOS - just update temp time
+                      if (date) setTempTime(date);
+                    }
                   }}
                 />
-                <View style={styles.pickerActions}>
-                  <TouchableOpacity onPress={() => { setShowTimePicker(false); setTempTime(null); }}>
-                    <Text style={styles.actionText}>Cancel</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => {
-                    if (tempTime) {
-                      setSelectedTime(tempTime);
-                      handleInputChange('time', formatTime(tempTime));
-                    }
-                    setShowTimePicker(false);
-                  }}>
-                    <Text style={[styles.actionText, styles.actionPrimary]}>OK</Text>
-                  </TouchableOpacity>
-                </View>
+                {Platform.OS === 'ios' && (
+                  <View style={styles.pickerActions}>
+                    <TouchableOpacity onPress={() => { setShowTimePicker(false); setTempTime(null); }}>
+                      <Text style={styles.actionText}>Cancel</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => {
+                      if (tempTime) {
+                        setSelectedTime(tempTime);
+                        handleInputChange('time', formatTime(tempTime));
+                      }
+                      setShowTimePicker(false);
+                    }}>
+                      <Text style={[styles.actionText, styles.actionPrimary]}>OK</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             )}
           </View>
@@ -365,7 +411,7 @@ const PostJobScreen = () => {
           <TouchableOpacity activeOpacity={0.8} onPress={handlePickImages}>
             <View style={[styles.dropdown, styles.inputRow]}>
               <Text style={attachments.length ? styles.dropdownText : styles.placeholder}>
-                {attachments.length ? `${attachments.length} selected` : 'Select attachments...'}
+                {attachments.length ? `${attachments.length}/5 selected` : `Select attachments... (0/5)`}
               </Text>
               <Ionicons name="image-outline" size={18} color="#9AA0A6" />
             </View>
@@ -375,6 +421,13 @@ const PostJobScreen = () => {
               {attachments.map((uri, idx) => (
                 <View key={`${uri}-${idx}`} style={styles.thumbWrap}>
                   <Image source={{ uri }} style={styles.thumb} contentFit="cover" />
+                  <TouchableOpacity 
+                    style={styles.removeButton}
+                    onPress={() => removeAttachment(idx)}
+                    activeOpacity={0.7}
+                  >
+                    <AntDesign name="close" size={12} color="white" />
+                  </TouchableOpacity>
                 </View>
               ))}
             </ScrollView>
@@ -541,18 +594,30 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   thumbWrap: {
-    width: 64,
-    height: 64,
+    width: 100,
+    height: 100,
     borderRadius: 8,
     overflow: 'hidden',
     marginRight: 10,
     borderWidth: 1,
     borderColor: '#e9ecef',
     backgroundColor: '#f8f9fa',
+    position: 'relative',
   },
   thumb: {
     width: '100%',
     height: '100%',
+  },
+  removeButton: {
+    position: 'absolute',
+    top: 3,
+    right: 3,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   buttonContainer: {
     marginBottom: 20,
@@ -564,5 +629,11 @@ const styles = StyleSheet.create({
   },
   bottomSpacing: {
     height: 50,
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    // paddingHorizontal: 16,
+    paddingVertical: 12,
   },
 });
