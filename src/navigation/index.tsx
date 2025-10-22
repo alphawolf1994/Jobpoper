@@ -17,10 +17,12 @@ import JobDetailsScreen from "./screens/JobDetailsScreen";
 import { NotFound } from "./screens/NotFound";
 import LoginScreen from "./screens/LoginScreen";
 import OTPScreen from "./screens/OTPScreen";
+import RegisterScreen from "./screens/RegisterScreen";
+import CreatePinScreen from "./screens/CreatePinScreen";
 import SplashScreen from "./screens/SplashScreen";
 
 import IntroScreen from "./screens/IntroScreen";
-import RegisterScreen from "./screens/RegisterScreen";
+import BasicProfileScreen from "./screens/BasicProfileScreen"
 // import HomeScreen from "./screens/HomeScreen";
 
 import React from "react";
@@ -105,14 +107,26 @@ const RootStack = createNativeStackNavigator({
         headerShown: false,
       },
     },
+    Register: {
+      screen: RegisterScreen,
+      options: {
+        headerShown: false,
+      },
+    },
     OTP: {
       screen: OTPScreen,
       options: {
         headerShown: false,
       },
     },
-    Register: {
-      screen: RegisterScreen,
+    CreatePinScreen: {
+      screen: CreatePinScreen,
+      options: {
+        headerShown: false,
+      },
+    },
+    BasicProfileScreen: {
+      screen: BasicProfileScreen,
       options: {
         headerShown: false,
       },

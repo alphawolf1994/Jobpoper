@@ -14,17 +14,21 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from "../../utils";
 import Button from "../../components/Button";
 import ImagePath from "../../assets/images/ImagePath";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { AntDesign } from "@expo/vector-icons";
 
 const OTPScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
   
   const inputRefs = useRef<TextInput[]>([]);
+  
+  // Get route params to determine if this is a new user
+  const { isNewUser = false } = (route.params as any) || {};
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -74,7 +78,13 @@ const OTPScreen = () => {
       setIsLoading(false);
       // For demo purposes, accept any 6-digit OTP
       if (otpString.length === 6) {
-        (navigation as any).navigate('Register');
+        if (isNewUser) {
+          // New user: navigate to CreatePinScreen
+          (navigation as any).navigate('CreatePinScreen');
+        } else {
+          // Existing user: navigate to BasicProfileScreen (or directly to HomeTabs)
+          (navigation as any).navigate('HomeTabs');
+        }
       } else {
         Alert.alert('Error', 'Invalid OTP. Please try again.');
       }
@@ -151,13 +161,11 @@ const OTPScreen = () => {
           <Button 
             label={isLoading ? "Verifying..." : "Verify OTP"} 
             onPress={handleVerifyOtp}
-            style={[
-              styles.verifyButton,
-              { 
-                backgroundColor: otp.join('').length === 6 ? Colors.primary : Colors.gray,
-                opacity: otp.join('').length === 6 ? 1 : 0.6
-              }
-            ]}
+            style={{
+              ...styles.verifyButton,
+              backgroundColor: otp.join('').length === 6 ? Colors.primary : Colors.gray,
+              opacity: otp.join('').length === 6 ? 1 : 0.6
+            }}
             disabled={isLoading || otp.join('').length !== 6}
           />
 
