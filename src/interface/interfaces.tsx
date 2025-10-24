@@ -1,3 +1,44 @@
+// JobPoper Authentication Interfaces
+export interface JobPoperUser {
+  id: string;
+  phoneNumber: string;
+  isPhoneVerified: boolean;
+  isProfileComplete: boolean;
+  role: 'user' | 'admin';
+  profile?: UserProfile;
+  lastLogin?: string;
+}
+
+export interface UserProfile {
+  fullName: string;
+  email: string;
+  location?: string;
+  dateOfBirth?: string;
+  profileImage?: string;
+  isProfileComplete: boolean;
+}
+
+export interface PhoneVerification {
+  phoneNumber: string;
+  verificationCode: string;
+  isVerified: boolean;
+  attempts: number;
+  expiresAt: string;
+  twilioSid?: string;
+}
+
+export interface AuthResponse {
+  status: 'success' | 'error';
+  message: string;
+  data?: {
+    token?: string;
+    user?: JobPoperUser;
+    phoneNumber?: string;
+    isVerified?: boolean;
+    twilioSid?: string;
+  };
+}
+
 export interface Address {
     street: string;
     area: string;

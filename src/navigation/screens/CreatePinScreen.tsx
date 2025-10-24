@@ -13,22 +13,35 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from "../../utils";
 import Button from "../../components/Button";
-import ImagePath from "../../assets/images/ImagePath";
+import Loader from "../../components/Loader";
 import { useNavigation } from "@react-navigation/native";
 import { AntDesign } from "@expo/vector-icons";
+import { useDispatch, useSelector } from "react-redux";
+import { registerUser, clearError, getCurrentUser } from "../../redux/slices/authSlice";
+import { RootState, AppDispatch } from "../../redux/store";
 
 const CreatePinScreen = () => {
   const navigation = useNavigation();
+  const dispatch = useDispatch<AppDispatch>();
+  const authState = useSelector((state: RootState) => state?.auth);
+  const loading = authState?.loading || false;
+  const error = authState?.error || null;
+  const phoneNumber = authState?.phoneNumber || "";
+  
   const [pin, setPin] = useState(['', '', '', '']);
   const [confirmPin, setConfirmPin] = useState(['', '', '', '']);
-  const [isLoading, setIsLoading] = useState(false);
-  const [step, setStep] = useState(1); // 1 = create pin, 2 = confirm pin
+  const [step, setStep] = useState(1); // 1 = create PIN, 2 = confirm PIN
   
   const pinInputRefs = useRef<(TextInput | null)[]>([null, null, null, null]);
   const confirmPinInputRefs = useRef<(TextInput | null)[]>([null, null, null, null]);
 
   const handlePinChange = (value: string, index: number, isConfirm = false) => {
     if (value.length > 1) return; // Prevent multiple characters
+    
+    // Clear error when user starts typing
+    if (error) {
+      dispatch(clearError());
+    }
     
     if (isConfirm) {
       const newConfirmPin = [...confirmPin];
@@ -39,8 +52,7 @@ const CreatePinScreen = () => {
       if (value && index < 3) {
         confirmPinInputRefs.current[index + 1]?.focus();
       } else if (value && index === 3) {
-        // All 4 digits entered, check if pins match
-        // Use the updated confirmPin array directly instead of waiting for state update
+        // All 4 digits entered, auto-submit
         setTimeout(() => {
           handleConfirmPin(newConfirmPin);
         }, 100);
@@ -58,7 +70,7 @@ const CreatePinScreen = () => {
         setTimeout(() => {
           setStep(2);
           confirmPinInputRefs.current[0]?.focus();
-        }, 300);
+        }, 100);
       }
     }
   };
@@ -75,27 +87,89 @@ const CreatePinScreen = () => {
     }
   };
 
-  const handleConfirmPin = (updatedConfirmPin?: string[]) => {
-    const pinString = pin.join('');
-    // Use the passed updatedConfirmPin if available, otherwise use state
+  const handleConfirmPin = async (updatedConfirmPin?: string[]) => {
     const currentConfirmPin = updatedConfirmPin || confirmPin;
+    const pinString = pin.join('');
     const confirmPinString = currentConfirmPin.join('');
     
+    if (pinString.length !== 4) {
+      Alert.alert('Error', 'Please enter your 4-digit PIN.');
+      return;
+    }
+
+    if (confirmPinString.length !== 4) {
+      Alert.alert('Error', 'Please confirm your 4-digit PIN.');
+      return;
+    }
+
     if (pinString !== confirmPinString) {
-      Alert.alert('Error', 'PIN codes do not match. Please try again.');
+      Alert.alert('Error', 'PINs do not match. Please try again.');
       setConfirmPin(['', '', '', '']);
       confirmPinInputRefs.current[0]?.focus();
       return;
     }
 
-    setIsLoading(true);
-    
-    // Simulate API call to save PIN
-    setTimeout(() => {
-      setIsLoading(false);
-      // Navigate to BasicProfileScreen after PIN creation
-      (navigation as any).navigate('BasicProfileScreen');
-    }, 2000);
+    if (!phoneNumber) {
+      Alert.alert('Error', 'Phone number not found. Please start over.');
+      return;
+    }
+
+    try {
+      const result = await dispatch(registerUser({ 
+        phoneNumber: phoneNumber.trim(), 
+        pin: pinString 
+      })).unwrap();
+      
+      if (result.status === 'success') {
+        // After successful registration, get user details
+        try {
+          const userResult = await dispatch(getCurrentUser()).unwrap();
+          
+          if (userResult.status === 'success' && userResult.data?.user) {
+            const userData = userResult.data.user;
+            
+            // Check if profile is complete
+            if (userData.profile?.isProfileComplete) {
+              Alert.alert('Success', 'Account created successfully!', [
+                {
+                  text: 'OK',
+                  onPress: () => (navigation as any).navigate('HomeTabs')
+                }
+              ]);
+            } else {
+              Alert.alert('Success', 'Account created successfully! Please complete your profile.', [
+                {
+                  text: 'OK',
+                  onPress: () => (navigation as any).navigate('BasicProfileScreen')
+                }
+              ]);
+            }
+          } else {
+            // If getCurrentUser fails, navigate to BasicProfileScreen
+            Alert.alert('Success', 'Account created successfully!', [
+              {
+                text: 'OK',
+                onPress: () => (navigation as any).navigate('BasicProfileScreen')
+              }
+            ]);
+          }
+        } catch (userError) {
+          // If getCurrentUser fails, navigate to BasicProfileScreen
+          Alert.alert('Success', 'Account created successfully!', [
+            {
+              text: 'OK',
+              onPress: () => (navigation as any).navigate('BasicProfileScreen')
+            }
+          ]);
+        }
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Registration failed. Please try again.');
+      setPin(['', '', '', '']);
+      setConfirmPin(['', '', '', '']);
+      setStep(1);
+      pinInputRefs.current[0]?.focus();
+    }
   };
 
   const handleBackToCreatePin = () => {
@@ -103,7 +177,7 @@ const CreatePinScreen = () => {
     setConfirmPin(['', '', '', '']);
   };
 
-  const renderPinInputs = (pinArray: string[], refs: React.RefObject<(TextInput | null)[]>, isConfirm = false) => {
+  const renderPinInputs = (pinArray: string[], refs: React.RefObject<TextInput>[], isConfirm = false) => {
     return pinArray.map((digit, index) => (
       <TextInput
         key={index}
@@ -166,32 +240,56 @@ const CreatePinScreen = () => {
             </Text>
             <Text style={styles.subtitle}>
               {step === 1 
-                ? 'Choose a 4-digit PIN for secure access to your account'
-                : 'Enter your PIN again to confirm'
+                ? 'Create a 4-digit PIN for your account'
+                : 'Please confirm your 4-digit PIN'
               }
             </Text>
           </View>
 
-          <View style={styles.pinContainer}>
-            {step === 1 
-              ? renderPinInputs(pin, pinInputRefs, false)
-              : renderPinInputs(confirmPin, confirmPinInputRefs, true)
-            }
-          </View>
-
-          {step === 2 && (
-            <Button 
-              label={isLoading ? "Creating Account..." : "Confirm PIN"} 
-              onPress={handleConfirmPin}
-              style={{
-                ...styles.confirmButton,
-                backgroundColor: confirmPin.join('').length === 4 ? Colors.primary : Colors.gray,
-                opacity: confirmPin.join('').length === 4 ? 1 : 0.6
-              }}
-              disabled={isLoading || confirmPin.join('').length !== 4}
-            />
+          {step === 1 ? (
+            <View style={styles.pinSection}>
+              <View style={styles.pinContainer}>
+                {renderPinInputs(pin, pinInputRefs)}
+              </View>
+              <Button 
+                label="Continue" 
+                onPress={() => {
+                  if (pin.join('').length === 4) {
+                    setStep(2);
+                    confirmPinInputRefs.current[0]?.focus();
+                  }
+                }}
+                style={{
+                  ...styles.continueButton,
+                  backgroundColor: pin.join('').length === 4 ? Colors.primary : Colors.gray,
+                  opacity: pin.join('').length === 4 ? 1 : 0.6
+                }}
+                disabled={pin.join('').length !== 4}
+              />
+            </View>
+          ) : (
+            <View style={styles.confirmSection}>
+              <Text style={styles.phoneDisplay}>{phoneNumber}</Text>
+              <View style={styles.pinContainer}>
+                {renderPinInputs(confirmPin, confirmPinInputRefs, true)}
+              </View>
+              {error && (
+                <Text style={styles.errorText}>{error}</Text>
+              )}
+              <Button 
+                label={loading ? "Creating Account..." : "Create Account"} 
+                onPress={() => handleConfirmPin()}
+                style={{
+                  ...styles.createButton,
+                  backgroundColor: confirmPin.join('').length === 4 ? Colors.primary : Colors.gray,
+                  opacity: confirmPin.join('').length === 4 ? 1 : 0.6
+                }}
+                disabled={loading || confirmPin.join('').length !== 4}
+              />
+            </View>
           )}
         </ScrollView>
+        <Loader visible={loading} message="Creating your account..." />
       </SafeAreaView>
     </KeyboardAvoidingView>
   );
@@ -236,6 +334,19 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     paddingHorizontal: 20
   },
+  pinSection: {
+    marginTop: 40,
+  },
+  confirmSection: {
+    marginTop: 40,
+  },
+  phoneDisplay: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.primary,
+    textAlign: 'center',
+    marginBottom: 30,
+  },
   pinContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -260,9 +371,20 @@ const styles = StyleSheet.create({
     borderColor: Colors.primary,
     backgroundColor: Colors.lightBlue || '#F0F8FF',
   },
-  confirmButton: {
+  continueButton: {
     marginTop: 40,
     borderRadius: 12,
+  },
+  createButton: {
+    marginTop: 40,
+    borderRadius: 12,
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 10,
+    marginBottom: 10,
   },
 });
 

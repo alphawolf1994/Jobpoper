@@ -4,17 +4,54 @@ import React, { useEffect } from "react";
 import ImagePath from "../../assets/images/ImagePath";
 import { Colors, heightToDp, widthToDp } from "../../utils";
 import { useNavigation } from "@react-navigation/native";
+import { useDispatch, useSelector } from "react-redux";
+import { getCurrentUser } from "../../redux/slices/authSlice";
+import { RootState, AppDispatch } from "../../redux/store";
 
 const SplashScreen = () => {
- 
   const navigation = useNavigation();
+  const dispatch = useDispatch<AppDispatch>();
+  const { accessToken, user, loading } = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
-    setTimeout(() => {
-      navigation.navigate("IntroScreen");
-    }, 2000);
-  
-  }, []); // Empty dependency array - only run once on mount
+    const checkAuthAndNavigate = async () => {
+      // Wait for splash screen to show for at least 2 seconds
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Check if token exists
+      if (accessToken) {
+        try {
+          // Call getCurrentUser API to verify token and get user data
+          const result = await dispatch(getCurrentUser()).unwrap();
+          
+          if (result.status === 'success' && result.data?.user) {
+            const userData = result.data.user;
+            
+            // Check if profile is complete
+            if (userData.profile?.isProfileComplete) {
+              // Profile is complete, navigate to HomeTabs
+              (navigation as any).navigate('HomeTabs');
+            } else {
+              // Profile is incomplete, navigate to BasicProfileScreen
+              (navigation as any).navigate('BasicProfileScreen');
+            }
+          } else {
+            // API call failed, navigate to IntroScreen
+            (navigation as any).navigate('IntroScreen');
+          }
+        } catch (error) {
+          // Token is invalid or expired, navigate to IntroScreen
+          console.log('Auth check failed:', error);
+          (navigation as any).navigate('IntroScreen');
+        }
+      } else {
+        // No token, navigate to IntroScreen
+        (navigation as any).navigate('IntroScreen');
+      }
+    };
+
+    checkAuthAndNavigate();
+  }, [accessToken, dispatch, navigation]);
 
 
 

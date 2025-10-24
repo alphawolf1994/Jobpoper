@@ -6,6 +6,8 @@ import { Colors } from '../utils';
 interface LocationAutocompleteProps {
   label?: string;
   placeholder?: string;
+  value?: string;
+  disabled?: boolean;
   onLocationSelect?: (location: {
     city: string;
     state: string;
@@ -28,12 +30,14 @@ interface PlacePrediction {
 const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   label,
   placeholder = "Search for a location",
+  value,
+  disabled = false,
   onLocationSelect,
   containerStyle,
   firstContainerStyle,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
-  const [searchText, setSearchText] = useState('');
+  const [searchText, setSearchText] = useState(value || '');
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -68,6 +72,8 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   };
 
   const handleTextChange = (text: string) => {
+    if (disabled) return;
+    
     setSearchText(text);
     
     if (timeoutRef.current) {
@@ -80,6 +86,8 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   };
 
   const handlePlaceSelect = async (place: PlacePrediction) => {
+    if (disabled) return;
+    
     try {
       setSearchText(place.description);
       setPredictions([]);
@@ -142,18 +150,19 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
       {label && <Text style={styles.label}>{label}</Text>}
       <View style={[styles.container, containerStyle, isFocused && styles.focusedContainer]}>
         <TextInput
-          style={styles.textInput}
+          style={[styles.textInput, disabled && styles.disabledInput]}
           placeholder={placeholder}
           placeholderTextColor={Colors.gray}
           value={searchText}
           onChangeText={handleTextChange}
-          onFocus={() => setIsFocused(true)}
+          onFocus={() => !disabled && setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
           autoCapitalize="none"
           autoCorrect={false}
           returnKeyType="search"
+          editable={!disabled}
         />
-        {predictions.length > 0 && (
+        {predictions.length > 0 && !disabled && (
           <View style={styles.predictionsContainer}>
             <FlatList
               data={predictions}
@@ -197,6 +206,10 @@ const styles = StyleSheet.create({
     textAlignVertical: 'center',
     ...(Platform.OS === 'android' && { includeFontPadding: false }),
     lineHeight: Platform.OS === 'android' ? 20 : 22,
+  },
+  disabledInput: {
+    backgroundColor: Colors.lightGray,
+    color: Colors.gray,
   },
   predictionsContainer: {
     position: 'absolute',

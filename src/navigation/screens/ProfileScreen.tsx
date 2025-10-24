@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   View, 
   Text, 
@@ -16,23 +16,60 @@ import { Colors } from "../../utils";
 import Header from "../../components/Header";
 import MyTextInput from "../../components/MyTextInput";
 import Button from "../../components/Button";
+import Loader from "../../components/Loader";
+import LocationAutocomplete from "../../components/LocationAutocomplete";
 import ImagePath from "../../assets/images/ImagePath";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
+import { useDispatch, useSelector } from "react-redux";
+import { getCurrentUser, completeProfile, logoutUser, clearAuth } from "../../redux/slices/authSlice";
+import { RootState, AppDispatch } from "../../redux/store";
 
 const ProfileScreen = () => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { user, loading, error } = useSelector((state: RootState) => state.auth);
+  
   // Profile data state
-  const [fullName, setFullName] = useState("John Doe");
-  const [email, setEmail] = useState("john.doe@example.com");
-  const [phone, setPhone] = useState("+1 234 567 8900");
-  const [country, setCountry] = useState("United States");
-  const [stateVal, setStateVal] = useState("New York");
-  const [city, setCity] = useState("New York City");
-  const [dob, setDob] = useState<Date | null>(new Date(1990, 0, 1));
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [location, setLocation] = useState({
+    city: "",
+    state: "",
+    country: "",
+    fullAddress: ""
+  });
+  const [dob, setDob] = useState<Date | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   
   // Profile image state
   const [profileImage, setProfileImage] = useState<string | null>(null);
+
+  // Load user data on component mount
+  useEffect(() => {
+    if (user) {
+      setFullName(user.profile?.fullName || "");
+      setEmail(user.profile?.email || "");
+      setPhone(user.phoneNumber || "");
+      
+      // Parse location from user profile
+      if (user.profile?.location) {
+        const locationParts = user.profile.location.split(',');
+        setLocation({
+          city: locationParts[0]?.trim() || "",
+          state: locationParts[1]?.trim() || "",
+          country: locationParts[2]?.trim() || "",
+          fullAddress: user.profile.location
+        });
+      }
+      
+      setDob(user.profile?.dateOfBirth ? new Date(user.profile.dateOfBirth) : null);
+      setProfileImage(user.profile?.profileImage || null);
+    } else {
+      // Fetch current user data if not available
+      dispatch(getCurrentUser());
+    }
+  }, [dispatch, user]);
 
   // Request permissions for image picker
   const requestPermissions = async () => {
@@ -62,9 +99,65 @@ const ProfileScreen = () => {
   };
 
   // Handle profile update
-  const handleUpdateProfile = () => {
-    // Here you would typically make an API call to update the profile
-    Alert.alert('Success', 'Profile updated successfully!');
+  const handleUpdateProfile = async () => {
+    if (!fullName.trim() || !email.trim()) {
+      Alert.alert('Error', 'Please fill in all required fields.');
+      return;
+    }
+
+    try {
+      const profileData = {
+        fullName: fullName.trim(),
+        email: email.trim(),
+        location: location.fullAddress || `${location.city}, ${location.state}, ${location.country}`.trim(),
+        dateOfBirth: dob ? dob.toISOString().split('T')[0] : undefined,
+        profileImage: profileImage || undefined,
+      };
+
+      const result = await dispatch(completeProfile(profileData)).unwrap();
+      
+      if (result.status === 'success') {
+        Alert.alert('Success', 'Profile updated successfully!');
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Profile update failed. Please try again.');
+    }
+  };
+
+  // Handle logout
+  const handleLogout = () => {
+    Alert.alert(
+      'Logout',
+      'Are you sure you want to logout?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Call logout API
+              await dispatch(logoutUser()).unwrap();
+              
+              // Clear auth state
+              dispatch(clearAuth());
+              
+              // Navigate to IntroScreen
+              // Note: You might need to use navigation.reset() or similar
+              // depending on your navigation setup
+              Alert.alert('Success', 'Logged out successfully!');
+            } catch (error: any) {
+              // Even if API fails, clear local state
+              dispatch(clearAuth());
+              Alert.alert('Success', 'Logged out successfully!');
+            }
+          },
+        },
+      ]
+    );
   };
 
   return (
@@ -74,8 +167,19 @@ const ProfileScreen = () => {
         
         {/* Header Section */}
         <View style={styles.headerSection}>
-          <Text style={styles.headerTitle}>Profile Settings</Text>
-          <Text style={styles.headerSubtitle}>Update your personal information</Text>
+          <View style={styles.headerTitleRow}>
+            <View style={styles.headerTextContainer}>
+              <Text style={styles.headerTitle}>Profile Settings</Text>
+              <Text style={styles.headerSubtitle}>Update your personal information</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.logoutButton} 
+              onPress={handleLogout}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="log-out-outline" size={24} color={Colors.primary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
@@ -122,27 +226,17 @@ const ProfileScreen = () => {
               placeholder="Your phone number" 
               value={phone} 
               onChange={setPhone} 
+              editable={false}
             />
             
-            <MyTextInput 
-              label="Country" 
-              placeholder="Enter country" 
-              value={country} 
-              onChange={setCountry} 
-            />
-            
-            <MyTextInput 
-              label="State" 
-              placeholder="Enter state" 
-              value={stateVal} 
-              onChange={setStateVal} 
-            />
-            
-            <MyTextInput 
-              label="City" 
-              placeholder="Enter city" 
-              value={city} 
-              onChange={setCity} 
+            {/* Location input - disabled to show current location */}
+            <LocationAutocomplete 
+              label="Location" 
+              placeholder="Your location" 
+              value={location.fullAddress}
+              onLocationSelect={(locationData) => setLocation(locationData)}
+              firstContainerStyle={{ marginTop: 0 }}
+              // disabled={true}
             />
 
             {/* Date of Birth Picker */}
@@ -179,10 +273,11 @@ const ProfileScreen = () => {
 
             {/* Save Button */}
             <Button 
-              label="Update Profile" 
-              onPress={handleUpdateProfile} 
+              label={loading ? "Updating Profile..." : "Update Profile"} 
+              onPress={handleUpdateProfile}
+              disabled={loading}
               style={{ 
-                backgroundColor: Colors.primary, 
+                backgroundColor: loading ? Colors.gray : Colors.primary, 
                 borderRadius: 12, 
                 marginTop: 32,
                 marginBottom: 20
@@ -190,6 +285,7 @@ const ProfileScreen = () => {
             />
           </View>
         </ScrollView>
+        <Loader visible={loading} message="Updating your profile..." />
       </SafeAreaView>
     </KeyboardAvoidingView>
   );
@@ -208,6 +304,14 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: Colors.lightGray,
   },
+  headerTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerTextContainer: {
+    flex: 1,
+  },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
@@ -217,6 +321,12 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 14,
     color: Colors.gray,
+  },
+  logoutButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: Colors.lightGray,
+    marginLeft: 16,
   },
   scrollContent: {
     paddingHorizontal: 16,

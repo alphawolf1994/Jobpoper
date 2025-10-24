@@ -1,22 +1,41 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image, Modal, ScrollView } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSelector } from "react-redux";
 
 import { Colors } from "../utils";
 import { EvilIcons, Ionicons } from "@expo/vector-icons";
 import ImagePath from "../assets/images/ImagePath";
 import LocationAutocomplete from "./LocationAutocomplete";
 import Button from "./Button";
+import { RootState } from "../redux/store";
 
 
 const Header: React.FC = () => {
   const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
-  const [currentLocation, setCurrentLocation] = useState({
-    city: "New York",
-    state: "NY", 
-    country: "USA",
-    fullAddress: "New York, NY, USA"
-  });
+  const { user } = useSelector((state: RootState) => state.auth);
+  
+  // Get location from user profile or use default
+  const getCurrentLocation = () => {
+    if (user?.profile?.location) {
+      // Parse the location string to extract city, state, country
+      const locationParts = user.profile.location.split(',');
+      return {
+        city: locationParts[0]?.trim() || "New York",
+        state: locationParts[1]?.trim() || "NY",
+        country: locationParts[2]?.trim() || "",
+        fullAddress: user.profile.location
+      };
+    }
+    return {
+      city: "New York",
+      state: "NY", 
+      country: "USA",
+      fullAddress: "New York, NY, USA"
+    };
+  };
+
+  const currentLocation = getCurrentLocation();
 
   const handleLocationSelect = (locationData: {
     city: string;

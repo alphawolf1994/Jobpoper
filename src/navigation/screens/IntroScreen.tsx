@@ -136,7 +136,7 @@ function IntroScreen() {
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <TouchableOpacity
                       onPress={() => {
-                        (navigation as any).navigate('Login');
+                        (navigation as any).navigate('LoginScreen');
                       }}
                       style={{ paddingVertical: 14, paddingHorizontal: 16 }}
                     >
@@ -145,7 +145,7 @@ function IntroScreen() {
                     <TouchableOpacity
                       onPress={() => {
                         if (index === data.length - 1) {
-                          (navigation as any).navigate('Login');
+                          (navigation as any).navigate('LoginScreen');
                         } else {
                           ref.current?.next();
                         }

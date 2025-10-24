@@ -20,9 +20,11 @@ import OTPScreen from "./screens/OTPScreen";
 import RegisterScreen from "./screens/RegisterScreen";
 import CreatePinScreen from "./screens/CreatePinScreen";
 import SplashScreen from "./screens/SplashScreen";
+import SignupPhoneScreen from "./screens/SignupPhoneScreen";
 
 import IntroScreen from "./screens/IntroScreen";
 import BasicProfileScreen from "./screens/BasicProfileScreen"
+import PhoneVerificationScreen from "./screens/PhoneVerificationScreen";
 // import HomeScreen from "./screens/HomeScreen";
 
 import React from "react";
@@ -101,14 +103,26 @@ const RootStack = createNativeStackNavigator({
         headerShown: false,
       },
     },
-    Login: {
+    LoginScreen: {
       screen: LoginScreen,
+      options: {
+        headerShown: false,
+      },
+    },
+    SignupPhoneScreen: {
+      screen: SignupPhoneScreen,
       options: {
         headerShown: false,
       },
     },
     Register: {
       screen: RegisterScreen,
+      options: {
+        headerShown: false,
+      },
+    },
+    PhoneVerificationScreen: {
+      screen: PhoneVerificationScreen,
       options: {
         headerShown: false,
       },

@@ -1,20 +1,47 @@
 import React, { useState, useRef } from "react";
-import { View, Text, StyleSheet, Image, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, TextInput } from "react-native";
-import { Colors, heightToDp, widthToDp } from "../../utils";
-import MyTextInput from "../../components/MyTextInput";
+import { 
+  View, 
+  Text, 
+  StyleSheet, 
+  TouchableOpacity, 
+  TextInput, 
+  KeyboardAvoidingView, 
+  Platform, 
+  ScrollView,
+  Alert 
+} from "react-native";
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Colors } from "../../utils";
 import Button from "../../components/Button";
-import ImagePath from "../../assets/images/ImagePath";
+import Loader from "../../components/Loader";
+import PhoneNumberInput from "../../components/PhoneNumberInput";
 import { useNavigation } from "@react-navigation/native";
 import { AntDesign } from "@expo/vector-icons";
+import { useDispatch, useSelector } from "react-redux";
+import { loginUser, clearError, getCurrentUser } from "../../redux/slices/authSlice";
+import { RootState, AppDispatch } from "../../redux/store";
 
 const LoginScreen = () => {
-  const [pin, setPin] = useState(['', '', '', '']);
-  const [isLoading, setIsLoading] = useState(false);
-  const inputRefs = useRef<TextInput[]>([]);
   const navigation = useNavigation();
+  const dispatch = useDispatch<AppDispatch>();
+  const authState = useSelector((state: RootState) => state?.auth);
+  const loading = authState?.loading || false;
+  const error = authState?.error || null;
+  
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [formattedPhoneNumber, setFormattedPhoneNumber] = useState("");
+  const [pin, setPin] = useState(['', '', '', '']);
+  const [step, setStep] = useState(1); // 1 = phone, 2 = PIN
+  
+  const pinInputRefs = useRef<(TextInput | null)[]>([null, null, null, null]);
 
   const handlePinChange = (value: string, index: number) => {
     if (value.length > 1) return; // Prevent multiple characters
+    
+    // Clear error when user starts typing
+    if (error) {
+      dispatch(clearError());
+    }
     
     const newPin = [...pin];
     newPin[index] = value;
@@ -22,108 +49,292 @@ const LoginScreen = () => {
 
     // Auto-focus next input
     if (value && index < 3) {
-      inputRefs.current[index + 1]?.focus();
+      pinInputRefs.current[index + 1]?.focus();
+    } else if (value && index === 3) {
+      // All 4 digits entered, auto-login
+     
     }
   };
 
   const handleKeyPress = (key: string, index: number) => {
     if (key === 'Backspace' && !pin[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
+      pinInputRefs.current[index - 1]?.focus();
     }
+  };
+
+  const handlePhoneSubmit = () => {
+    if (!formattedPhoneNumber.trim()) {
+      Alert.alert('Error', 'Please enter your phone number.');
+      return;
+    }
+
+    // Basic phone number validation for formatted number with country code
+    const phoneRegex = /^\+[1-9]\d{1,14}$/;
+    if (!phoneRegex.test(formattedPhoneNumber)) {
+      Alert.alert('Error', 'Please enter a valid phone number with country code.');
+      return;
+    }
+
+    setStep(2);
+    pinInputRefs.current[0]?.focus();
   };
 
   const handleLogin = async () => {
     const pinString = pin.join('');
+    
     if (pinString.length !== 4) {
+      Alert.alert('Error', 'Please enter your 4-digit PIN.');
       return;
     }
 
-    setIsLoading(true);
-    
-    // Simulate API call for PIN verification
-    setTimeout(() => {
-      setIsLoading(false);
-      // Navigate to main app after successful PIN verification
-      (navigation as any).navigate('HomeTabs');
-    }, 1500);
+    try {
+      console.log("formattedPhoneNumber =>", formattedPhoneNumber)
+      const result = await dispatch(loginUser({ 
+        phoneNumber: formattedPhoneNumber.trim(), 
+        pin: pinString 
+      })).unwrap();
+      
+      if (result.status === 'success') {
+        // After successful login, get user details
+        try {
+          const userResult = await dispatch(getCurrentUser()).unwrap();
+          
+          if (userResult.status === 'success' && userResult.data?.user) {
+            const userData = userResult.data.user;
+            
+            // Check if profile is complete
+            if (userData.profile?.isProfileComplete) {
+              Alert.alert('Success', 'Login successful!', [
+                {
+                  text: 'OK',
+                  onPress: () => (navigation as any).navigate('HomeTabs')
+                }
+              ]);
+            } else {
+              Alert.alert('Success', 'Login successful! Please complete your profile.', [
+                {
+                  text: 'OK',
+                  onPress: () => (navigation as any).navigate('BasicProfileScreen')
+                }
+              ]);
+            }
+          } else {
+            Alert.alert('Success', 'Login successful!', [
+              {
+                text: 'OK',
+                onPress: () => (navigation as any).navigate('HomeTabs')
+              }
+            ]);
+          }
+        } catch (userError) {
+          // If getCurrentUser fails, still navigate to HomeTabs
+          Alert.alert('Success', 'Login successful!', [
+            {
+              text: 'OK',
+              onPress: () => (navigation as any).navigate('HomeTabs')
+            }
+          ]);
+        }
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Login failed. Please try again.');
+      setPin(['', '', '', '']);
+      pinInputRefs.current[0]?.focus();
+    }
   };
 
-  const handleRegister = () => {
-    (navigation as any).navigate('Register');
+  const handleBackToPhone = () => {
+    setStep(1);
+    setPin(['', '', '', '']);
+  };
+
+  const renderPinInputs = () => {
+    return pin.map((digit, index) => (
+      <TextInput
+        key={index}
+        ref={(ref) => {
+          if (ref) {
+            pinInputRefs.current[index] = ref;
+          }
+        }}
+        style={[
+          styles.pinInput,
+          digit ? styles.pinInputFilled : styles.pinInputEmpty
+        ]}
+        value={digit}
+        onChangeText={(value) => handlePinChange(value, index)}
+        onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, index)}
+        keyboardType="numeric"
+        maxLength={1}
+        textAlign="center"
+        selectTextOnFocus
+      />
+    ));
   };
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.logoWrap}>
-          <Image source={ImagePath.newLogo} style={styles.logo} />
-          <Text style={styles.brandText}>JobPoper</Text>
-        </View>
-        
-        <Text style={styles.title}>Welcome Back 👋</Text>
-        <Text style={styles.subtitle}>Enter your PIN to continue</Text>
+      <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          {step === 1 && (
+            <TouchableOpacity style={styles.backBtn} onPress={() => (navigation as any).goBack()}>
+              <AntDesign
+                name="arrow-left"
+                size={24}
+                style={{
+                  marginRight: 10,
+                  marginTop: 2,
+                }}
+                color={Colors.black}
+              />
+            </TouchableOpacity>
+          )}
 
-        <View style={styles.pinContainer}>
-          {pin.map((digit, index) => (
-            <TextInput
-              key={index}
-              ref={(ref) => {
-                if (ref) inputRefs.current[index] = ref;
-              }}
-              style={[
-                styles.pinInput,
-                digit ? styles.pinInputFilled : styles.pinInputEmpty
-              ]}
-              value={digit}
-              onChangeText={(value) => handlePinChange(value, index)}
-              onKeyPress={({ nativeEvent }) => handleKeyPress(nativeEvent.key, index)}
-              keyboardType="numeric"
-              maxLength={1}
-              textAlign="center"
-              selectTextOnFocus
-            />
-          ))}
-        </View>
+          {step === 2 && (
+            <TouchableOpacity style={styles.backBtn} onPress={handleBackToPhone}>
+              <AntDesign
+                name="arrow-left"
+                size={24}
+                style={{
+                  marginRight: 10,
+                  marginTop: 2,
+                }}
+                color={Colors.black}
+              />
+            </TouchableOpacity>
+          )}
 
-        <Button
-          label={isLoading ? "Signing In..." : "Sign In"}
-          onPress={handleLogin}
-          style={{
-            ...styles.loginButton,
-            backgroundColor: pin.join('').length === 4 ? Colors.primary : Colors.gray,
-            opacity: pin.join('').length === 4 ? 1 : 0.6
-          }}
-          disabled={isLoading || pin.join('').length !== 4}
-        />
+          <View style={styles.logoWrap}>
+            <Text style={styles.emoji}>🔐</Text>
+            <Text style={styles.title}>
+              {step === 1 ? 'Welcome Back!' : 'Enter Your PIN'}
+            </Text>
+            <Text style={styles.subtitle}>
+              {step === 1 
+                ? 'Enter your phone number to continue'
+                : 'Enter your 4-digit PIN to login'
+              }
+            </Text>
+          </View>
 
-        <View style={styles.registerContainer}>
-          <Text style={styles.registerText}>Don't have an account? </Text>
-          <TouchableOpacity onPress={handleRegister}>
-            <Text style={styles.registerLink}>Register</Text>
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+          {step === 1 ? (
+            <View style={styles.phoneSection}>
+              <PhoneNumberInput
+                label="Phone Number"
+                placeholder="Enter your phone number"
+                value={phoneNumber}
+                onChangeText={(text) => {
+                  setPhoneNumber(text);
+                  if (error) {
+                    dispatch(clearError());
+                  }
+                }}
+                onChangeFormattedText={(formattedText) => {
+                  setFormattedPhoneNumber(formattedText);
+                  if (error) {
+                    dispatch(clearError());
+                  }
+                }}
+                error={error}
+                firstContainerStyle={{ marginTop: 0 }}
+              />
+              <Button 
+                label="Continue" 
+                onPress={handlePhoneSubmit}
+                style={styles.continueButton}
+                disabled={!formattedPhoneNumber.trim()}
+              />
+            </View>
+          ) : (
+            <View style={styles.pinSection}>
+              <Text style={styles.phoneDisplay}>{formattedPhoneNumber}</Text>
+              <View style={styles.pinContainer}>
+                {renderPinInputs()}
+              </View>
+              {error && (
+                <Text style={styles.errorText}>{error}</Text>
+              )}
+              <Button 
+                label={loading ? "Logging in..." : "Login"} 
+                onPress={handleLogin}
+                style={{
+                  ...styles.loginButton,
+                  backgroundColor: pin.join('').length === 4 ? Colors.primary : Colors.gray,
+                  opacity: pin.join('').length === 4 ? 1 : 0.6
+                }}
+                disabled={loading || pin.join('').length !== 4}
+              />
+            </View>
+          )}
+
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>Don't have an account?</Text>
+            <TouchableOpacity onPress={() => (navigation as any).navigate('SignupPhoneScreen')}>
+              <Text style={styles.signupLink}>Sign up</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+        <Loader visible={loading} message="Logging you in..." />
+      </SafeAreaView>
     </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.white },
-  content: { padding: 20 },
-  logoWrap: { alignItems: "center", marginVertical: 60 },
-  logo: { 
-    width: widthToDp(24),
-    height: heightToDp(12),
-    resizeMode: "contain",
-    tintColor: Colors.primary, 
+  container: { 
+    flex: 1, 
+    backgroundColor: Colors.white 
   },
-  title: { fontSize: 30, fontWeight: "bold", color: Colors.black, textAlign: 'center' },
-  subtitle: { fontSize: 14, color: Colors.gray, marginTop: 6, textAlign: 'center' },
-  brandText: {
-    marginTop: heightToDp(0),
+  content: { 
+    padding: 20, 
+    paddingTop: 12,
+    flex: 1,
+    justifyContent: 'center'
+  },
+  backBtn: { 
+    position: 'absolute', 
+    left: 16, 
+    top: 12, 
+    zIndex: 1 
+  },
+  logoWrap: { 
+    alignItems: "center", 
+    marginBottom: 50 
+  },
+  emoji: {
+    fontSize: 60,
+    marginBottom: 20,
+  },
+  title: { 
+    fontSize: 28, 
+    fontWeight: "bold", 
+    color: Colors.black, 
+    marginBottom: 8,
+    textAlign: 'center'
+  },
+  subtitle: { 
+    fontSize: 16, 
+    color: Colors.gray, 
+    textAlign: 'center',
+    lineHeight: 22,
+    paddingHorizontal: 20
+  },
+  phoneSection: {
+    marginTop: 40,
+  },
+  continueButton: {
+    borderRadius: 12,
+    marginTop: 20,
+  },
+  pinSection: {
+    marginTop: 40,
+  },
+  phoneDisplay: {
+    fontSize: 18,
+    fontWeight: '600',
     color: Colors.primary,
-    fontSize: 40,
-    fontWeight: "700",
+    textAlign: 'center',
+    marginBottom: 30,
   },
   pinContainer: {
     flexDirection: 'row',
@@ -150,23 +361,31 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.lightBlue || '#F0F8FF',
   },
   loginButton: {
-    borderRadius: 12,
     marginTop: 40,
+    borderRadius: 12,
   },
-  registerContainer: {
+  footer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 30,
+    marginTop: 40,
   },
-  registerText: {
+  footerText: {
     fontSize: 16,
     color: Colors.gray,
+    marginRight: 8,
   },
-  registerLink: {
+  signupLink: {
     fontSize: 16,
     color: Colors.primary,
     fontWeight: '600',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 14,
+    textAlign: 'center',
+    marginTop: 10,
+    marginBottom: 10,
   },
 });
 

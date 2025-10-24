@@ -1,19 +1,26 @@
 import 'react-native-get-random-values';
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Image, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, Image, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Alert } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from "../../utils";
 import MyTextInput from "../../components/MyTextInput";
 import Button from "../../components/Button";
+import Loader from "../../components/Loader";
 import LocationAutocomplete from "../../components/LocationAutocomplete";
 import ImagePath from "../../assets/images/ImagePath";
 import Checkbox from "expo-checkbox";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useNavigation } from "@react-navigation/native";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
+import { useDispatch, useSelector } from "react-redux";
+import { completeProfile, getCurrentUser } from "../../redux/slices/authSlice";
+import { RootState, AppDispatch } from "../../redux/store";
 
 const BasicProfileScreen = () => {
   const navigation = useNavigation();
+  const dispatch = useDispatch<AppDispatch>();
+  const { loading, error } = useSelector((state: RootState) => state.auth);
+  
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -32,6 +39,62 @@ const BasicProfileScreen = () => {
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = String(date.getFullYear());
     return `${day} ${month} ${year}`;
+  };
+
+  const handleCompleteProfile = async () => {
+    if (!fullName.trim() || !email.trim()) {
+      Alert.alert('Error', 'Please fill in all required fields.');
+      return;
+    }
+
+    // if (!agree) {
+    //   Alert.alert('Error', 'Please agree to the terms and conditions.');
+    //   return;
+    // }
+
+    try {
+      const profileData = {
+        fullName: fullName.trim(),
+        email: email.trim(),
+        location: location.fullAddress || `${location.city}, ${location.state}, ${location.country}`,
+        dateOfBirth: dob ? dob.toISOString().split('T')[0] : undefined,
+      };
+
+      const result = await dispatch(completeProfile(profileData)).unwrap();
+      
+      if (result.status === 'success') {
+        // After successful profile completion, get updated user details
+        try {
+          const userResult = await dispatch(getCurrentUser()).unwrap();
+          
+          if (userResult.status === 'success' && userResult.data?.user) {
+            Alert.alert('Success', 'Profile completed successfully!', [
+              {
+                text: 'OK',
+                onPress: () => (navigation as any).navigate('HomeTabs')
+              }
+            ]);
+          } else {
+            Alert.alert('Success', 'Profile completed successfully!', [
+              {
+                text: 'OK',
+                onPress: () => (navigation as any).navigate('HomeTabs')
+              }
+            ]);
+          }
+        } catch (userError) {
+          // If getCurrentUser fails, still navigate to HomeTabs
+          Alert.alert('Success', 'Profile completed successfully!', [
+            {
+              text: 'OK',
+              onPress: () => (navigation as any).navigate('HomeTabs')
+            }
+          ]);
+        }
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Profile completion failed. Please try again.');
+    }
   };
 
   return (
@@ -95,8 +158,18 @@ const BasicProfileScreen = () => {
 
       
 
-        <Button label="Continue" onPress={() => {navigation.navigate('HomeTabs')}} style={{ backgroundColor: Colors.primary, borderRadius: 12, marginTop: 24 }} />
+        <Button 
+          label={loading ? "Completing Profile..." : "Continue"} 
+          onPress={handleCompleteProfile}
+          disabled={loading}
+          style={{ 
+            backgroundColor: loading ? Colors.gray : Colors.primary, 
+            borderRadius: 12, 
+            marginTop: 24 
+          }} 
+        />
       </ScrollView>
+      <Loader visible={loading} message="Completing your profile..." />
       </SafeAreaView>
     </KeyboardAvoidingView>
   );
