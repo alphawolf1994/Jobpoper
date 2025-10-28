@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,76 +10,71 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../utils';
 import { useNavigation } from '@react-navigation/native';
-
-interface Job {
-  id: string;
-  title: string;
-  poster: string;
-  avatar: string;
-  cost: string;
-  location: string;
-  tags: string[];
-  isHot: boolean;
-}
+import { useDispatch, useSelector } from 'react-redux';
+import { getHotJobs } from '../redux/slices/jobSlice';
+import { AppDispatch, RootState } from '../redux/store';
+import { Job } from '../interface/interfaces';
 
 const HotJobs: React.FC = () => {
-  const navigation = useNavigation();
-  // Dummy data for hot jobs
-  const hotJobs: Job[] = [
-    {
-      id: '1',
-      title: 'Need House Cleaner',
-      poster: 'Sarah M.',
-      avatar: 'S',
-      cost: '$50/day',
-      location: 'Downtown, NYC',
-      tags: ['Today', '2:00 PM', 'Urgent'],
-      isHot: true,
-    },
-    {
-      id: '2',
-      title: 'Carpenter for Kitchen Repair',
-      poster: 'Mike R.',
-      avatar: 'M',
-      cost: '$200/project',
-      location: 'Brooklyn, NYC',
-      tags: ['Tomorrow', '9:00 AM', 'Flexible'],
-      isHot: true,
-    },
-    {
-      id: '3',
-      title: 'Garden Landscaping Help',
-      poster: 'Jennifer L.',
-      avatar: 'J',
-      cost: '$80/day',
-      location: 'Queens, NYC',
-      tags: ['This Week', 'Weekend', 'Ongoing'],
-      isHot: true,
-    },
-    {
-      id: '4',
-      title: 'Moving Assistant Needed',
-      poster: 'David K.',
-      avatar: 'D',
-      cost: '$25/hour',
-      location: 'Manhattan, NYC',
-      tags: ['Today', '1:00 PM', 'Heavy Lifting'],
-      isHot: true,
-    },
-    {
-      id: '5',
-      title: 'Pet Sitting for Weekend',
-      poster: 'Lisa P.',
-      avatar: 'L',
-      cost: '$40/day',
-      location: 'Staten Island, NYC',
-      tags: ['Friday', '6:00 PM', 'Pet Care'],
-      isHot: true,
-    },
-  ];
+  const navigation = useNavigation<any>();
+  const dispatch = useDispatch<AppDispatch>();
+  const jobState = useSelector((state: RootState) => state.job);
+  const { hotJobs = [], loading = false, currentLocation } = jobState || {};
+  const { user } = useSelector((state: RootState) => state.auth);
+
+  // Debug log
+  console.log('HotJobs state:', { hotJobs, loading, hotJobsLength: hotJobs?.length, jobState });
+
+  // Get location from Redux state, user profile, or use default
+  const getLocation = () => {
+    if (currentLocation) {
+      return currentLocation;
+    }
+    if (user?.profile?.location) {
+      return user.profile.location;
+    }
+    return "New York, NY, USA";
+  };
+
+  useEffect(() => {
+    // Fetch hot jobs when component mounts
+    dispatch(getHotJobs({ 
+      location: getLocation(),
+      page: 1,
+      limit: 10,
+      sortOrder: 'desc'
+    }));
+  }, [dispatch, currentLocation, user?.profile?.location]);
+
+  const formatJobTags = (job: Job) => {
+    const tags = [];
+    
+    // Add urgency
+    if (job.urgency === 'Urgent') {
+      tags.push('Urgent');
+    } else {
+      tags.push('Normal');
+    }
+    
+    // Add scheduled time
+    if (job.scheduledTime) {
+      tags.push(job.scheduledTime);
+    }
+    
+    // Add status
+    if (job.status) {
+      tags.push(job.status);
+    }
+    
+    return tags;
+  };
+
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  };
 
   const renderJobCard = (job: Job) => (
-    <TouchableOpacity key={job.id} style={styles.jobCard} activeOpacity={0.8} onPress={()=>{navigation.navigate('JobDetailsScreen')}}>
+    <TouchableOpacity key={job._id} style={styles.jobCard} activeOpacity={0.8} onPress={()=>{navigation.navigate('JobDetailsScreen')}}>
       {/* Hot/Fire Label */}
       <View style={styles.hotLabel}>
         <Ionicons name="flame" size={16} color={Colors.orange} />
@@ -89,17 +84,19 @@ const HotJobs: React.FC = () => {
       {/* Avatar and Title Row */}
       <View style={styles.avatarTitleRow}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{job.avatar}</Text>
+          <Text style={styles.avatarText}>
+            {getInitials(job.postedBy?.profile?.fullName || 'U')}
+          </Text>
         </View>
         <View style={styles.titleContainer}>
           <Text style={styles.jobTitle}>{job.title}</Text>
-          <Text style={styles.posterName}>{job.poster}</Text>
+          <Text style={styles.posterName}>{job.postedBy?.profile?.fullName || 'Unknown'}</Text>
         </View>
       </View>
 
       {/* Tags */}
       <View style={styles.tagsContainer}>
-        {job.tags.map((tag, index) => (
+        {formatJobTags(job).map((tag, index) => (
           <View key={index} style={styles.tag}>
             <Text style={styles.tagText}>{tag}</Text>
           </View>
@@ -109,7 +106,9 @@ const HotJobs: React.FC = () => {
       {/* Bottom Row - Cost and Location */}
       <View style={styles.bottomRow}>
         <Text style={styles.cost}>{job.cost}</Text>
-        <Text style={styles.location}>{job.location}</Text>
+        <Text style={styles.location} numberOfLines={1}>
+          {job.location.includes('http') ? 'View Location' : job.location}
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -125,16 +124,26 @@ const HotJobs: React.FC = () => {
       </View>
 
       {/* Job Cards ScrollView */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        decelerationRate="fast"
-        snapToInterval={300} // Width of card + margin
-        snapToAlignment="start"
-      >
-        {hotJobs.map(renderJobCard)}
-      </ScrollView>
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading hot jobs...</Text>
+        </View>
+      ) : (hotJobs && hotJobs.length > 0) ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          decelerationRate="fast"
+          snapToInterval={300} // Width of card + margin
+          snapToAlignment="start"
+        >
+          {hotJobs.map(renderJobCard)}
+        </ScrollView>
+      ) : (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No hot jobs available in your area</Text>
+        </View>
+      )}
     </View>
   );
 };
@@ -270,6 +279,25 @@ const styles = StyleSheet.create({
     color: Colors.white,
     opacity: 0.85,
     fontWeight: '500',
+  },
+  loadingContainer: {
+    height: 185,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.gray,
+  },
+  emptyContainer: {
+    height: 185,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: Colors.gray,
+    textAlign: 'center',
   },
 });
 

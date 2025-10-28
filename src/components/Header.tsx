@@ -1,41 +1,33 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Image, Modal, ScrollView } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 
 import { Colors } from "../utils";
 import { EvilIcons, Ionicons } from "@expo/vector-icons";
 import ImagePath from "../assets/images/ImagePath";
 import LocationAutocomplete from "./LocationAutocomplete";
 import Button from "./Button";
-import { RootState } from "../redux/store";
+import { RootState, AppDispatch } from "../redux/store";
+import { setCurrentLocation } from "../redux/slices/jobSlice";
 
 
 const Header: React.FC = () => {
   const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
+  const dispatch = useDispatch<AppDispatch>();
+  
   const { user } = useSelector((state: RootState) => state.auth);
+  const { currentLocation } = useSelector((state: RootState) => state.job);
   
   // Get location from user profile or use default
-  const getCurrentLocation = () => {
+  const getDefaultLocation = () => {
     if (user?.profile?.location) {
-      // Parse the location string to extract city, state, country
-      const locationParts = user.profile.location.split(',');
-      return {
-        city: locationParts[0]?.trim() || "New York",
-        state: locationParts[1]?.trim() || "NY",
-        country: locationParts[2]?.trim() || "",
-        fullAddress: user.profile.location
-      };
+      return user.profile.location;
     }
-    return {
-      city: "New York",
-      state: "NY", 
-      country: "USA",
-      fullAddress: "New York, NY, USA"
-    };
+    return "New York, NY, USA";
   };
 
-  const currentLocation = getCurrentLocation();
+  const displayLocation = currentLocation || getDefaultLocation();
 
   const handleLocationSelect = (locationData: {
     city: string;
@@ -43,16 +35,17 @@ const Header: React.FC = () => {
     country: string;
     fullAddress: string;
   }) => {
-    setCurrentLocation(locationData);
+    // Update Redux state with the new location
+    dispatch(setCurrentLocation(locationData.fullAddress));
     setIsLocationModalVisible(false);
   };
 
   const formatLocationDisplay = () => {
-    const parts = [];
-    if (currentLocation.city) parts.push(currentLocation.city);
-    if (currentLocation.state) parts.push(currentLocation.state);
-    if (currentLocation.country) parts.push(currentLocation.country);
-    return parts.join(", ");
+    if (displayLocation) {
+      const parts = displayLocation.split(',');
+      return parts.map(part => part.trim()).join(", ");
+    }
+    return "New York, NY, USA";
   };
 
   return (

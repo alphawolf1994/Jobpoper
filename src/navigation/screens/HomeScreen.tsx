@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
 import { Colors } from "../../utils";
 import Header from "../../components/Header";
@@ -8,11 +8,46 @@ import { Ionicons } from "@expo/vector-icons";
 import MyTextInput from "../../components/MyTextInput";
 import HotJobs from "../../components/HotJobs";
 import ListedJobs from "../../components/ListedJobs";
+import { useDispatch, useSelector } from 'react-redux';
+import { getHotJobs, getListedJobs } from '../../redux/slices/jobSlice';
+import { AppDispatch, RootState } from '../../redux/store';
 
 const HomeScreen = ({ navigation }: any) => {
+  const dispatch = useDispatch<AppDispatch>();
+  const { user } = useSelector((state: RootState) => state.auth);
+  const { currentLocation } = useSelector((state: RootState) => state.job);
+
   const handlePostJob = () => {
     navigation.navigate('PostJobScreen');
   };
+
+  // Get location from Redux state, user profile, or use default
+  const getLocation = () => {
+    if (currentLocation) {
+      return currentLocation;
+    }
+    if (user?.profile?.location) {
+      return user.profile.location;
+    }
+    return "New York, NY, USA";
+  };
+
+  // Refresh hot jobs and listed jobs when location changes
+  useEffect(() => {
+    dispatch(getHotJobs({ 
+      location: getLocation(),
+      page: 1,
+      limit: 10,
+      sortOrder: 'desc'
+    }));
+    
+    dispatch(getListedJobs({ 
+      location: getLocation(),
+      page: 1,
+      limit: 10,
+      sortOrder: 'desc'
+    }));
+  }, [dispatch, currentLocation, user?.profile?.location]);
 
   return (
     <SafeAreaView edges={['top','bottom','left','right']} style={{flex:1,}}>

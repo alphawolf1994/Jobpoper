@@ -10,9 +10,14 @@ import DropDownPicker from 'react-native-dropdown-picker';
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
+import { useDispatch, useSelector } from 'react-redux';
+import { createJob } from '../../redux/slices/jobSlice';
+import { AppDispatch, RootState } from '../../redux/store';
 
 const PostJobScreen = () => {
     const navigation = useNavigation();
+    const dispatch = useDispatch<AppDispatch>();
+    const { loading } = useSelector((state: RootState) => state.job);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -22,8 +27,6 @@ const PostJobScreen = () => {
     time: '',
     urgency: '',
   });
-
-  const [loading, setLoading] = useState(false);
 
   // Date & Time pickers state
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -41,15 +44,36 @@ const PostJobScreen = () => {
     return d;
   };
 
+  const getToday = () => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  };
+
   const [urgencyOpen, setUrgencyOpen] = useState(false);
-  const [urgencyValue, setUrgencyValue] = useState(null);
+  const [urgencyValue, setUrgencyValue] = useState<string | null>(null);
   const [urgencyItems, setUrgencyItems] = useState([
     {label: 'Urgent', value: 'Urgent'},
-    {label: 'High Priority', value: 'High Priority'},
     {label: 'Normal', value: 'Normal'},
-    {label: 'Flexible', value: 'Flexible'},
-    {label: 'Ongoing', value: 'Ongoing'},
   ]);
+
+  // Handle urgency change
+  const handleUrgencyChange = (callback: any) => {
+    setUrgencyValue(callback);
+    const value = typeof callback === 'function' ? callback(urgencyValue) : callback;
+    
+    if (value === 'Urgent') {
+      // Auto-select today's date for urgent jobs
+      const today = getToday();
+      setSelectedDate(today);
+      handleInputChange('day', formatDate(today));
+    } else if (value === 'Normal') {
+      // Reset to tomorrow for normal jobs
+      const tomorrow = getTomorrow();
+      setSelectedDate(tomorrow);
+      handleInputChange('day', formatDate(tomorrow));
+    }
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -63,6 +87,13 @@ const PostJobScreen = () => {
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = String(date.getFullYear());
     return `${day} ${month} ${year}`;
+  };
+
+  const formatDateForAPI = (date: Date) => {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = String(date.getFullYear());
+    return `${year}-${month}-${day}`;
   };
 
   const formatTime = (date: Date) => {
@@ -136,45 +167,56 @@ const PostJobScreen = () => {
       return;
     }
 
-    setLoading(true);
-    
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Prepare job data for API
+      const jobData = {
+        title: formData.title,
+        description: formData.description,
+        cost: formData.cost,
+        location: formData.location,
+        urgency: urgencyValue || 'Normal',
+        scheduledDate: formatDateForAPI(selectedDate!),
+        scheduledTime: formatTime(selectedTime!),
+        attachments: attachments.length > 0 ? attachments : undefined,
+      };
+
+      // Dispatch the create job action and await the result
+      const result = await dispatch(createJob(jobData)).unwrap();
       
-      Alert.alert(
-        'Success!', 
-        'Your job has been posted successfully!',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              // Reset form
-              setFormData({
-                title: '',
-                description: '',
-                cost: '',
-                location: '',
-                day: '',
-                time: '',
-                urgency: '',
-              });
-              // Reset date/time values
-              setSelectedDate(null);
-              setSelectedTime(null);
-              setUrgencyValue(null);
-              // Reset attachments
-              setAttachments([]);
-              // Navigate back
-              navigation.goBack();
+      if (result.status === 'success') {
+        Alert.alert(
+          'Success!', 
+          'Your job has been posted successfully!',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Reset form
+                setFormData({
+                  title: '',
+                  description: '',
+                  cost: '',
+                  location: '',
+                  day: '',
+                  time: '',
+                  urgency: '',
+                });
+                // Reset date/time values
+                setSelectedDate(null);
+                setSelectedTime(null);
+                setUrgencyValue(null);
+                // Reset attachments
+                setAttachments([]);
+                // Navigate back
+                navigation.goBack();
+              }
             }
-          }
-        ]
-      );
-    } catch (error) {
-      Alert.alert('Error', 'Failed to post job. Please try again.');
-    } finally {
-      setLoading(false);
+          ]
+        );
+      }
+    } catch (error: any) {
+      const errorMessage = error?.message || 'Failed to post job. Please try again.';
+      Alert.alert('Error', errorMessage);
     }
   };
 
@@ -250,14 +292,38 @@ const PostJobScreen = () => {
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Location *</Text>
           <MyTextInput
-            placeholder="e.g., Downtown, NYC"
+            placeholder="Paste Google Maps link or coordinates here"
             value={formData.location}
             onChange={(value: string) => handleInputChange('location', value)}
             containerStyle={styles.input}
             leftIcon={<Ionicons name="location-outline" size={20} color="#9AA0A6" />}
           />
+          <Text style={styles.helpText}>
+            💡 Tip: Open Google Maps, copy location link/coordinates, and paste here. A map will be displayed when job is published.
+          </Text>
         </View>
-
+ {/* Urgency Selection */}
+ <View style={styles.pickerContainer}>
+            <Text style={styles.pickerLabel}>How urgent is this job?</Text>
+            <DropDownPicker
+              open={urgencyOpen}
+              value={urgencyValue}
+              items={urgencyItems}
+              setOpen={setUrgencyOpen}
+              setValue={handleUrgencyChange}
+              setItems={setUrgencyItems}
+              placeholder="Select job type..."
+              style={styles.dropdown}
+              dropDownContainerStyle={styles.dropdownContainer}
+              placeholderStyle={styles.placeholder}
+              textStyle={styles.dropdownText}
+              zIndex={1000}
+              zIndexInverse={3000}
+            />
+            <Text style={styles.helpText}>
+              💡 Urgent: Job needed today (date auto-selected) • Normal: Job can be scheduled for later
+            </Text>
+          </View>
         {/* Job Timing */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Job Timing *</Text>
@@ -265,12 +331,24 @@ const PostJobScreen = () => {
           {/* Day Selection (Date Picker) */}
           <View style={styles.pickerContainer}>
             <Text style={styles.pickerLabel}>When do you need this done?</Text>
-            <TouchableOpacity activeOpacity={0.8} onPress={() => { const base = selectedDate && selectedDate >= getTomorrow() ? selectedDate : getTomorrow(); setTempDate(base); setShowDatePicker(true); }}>
-              <View style={[styles.dropdown, styles.inputRow]}>
+            <TouchableOpacity 
+              activeOpacity={urgencyValue === 'Urgent' ? 1 : 0.8} 
+              onPress={() => {
+                if (urgencyValue === 'Urgent') return; // Disabled for urgent jobs
+                const base = selectedDate && selectedDate >= getTomorrow() ? selectedDate : getTomorrow();
+                setTempDate(base);
+                setShowDatePicker(true);
+              }}
+            >
+              <View style={[
+                styles.dropdown, 
+                styles.inputRow,
+                urgencyValue === 'Urgent' && styles.disabledInput
+              ]}>
                 <Text style={selectedDate ? styles.dropdownText : styles.placeholder}>
                   {selectedDate ? formatDate(selectedDate) : 'Select date...'}
                 </Text>
-                <AntDesign name="calendar" size={18} color="#9AA0A6" />
+                <AntDesign name="calendar" size={18} color={urgencyValue === 'Urgent' ? '#d0d0d0' : "#9AA0A6"} />
               </View>
             </TouchableOpacity>
             {showDatePicker && (
@@ -314,6 +392,11 @@ const PostJobScreen = () => {
                   </View>
                 )}
               </View>
+            )}
+            {urgencyValue === 'Urgent' && (
+              <Text style={[styles.helpText, { marginTop: 8 }]}>
+                📍 Date is locked to today for urgent jobs
+              </Text>
             )}
           </View>
 
@@ -370,25 +453,7 @@ const PostJobScreen = () => {
             )}
           </View>
 
-          {/* Urgency Selection */}
-          <View style={styles.pickerContainer}>
-            <Text style={styles.pickerLabel}>How urgent is this job?</Text>
-            <DropDownPicker
-              open={urgencyOpen}
-              value={urgencyValue}
-              items={urgencyItems}
-              setOpen={setUrgencyOpen}
-              setValue={setUrgencyValue}
-              setItems={setUrgencyItems}
-              placeholder="Select urgency..."
-              style={styles.dropdown}
-              dropDownContainerStyle={styles.dropdownContainer}
-              placeholderStyle={styles.placeholder}
-              textStyle={styles.dropdownText}
-              zIndex={1000}
-              zIndexInverse={3000}
-            />
-          </View>
+         
         </View>
 
         {/* Additional Info */}
@@ -576,6 +641,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     minHeight: 50,
+  },
+  disabledInput: {
+    backgroundColor: '#f0f0f0',
+    opacity: 0.6,
   },
   pickerActions: {
     flexDirection: 'row',

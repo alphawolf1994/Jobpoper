@@ -720,6 +720,83 @@ export interface PaymentMethod {
     bank?: { accountName: string; accountNumber: string; bankName: string };
     paypal?: { account: string };
 }
+
+// JobPoper Job Interfaces
+export interface Job {
+  _id: string;
+  title: string;
+  description: string;
+  cost: string;
+  location: string;
+  urgency: 'Urgent' | 'Normal';
+  scheduledDate: string;
+  scheduledTime: string;
+  attachments?: string[];
+  status: 'open' | 'in-progress' | 'completed' | 'cancelled';
+  jobType?: string;
+  postedBy: {
+    profile: {
+      email: string;
+      fullName: string;
+    };
+    _id: string;
+  };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface JobResponse {
+  status: 'success' | 'error';
+  message: string;
+  data?: {
+    job?: Job;
+    jobs?: Job[];
+  };
+}
+
+export interface CreateJobPayload {
+  title: string;
+  description: string;
+  cost: string;
+  location: string;
+  urgency: string;
+  scheduledDate: string;
+  scheduledTime: string;
+  attachments?: string[];
+}
+
+export interface HotJobsResponse {
+  status: 'success' | 'error';
+  message: string;
+  data?: {
+    jobs: Job[];
+    location: string;
+    urgency: string;
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalJobs: number;
+      hasNextPage: boolean;
+      hasPrevPage: boolean;
+    };
+  };
+}
+
+export interface ListedJobsResponse {
+  status: 'success' | 'error';
+  message: string;
+  data?: {
+    jobs: Job[];
+    location: string;
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalJobs: number;
+      hasNextPage: boolean;
+      hasPrevPage: boolean;
+    };
+  };
+}
   
 
   

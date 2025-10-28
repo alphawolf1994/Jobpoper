@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,101 +9,73 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../utils';
 import { useNavigation } from '@react-navigation/native';
-
-interface ListedJob {
-  id: string;
-  title: string;
-  poster: string;
-  avatar: string;
-  cost: string;
-  location: string;
-  isHot: boolean;
-  date: string; // e.g., 2025-10-17
-  time: string; // e.g., 14:30
-}
+import { useDispatch, useSelector } from 'react-redux';
+import { getListedJobs } from '../redux/slices/jobSlice';
+import { AppDispatch, RootState } from '../redux/store';
+import { Job } from '../interface/interfaces';
 
 const ListedJobs: React.FC = () => {
   const navigation = useNavigation<any>();
-  // Dummy data for listed jobs
-  const listedJobs: ListedJob[] = [
-    {
-      id: '1',
-      title: 'House Cleaning Service',
-      poster: 'Maria S.',
-      avatar: 'M',
-      cost: '$45/day',
-      location: 'Brooklyn, NYC',
-      isHot: false,
-      date: '17-10-2025',
-      time: '09:30 AM',
-    },
-    {
-      id: '2',
-      title: 'Kitchen Renovation Help',
-      poster: 'John D.',
-      avatar: 'J',
-      cost: '$180/project',
-      location: 'Queens, NYC',
-      isHot: false,
-      date: '18-10-2025',
-      time: '12:30 PM',
-    },
-    {
-      id: '3',
-      title: 'Garden Maintenance',
-      poster: 'Sarah K.',
-      avatar: 'S',
-      cost: '$65/day',
-      location: 'Manhattan, NYC',
-      isHot: false,
-      date: '17-10-2025',
-      time: '09:30 AM',
-    },
-    {
-      id: '4',
-      title: 'Moving Day Assistant',
-      poster: 'Mike R.',
-      avatar: 'M',
-      cost: '$30/hour',
-      location: 'Bronx, NYC',
-      isHot: false,
-      date: '19-10-2025',
-      time: '09:30 PM',
-    },
-    {
-      id: '5',
-      title: 'Pet Walking Service',
-      poster: 'Lisa P.',
-      avatar: 'L',
-      cost: '$35/day',
-      location: 'Staten Island, NYC',
-      isHot: false,
-      date: '17-10-2025',
-      time: '09:30 AM',
-    },
-    {
-      id: '6',
-      title: 'Handyman Repairs',
-      poster: 'David L.',
-      avatar: 'D',
-      cost: '$120/project',
-      location: 'Long Island, NYC',
-      isHot: false,
-      date: '20-10-2025',
-      time: '09:30 AM',
-    },
-  ];
+  const dispatch = useDispatch<AppDispatch>();
+  const jobState = useSelector((state: RootState) => state.job);
+  const { listedJobs = [], loading = false, currentLocation } = jobState || {};
+  const { user } = useSelector((state: RootState) => state.auth);
 
-  const renderJobCard = ({ item }: { item: ListedJob }) => (
+  // Get location from Redux state, user profile, or use default
+  const getLocation = () => {
+    if (currentLocation) {
+      return currentLocation;
+    }
+    if (user?.profile?.location) {
+      return user.profile.location;
+    }
+    return "New York, NY, USA";
+  };
+
+  useEffect(() => {
+    // Fetch listed jobs when component mounts
+    dispatch(getListedJobs({ 
+      location: getLocation(),
+      page: 1,
+      limit: 10,
+      sortOrder: 'desc'
+    }));
+  }, [dispatch, currentLocation, user?.profile?.location]);
+
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-GB', {
+      day: '2-digit',
+      month: '2-digit',
+      year: '2-digit'
+    });
+  };
+
+  const formatTime = (timeString: string) => {
+    const time = new Date(`2000-01-01T${timeString}`);
+    return time.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    });
+  };
+
+  const renderJobCard = ({ item }: { item: Job }) => (
     <TouchableOpacity style={styles.jobCard} activeOpacity={0.7} onPress={()=>{navigation.navigate('JobDetailsScreen')}}>
       {/* Left Side - Avatar and Job Info */}
       <View style={styles.leftSection}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{item.avatar}</Text>
+          <Text style={styles.avatarText}>
+            {getInitials(item.postedBy?.profile?.fullName || 'U')}
+          </Text>
         </View>
         <View style={styles.jobInfo}>
           <Text style={styles.jobTitle}>{item.title}</Text>
-          <Text style={styles.posterName}>{item.poster}</Text>
+          <Text style={styles.posterName}>{item.postedBy?.profile?.fullName || 'Unknown'}</Text>
         </View>
       </View>
 
@@ -111,9 +83,13 @@ const ListedJobs: React.FC = () => {
       <View style={styles.rightSection}>
         <View style={styles.rightTopGroup}>
           <Text style={styles.cost}>{item.cost}</Text>
-          <Text style={styles.location}>{item.location}</Text>
+          <Text style={styles.location}>
+            {item.location.includes('http') ? 'View Location' : item.location}
+          </Text>
         </View>
-        <Text style={styles.dateTime}>{item.date} • {item.time}</Text>
+        <Text style={styles.dateTime}>
+          {formatDate(item.scheduledDate)} • {item.scheduledTime}
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -129,14 +105,24 @@ const ListedJobs: React.FC = () => {
       </View>
 
       {/* Job Cards List */}
-      <FlatList
-        data={listedJobs}
-        renderItem={renderJobCard}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-      />
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading listed jobs...</Text>
+        </View>
+      ) : (listedJobs && listedJobs.length > 0) ? (
+        <FlatList
+          data={listedJobs}
+          renderItem={renderJobCard}
+          keyExtractor={(item) => item._id}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+        />
+      ) : (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No listed jobs available in your area</Text>
+        </View>
+      )}
     </View>
   );
 };
@@ -236,6 +222,25 @@ const styles = StyleSheet.create({
     color: Colors.gray,
     fontWeight: '500',
     marginTop: 2,
+  },
+  loadingContainer: {
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.gray,
+  },
+  emptyContainer: {
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: Colors.gray,
+    textAlign: 'center',
   },
 });
 
