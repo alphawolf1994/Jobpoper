@@ -12,7 +12,29 @@ export const createJobApi = async (jobData: {
     attachments?: string[];
 }) => {
     try {
-        const res = await axiosInstance.post("/jobs", jobData);
+        // Build multipart form data
+        const formData = new FormData();
+        formData.append("title", jobData.title);
+        formData.append("description", jobData.description);
+        formData.append("cost", jobData.cost);
+        formData.append("location", jobData.location);
+        formData.append("urgency", jobData.urgency);
+        formData.append("scheduledDate", jobData.scheduledDate);
+        formData.append("scheduledTime", jobData.scheduledTime);
+
+        // Append up to 5 images using the same field name: attachments
+        if (jobData.attachments && Array.isArray(jobData.attachments)) {
+            jobData.attachments.slice(0, 5).forEach((uri, index) => {
+                const inferredName = uri.split("/").pop() || `attachment_${index + 1}.jpg`;
+                const ext = inferredName.split(".").pop()?.toLowerCase();
+                const mime = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : ext === "heic" ? "image/heic" : "image/jpeg";
+                formData.append("attachments", { uri, name: inferredName, type: mime } as unknown as Blob);
+            });
+        }
+
+        const res = await axiosInstance.post("/jobs", formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+        });
         return res.data;
     } catch (error: any) {
         throw new Error(error.response?.data?.message || "Failed to create job");

@@ -10,6 +10,7 @@ import LocationAutocomplete from "./LocationAutocomplete";
 import Button from "./Button";
 import { RootState, AppDispatch } from "../redux/store";
 import { setCurrentLocation } from "../redux/slices/jobSlice";
+import { IMAGE_BASE_URL } from "../api/baseURL";
 
 
 const Header: React.FC = () => {
@@ -28,6 +29,12 @@ const Header: React.FC = () => {
   };
 
   const displayLocation = currentLocation || getDefaultLocation();
+
+  const resolveImageUri = (uri?: string | null) => {
+    if (!uri) return null;
+    if (uri.startsWith("http") || uri.startsWith("file:")) return uri;
+    return `${IMAGE_BASE_URL}${uri.startsWith("/") ? uri : `/${uri}`}`;
+  };
 
   const handleLocationSelect = (locationData: {
     city: string;
@@ -87,7 +94,11 @@ const Header: React.FC = () => {
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.avatar} activeOpacity={0.7}>
-          <Image source={ImagePath.avatarIcon} style={styles.avatarImage} />
+          {user?.profile?.profileImage ? (
+            <Image source={{ uri: resolveImageUri(user.profile.profileImage) || "" }} style={styles.avatarImage} />
+          ) : (
+            <Image source={ImagePath.avatarIcon} style={styles.avatarImage} />
+          )}
         </TouchableOpacity>
       </View>
 
@@ -204,7 +215,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 18,
-    resizeMode: "contain",
+    resizeMode: "cover",
   },
   // Modal styles
   modalContainer: {

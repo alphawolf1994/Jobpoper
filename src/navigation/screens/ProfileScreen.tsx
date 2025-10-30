@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { Colors } from "../../utils";
 import Header from "../../components/Header";
+import { IMAGE_BASE_URL } from "../../api/baseURL";
 import MyTextInput from "../../components/MyTextInput";
 import Button from "../../components/Button";
 import Loader from "../../components/Loader";
@@ -160,6 +161,12 @@ const ProfileScreen = () => {
     );
   };
 
+  const resolveImageUri = (uri?: string | null) => {
+    if (!uri) return null;
+    if (uri.startsWith("http") || uri.startsWith("file:")) return uri;
+    return `${IMAGE_BASE_URL}${uri.startsWith("/") ? uri : `/${uri}`}`;
+  };
+
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
       <SafeAreaView edges={['top','bottom','left','right']} style={{flex: 1}}>
@@ -187,7 +194,7 @@ const ProfileScreen = () => {
           <View style={styles.avatarSection}>
             <View style={styles.avatarContainer}>
               {profileImage ? (
-                <Image source={{ uri: profileImage }} style={styles.avatarImage} />
+                <Image source={{ uri: resolveImageUri(profileImage) || "" }} style={styles.avatarImage} />
               ) : (
                 <Image source={ImagePath.avatarIcon} style={styles.avatarImage} />
               )}

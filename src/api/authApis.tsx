@@ -68,7 +68,26 @@ export const completeProfileApi = async (profileData: {
     profileImage?: string;
 }) => {
     try {
-        const res = await axiosInstance.put("/auth/complete-profile", profileData);
+        // Build multipart form data
+        const formData = new FormData();
+        formData.append("fullName", profileData.fullName);
+        formData.append("email", profileData.email);
+        if (profileData.location) formData.append("location", profileData.location);
+        if (profileData.dateOfBirth) formData.append("dateOfBirth", profileData.dateOfBirth);
+
+        // Append image if provided (React Native file object)
+        if (profileData.profileImage) {
+            const uri = profileData.profileImage;
+            const inferredName = uri.split("/").pop() || "profile.jpg";
+            // Basic mime inference by extension; backend should also validate
+            const ext = inferredName.split(".").pop()?.toLowerCase();
+            const mime = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : ext === "heic" ? "image/heic" : "image/jpeg";
+            formData.append("profileImage", { uri, name: inferredName, type: mime } as unknown as Blob);
+        }
+
+        const res = await axiosInstance.put("/auth/complete-profile", formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+        });
         return res.data;
     } catch (error: any) {
         throw new Error(error.response?.data?.message || "Profile completion failed");
