@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { persistStore, persistReducer } from 'redux-persist';
 import authSlice from './slices/authSlice';
 import jobSlice from './slices/jobSlice';
+import locationsSlice from './slices/locationsSlice';
 import { authMiddleware } from './middleware/authMiddleware';
 
 // Configuration for redux-persist
@@ -16,6 +17,7 @@ const persistConfig = {
 const rootReducer = combineReducers({
   auth: authSlice,
   job: jobSlice,
+  locations: locationsSlice,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

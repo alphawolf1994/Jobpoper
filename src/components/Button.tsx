@@ -28,7 +28,7 @@ export default Button;
 
 const styles = StyleSheet.create({
   signInButton: {
-    backgroundColor: Colors.secondary,
+    backgroundColor: Colors.primary,
     padding: 15,
     borderRadius: 30,
     alignItems: "center",

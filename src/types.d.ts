@@ -26,3 +26,7 @@ declare module 'expo-location' {
   export const getCurrentPositionAsync: any;
   export const Accuracy: any;
 }
+
+declare module 'uuid' {
+  export function v4(): string;
+}

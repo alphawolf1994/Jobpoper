@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Platform } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Platform, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,9 +9,13 @@ import MyTextInput from "../../components/MyTextInput";
 import LocationAutocomplete from "../../components/LocationAutocomplete";
 import MapView, { Region } from "react-native-maps";
 import * as ExpoLocation from "expo-location";
+import { useDispatch } from "react-redux";
+import { addLocation } from "../../redux/slices/locationsSlice";
+import { v4 as uuidv4 } from 'uuid';
 
 const AddLocationScreen = () => {
   const navigation = useNavigation();
+  const dispatch = useDispatch();
   const [addressLabel, setAddressLabel] = useState("KPR St");
   const [addressLine, setAddressLine] = useState("");
   const [locationName, setLocationName] = useState("");
@@ -74,83 +78,113 @@ const AddLocationScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
-    
-      <View style={styles.headerSection}>
-        <TouchableOpacity style={styles.backRow} onPress={() => (navigation as any).goBack()}>
-          <Ionicons name="chevron-back" size={24} color={Colors.black} />
-          <Text style={styles.headerTitle}>Select location</Text>
-        </TouchableOpacity>
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 24 }}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.headerSection}>
+          <TouchableOpacity style={styles.backRow} onPress={() => (navigation as any).goBack()}>
+            <Ionicons name="chevron-back" size={24} color={Colors.black} />
+            <Text style={styles.headerTitle}>Select location</Text>
+          </TouchableOpacity>
 
-        <View style={{ marginTop: 12 }}>
-          <LocationAutocomplete
-            placeholder="Search for area, street name..."
-            label={undefined as any}
-            value={addressLabel}
-            mode="full"
-            onLocationSelect={(loc) => {
-              setAddressLabel(loc.fullAddress);
-              if (loc.latitude && loc.longitude) {
-                const nextRegion: Region = {
-                  latitude: loc.latitude,
-                  longitude: loc.longitude,
-                  latitudeDelta: 0.01,
-                  longitudeDelta: 0.01,
-                };
-                setRegion(nextRegion);
-                setMarkerCoord({ latitude: loc.latitude, longitude: loc.longitude });
-              } else {
-                geocodeAddress(loc.fullAddress);
-              }
+          <View style={{ marginTop: 12 }}>
+            <LocationAutocomplete
+              placeholder="Search for area, street name..."
+              label={undefined as any}
+              value={addressLabel}
+              mode="full"
+              onLocationSelect={(loc) => {
+                setAddressLabel(loc.fullAddress);
+                if (loc.latitude && loc.longitude) {
+                  const nextRegion: Region = {
+                    latitude: loc.latitude,
+                    longitude: loc.longitude,
+                    latitudeDelta: 0.01,
+                    longitudeDelta: 0.01,
+                  };
+                  setRegion(nextRegion);
+                  setMarkerCoord({ latitude: loc.latitude, longitude: loc.longitude });
+                } else {
+                  geocodeAddress(loc.fullAddress);
+                }
+              }}
+            />
+          </View>
+        </View>
+
+        <View style={styles.mapContainer}>
+          {region ? (
+            <MapView
+              style={styles.mapView}
+              region={region}
+              onRegionChangeComplete={(r: any) => {
+                setRegion(r);
+                setMarkerCoord({ latitude: r.latitude, longitude: r.longitude });
+                reverseGeocode(r.latitude, r.longitude);
+              }}
+            />
+          ) : (
+            <View style={styles.mapPlaceholder} />
+          )}
+          {/* Fixed center pin overlay */}
+          <View pointerEvents="none" style={styles.centerPinContainer}>
+            <Ionicons name="location-sharp" size={44} color={Colors.primary} />
+          </View>
+          <TouchableOpacity style={styles.useCurrentButton} onPress={requestAndSetCurrentLocation}>
+            <Ionicons name="locate-outline" size={16} color={Colors.primary} />
+            <Text style={styles.useCurrentButtonText}>Use current location</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.formSection}>
+          <Text style={styles.sectionLabel}>Address details</Text>
+
+          <MyTextInput
+            label="Location name"
+            placeholder="e.g. Home, Office"
+            value={locationName}
+            onChange={setLocationName}
+          />
+
+          <MyTextInput
+            label="Address details"
+            placeholder="E.g. Floor, House no."
+            value={addressLine}
+            onChange={setAddressLine}
+          />
+
+          <Button
+            label="Save address"
+            onPress={() => {
+              if (!region) return;
+              const id = uuidv4();
+              console.log({
+                id,
+                name: locationName || 'Saved place',
+                fullAddress: addressLabel,
+                latitude: region.latitude,
+                longitude: region.longitude,
+                addressDetails: addressLine,
+                createdAt: Date.now(),
+              })
+              dispatch(
+                addLocation({
+                  id,
+                  name: locationName || 'Saved place',
+                  fullAddress: addressLabel,
+                  latitude: region.latitude,
+                  longitude: region.longitude,
+                  addressDetails: addressLine,
+                  createdAt: Date.now(),
+                })
+              );
+              (navigation as any).goBack();
             }}
+            style={{ marginTop: 10 }}
           />
         </View>
-      </View>
-
-      <View style={styles.mapContainer}>
-        {region ? (
-          <MapView
-            style={styles.mapView}
-            region={region}
-            onRegionChangeComplete={(r: any) => {
-              setRegion(r);
-              setMarkerCoord({ latitude: r.latitude, longitude: r.longitude });
-              reverseGeocode(r.latitude, r.longitude);
-            }}
-          />
-        ) : (
-          <View style={styles.mapPlaceholder} />
-        )}
-        {/* Fixed center pin overlay */}
-        <View pointerEvents="none" style={styles.centerPinContainer}>
-          <Ionicons name="location-sharp" size={44} color={Colors.primary} />
-        </View>
-        <TouchableOpacity style={styles.useCurrentButton} onPress={requestAndSetCurrentLocation}>
-          <Ionicons name="locate-outline" size={16} color={Colors.primary} />
-          <Text style={styles.useCurrentButtonText}>Use current location</Text>
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.formSection}>
-        <Text style={styles.sectionLabel}>Address details</Text>
-
-        <MyTextInput
-          label="Location name"
-          placeholder="e.g. Home, Office"
-          value={locationName}
-          onChange={setLocationName}
-        />
-
-        <MyTextInput
-          label="Address details"
-          placeholder="E.g. Floor, House no."
-          value={addressLine}
-          onChange={setAddressLine}
-        />
-
-       
-
-        <Button label="Save address" onPress={() => (navigation as any).goBack()} style={{ marginTop: 16 }} />
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
