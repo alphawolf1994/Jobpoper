@@ -13,9 +13,12 @@ interface LocationAutocompleteProps {
     state: string;
     country: string;
     fullAddress: string;
+    latitude?: number;
+    longitude?: number;
   }) => void;
   containerStyle?: any;
   firstContainerStyle?: any;
+  mode?: 'cities' | 'full';
 }
 
 interface PlacePrediction {
@@ -35,14 +38,22 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
   onLocationSelect,
   containerStyle,
   firstContainerStyle,
+  mode = 'cities',
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [searchText, setSearchText] = useState(value || '');
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const API_KEY = 'AIzaSyDx-5zOU35lqenxx6TCR-OkQRj6cHpi5-U';
+
+  // keep input in sync with external value changes
+  React.useEffect(() => {
+    if (typeof value === 'string' && value !== searchText) {
+      setSearchText(value);
+    }
+  }, [value]);
 
   const searchPlaces = async (query: string) => {
     if (query.length < 2) {
@@ -52,15 +63,20 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
 
     try {
       setIsLoading(true);
+      const typesParam = mode === 'cities' ? '&types=(cities)' : '&types=address';
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${API_KEY}&types=(cities)&language=en`
+        `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${API_KEY}${typesParam}&language=en`
       );
       const data = await response.json();
       
       if (data.status === 'OK') {
         setPredictions(data.predictions || []);
       } else {
-        console.error('Places API error:', data.status);
+        // ZERO_RESULTS and other non-OK statuses shouldn't crash; just clear the list
+        if (data.status !== 'ZERO_RESULTS') {
+          // Optional: console.warn in dev
+          if (__DEV__) console.warn('Places API status:', data.status);
+        }
         setPredictions([]);
       }
     } catch (error) {
@@ -94,7 +110,7 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
       
       // Get place details
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&key=${API_KEY}&fields=address_components,formatted_address`
+        `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place.place_id}&key=${API_KEY}&fields=address_components,formatted_address,geometry`
       );
       const data = await response.json();
       
@@ -121,6 +137,8 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
           state,
           country,
           fullAddress: result.formatted_address || place.description,
+          latitude: result.geometry?.location?.lat,
+          longitude: result.geometry?.location?.lng,
         });
       }
     } catch (error) {

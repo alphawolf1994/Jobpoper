@@ -34,6 +34,10 @@ import { AntDesign, Feather, Fontisto } from "@expo/vector-icons";
 
 import { Colors } from "../utils";
 
+// Location management screens
+import ManageLocationsScreen from "./screens/ManageLocationsScreen";
+import AddLocationScreen from "./screens/AddLocationScreen";
+
 
 
 
@@ -153,6 +157,20 @@ const RootStack = createNativeStackNavigator({
     },
     JobDetailsScreen: {
       screen: JobDetailsScreen,
+      options: {
+        headerShown: false,
+      },
+    },
+
+    // Location management
+    ManageLocationsScreen: {
+      screen: ManageLocationsScreen,
+      options: {
+        headerShown: false,
+      },
+    },
+    AddLocationScreen: {
+      screen: AddLocationScreen,
       options: {
         headerShown: false,
       },

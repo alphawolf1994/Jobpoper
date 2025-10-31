@@ -25,8 +25,10 @@ import { Ionicons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
 import { getCurrentUser, completeProfile, logoutUser, clearAuth } from "../../redux/slices/authSlice";
 import { RootState, AppDispatch } from "../../redux/store";
+import { useNavigation } from "@react-navigation/native";
 
 const ProfileScreen = () => {
+  const navigation = useNavigation();
   const dispatch = useDispatch<AppDispatch>();
   const { user, loading, error } = useSelector((state: RootState) => state.auth);
   
@@ -277,6 +279,14 @@ const ProfileScreen = () => {
                 }}
               />
             )}
+
+            {/* Manage locations */}
+            <Button 
+              label="Manage locations"
+              onPress={() => (navigation as any).navigate('ManageLocationsScreen')}
+              style={{ marginTop: 12, backgroundColor: Colors.white, borderWidth: 1, borderColor: Colors.lightGray }}
+              textStyle={{ color: Colors.primary }}
+            />
 
             {/* Save Button */}
             <Button 
