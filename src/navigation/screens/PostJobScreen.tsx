@@ -1,11 +1,11 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Modal, FlatList } from "react-native";
 import { Colors } from "../../utils";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../components/Header";
 import { MyTextInput, MyTextArea, Button } from "../../components";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import DropDownPicker from 'react-native-dropdown-picker';
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as ImagePicker from 'expo-image-picker';
@@ -13,11 +13,15 @@ import { Image } from 'expo-image';
 import { useDispatch, useSelector } from 'react-redux';
 import { createJob } from '../../redux/slices/jobSlice';
 import { AppDispatch, RootState } from '../../redux/store';
+import { SavedLocation } from '../../redux/slices/locationsSlice';
+import { fetchLocations } from '../../redux/slices/locationsSlice';
 
 const PostJobScreen = () => {
     const navigation = useNavigation();
     const dispatch = useDispatch<AppDispatch>();
     const { loading } = useSelector((state: RootState) => state.job);
+    const { items: savedLocations, loading: locationsLoading } = useSelector((state: RootState) => state.locations);
+    
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -27,6 +31,18 @@ const PostJobScreen = () => {
     time: '',
     urgency: '',
   });
+  
+  // Job type state
+  const [jobType, setJobType] = useState<'OnSite' | 'Pickup'>('OnSite');
+  
+  // Selected locations for different types
+  const [selectedOnSiteLocation, setSelectedOnSiteLocation] = useState<SavedLocation | null>(null);
+  const [selectedPickupSource, setSelectedPickupSource] = useState<SavedLocation | null>(null);
+  const [selectedPickupDestination, setSelectedPickupDestination] = useState<SavedLocation | null>(null);
+  
+  // Location modal state
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [locationModalType, setLocationModalType] = useState<'onSite' | 'pickupSource' | 'pickupDestination'>('onSite');
 
   // Date & Time pickers state
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -49,6 +65,13 @@ const PostJobScreen = () => {
     d.setHours(0, 0, 0, 0);
     return d;
   };
+  
+  // Fetch locations on mount and when screen is focused (in case user added a new location)
+  useFocusEffect(
+    React.useCallback(() => {
+      dispatch(fetchLocations());
+    }, [dispatch])
+  );
 
   const [urgencyOpen, setUrgencyOpen] = useState(false);
   const [urgencyValue, setUrgencyValue] = useState<string | null>(null);
@@ -136,6 +159,28 @@ const PostJobScreen = () => {
     setAttachments(prev => prev.filter((_, idx) => idx !== index));
   };
 
+  // Location selection handlers
+  const openLocationModal = (type: 'onSite' | 'pickupSource' | 'pickupDestination') => {
+    setLocationModalType(type);
+    setShowLocationModal(true);
+  };
+
+  const handleLocationSelect = (location: SavedLocation) => {
+    if (locationModalType === 'onSite') {
+      setSelectedOnSiteLocation(location);
+    } else if (locationModalType === 'pickupSource') {
+      setSelectedPickupSource(location);
+    } else if (locationModalType === 'pickupDestination') {
+      setSelectedPickupDestination(location);
+    }
+    setShowLocationModal(false);
+  };
+
+  const handleAddNewLocation = () => {
+    setShowLocationModal(false);
+    (navigation as any).navigate("AddLocationScreen");
+  };
+
   const handleSubmit = async () => {
     // Validate form
     if (!formData.title.trim()) {
@@ -150,10 +195,23 @@ const PostJobScreen = () => {
       Alert.alert('Error', 'Please enter the cost/budget');
       return;
     }
-    if (!formData.location.trim()) {
-      Alert.alert('Error', 'Please enter the location');
+    
+    // Validate locations based on job type
+    if (jobType === 'OnSite' && !selectedOnSiteLocation) {
+      Alert.alert('Error', 'Please select the job location');
       return;
     }
+    if (jobType === 'Pickup') {
+      if (!selectedPickupSource) {
+        Alert.alert('Error', 'Please select the pickup source location');
+        return;
+      }
+      if (!selectedPickupDestination) {
+        Alert.alert('Error', 'Please select the pickup destination location');
+        return;
+      }
+    }
+    
     if (!selectedDate) {
       Alert.alert('Error', 'Please select when you need this job done');
       return;
@@ -173,47 +231,58 @@ const PostJobScreen = () => {
         title: formData.title,
         description: formData.description,
         cost: formData.cost,
-        location: formData.location,
+        jobType: jobType,
+        location: jobType === 'OnSite' 
+          ? selectedOnSiteLocation! 
+          : {
+              source: selectedPickupSource!,
+              destination: selectedPickupDestination!,
+            },
         urgency: urgencyValue || 'Normal',
         scheduledDate: formatDateForAPI(selectedDate!),
         scheduledTime: formatTime(selectedTime!),
         attachments: attachments.length > 0 ? attachments : undefined,
       };
-
+console.log(jobData);
       // Dispatch the create job action and await the result
-      const result = await dispatch(createJob(jobData)).unwrap();
+      // const result = await dispatch(createJob(jobData)).unwrap();
       
-      if (result.status === 'success') {
-        Alert.alert(
-          'Success!', 
-          'Your job has been posted successfully!',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                // Reset form
-                setFormData({
-                  title: '',
-                  description: '',
-                  cost: '',
-                  location: '',
-                  day: '',
-                  time: '',
-                  urgency: '',
-                });
-                // Reset date/time values
-                setSelectedDate(null);
-                setSelectedTime(null);
-                setUrgencyValue(null);
-                // Reset attachments
-                setAttachments([]);
-                // Navigate back
-                navigation.goBack();
-              }
-            }
-          ]
-        );
-      }
+      // if (result.status === 'success') {
+      //   Alert.alert(
+      //     'Success!', 
+      //     'Your job has been posted successfully!',
+      //     [
+      //       {
+      //         text: 'OK',
+      //         onPress: () => {
+      //           // Reset form
+      //           setFormData({
+      //             title: '',
+      //             description: '',
+      //             cost: '',
+      //             location: '',
+      //             day: '',
+      //             time: '',
+      //             urgency: '',
+      //           });
+      //           // Reset date/time values
+      //           setSelectedDate(null);
+      //           setSelectedTime(null);
+      //           setUrgencyValue(null);
+      //           // Reset job type and locations
+      //           setJobType('OnSite');
+      //           setSelectedOnSiteLocation(null);
+      //           setSelectedPickupSource(null);
+      //           setSelectedPickupDestination(null);
+      //           // Reset attachments
+      //           setAttachments([]);
+      //           // Navigate back
+      //           navigation.goBack();
+      //         }
+      //       }
+      //     ]
+      //   );
+      // }
     } catch (error: any) {
       const errorMessage = error?.message || 'Failed to post job. Please try again.';
       Alert.alert('Error', errorMessage);
@@ -288,20 +357,90 @@ const PostJobScreen = () => {
           />
         </View>
 
-        {/* Location */}
+        {/* Job Type Selection */}
         <View style={styles.inputGroup}>
-          <Text style={styles.label}>Location *</Text>
-          <MyTextInput
-            placeholder="Paste Google Maps link or coordinates here"
-            value={formData.location}
-            onChange={(value: string) => handleInputChange('location', value)}
-            containerStyle={styles.input}
-            leftIcon={<Ionicons name="location-outline" size={20} color="#9AA0A6" />}
-          />
-          <Text style={styles.helpText}>
-            💡 Tip: Open Google Maps, copy location link/coordinates, and paste here. A map will be displayed when job is published.
-          </Text>
+          <Text style={styles.label}>Job Type *</Text>
+          <View style={styles.radioGroup}>
+            <TouchableOpacity 
+              style={[styles.radioOption, jobType === 'OnSite' && styles.radioSelected]}
+              onPress={() => setJobType('OnSite')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.radioCircle, jobType === 'OnSite' && styles.radioCircleSelected]}>
+                {jobType === 'OnSite' && <View style={styles.radioInner} />}
+              </View>
+              <Text style={[styles.radioLabel, jobType === 'OnSite' && styles.radioLabelSelected]}>OnSite</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.radioOption, jobType === 'Pickup' && styles.radioSelected]}
+              onPress={() => setJobType('Pickup')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.radioCircle, jobType === 'Pickup' && styles.radioCircleSelected]}>
+                {jobType === 'Pickup' && <View style={styles.radioInner} />}
+              </View>
+              <Text style={[styles.radioLabel, jobType === 'Pickup' && styles.radioLabelSelected]}>Pickup</Text>
+            </TouchableOpacity>
+          </View>
         </View>
+
+        {/* Location Input(s) based on job type */}
+        <View style={styles.inputGroup}>
+          {jobType === 'OnSite' ? (
+            <>
+              <Text style={styles.label}>Location *</Text>
+              <TouchableOpacity 
+                onPress={() => openLocationModal('onSite')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.dropdown, styles.inputRow, styles.locationSelectable]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={selectedOnSiteLocation ? styles.dropdownText : styles.placeholder}>
+                      {selectedOnSiteLocation ? `${selectedOnSiteLocation.name} - ${selectedOnSiteLocation.fullAddress}` : 'Select location...'}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-down" size={20} color="#9AA0A6" />
+                </View>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={styles.label}>Pickup Location *</Text>
+              <TouchableOpacity 
+                onPress={() => openLocationModal('pickupSource')}
+                activeOpacity={0.8}
+              >
+                <View style={[styles.dropdown, styles.inputRow, styles.locationSelectable]}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={selectedPickupSource ? styles.dropdownText : styles.placeholder}>
+                      {selectedPickupSource ? `${selectedPickupSource.name} - ${selectedPickupSource.fullAddress}` : 'Select pickup location...'}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-down" size={20} color="#9AA0A6" />
+                </View>
+              </TouchableOpacity>
+              
+              <View style={{ marginTop: 16 }}>
+                <Text style={styles.label}>Destination Location *</Text>
+                <TouchableOpacity 
+                  onPress={() => openLocationModal('pickupDestination')}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.dropdown, styles.inputRow, styles.locationSelectable]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={selectedPickupDestination ? styles.dropdownText : styles.placeholder}>
+                        {selectedPickupDestination ? `${selectedPickupDestination.name} - ${selectedPickupDestination.fullAddress}` : 'Select destination location...'}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-down" size={20} color="#9AA0A6" />
+                  </View>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
+        </View>
+
  {/* Urgency Selection */}
  <View style={styles.pickerContainer}>
             <Text style={styles.pickerLabel}>How urgent is this job?</Text>
@@ -513,6 +652,77 @@ const PostJobScreen = () => {
         <View style={styles.bottomSpacing} />
       </ScrollView>
     </SafeAreaView>
+
+      {/* Location Selection Modal */}
+      <Modal
+        visible={showLocationModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowLocationModal(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity 
+              onPress={() => setShowLocationModal(false)}
+              style={styles.modalCloseButton}
+            >
+              <Ionicons name="close" size={24} color={Colors.black} />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>
+              {locationModalType === 'onSite' && 'Select Location'}
+              {locationModalType === 'pickupSource' && 'Select Pickup Location'}
+              {locationModalType === 'pickupDestination' && 'Select Destination'}
+            </Text>
+            <View style={{ width: 24 }} />
+          </View>
+          
+          <View style={styles.modalContent}>
+            {savedLocations.length === 0 ? (
+              <View style={styles.emptyLocationsContainer}>
+                <Ionicons name="location-outline" size={64} color={Colors.lightGray} />
+                <Text style={styles.emptyLocationsText}>No saved locations</Text>
+                <Text style={styles.emptyLocationsSubtext}>Add your first location to get started</Text>
+              </View>
+            ) : (
+              <FlatList
+                data={savedLocations}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity 
+                    style={styles.locationItem}
+                    onPress={() => handleLocationSelect(item)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.locationItemContent}>
+                      <View style={[styles.locationTypeIcon, { backgroundColor: Colors.lightGray }]}>
+                        <Ionicons name="location-outline" size={18} color={Colors.primary} />
+                      </View>
+                      <View style={styles.locationTextContainer}>
+                        <Text style={styles.locationItemName}>{item.name}</Text>
+                        <Text style={styles.locationItemAddress} numberOfLines={2}>{item.fullAddress}</Text>
+                        {item.addressDetails && (
+                          <Text style={styles.locationItemDetails} numberOfLines={1}>{item.addressDetails}</Text>
+                        )}
+                      </View>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={Colors.gray} />
+                  </TouchableOpacity>
+                )}
+              />
+            )}
+            
+            <View style={styles.modalFooter}>
+              <Button
+                label="Add New Location"
+                onPress={handleAddNewLocation}
+                icon={<Ionicons name="add" size={20} color={Colors.white} />}
+                style={styles.addLocationButton}
+                textStyle={{ fontSize: 16 }}
+              />
+            </View>
+          </View>
+        </SafeAreaView>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -705,4 +915,152 @@ const styles = StyleSheet.create({
     // paddingHorizontal: 16,
     paddingVertical: 12,
   },
+  // Radio button styles
+  radioGroup: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  radioOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderWidth: 2,
+    borderColor: Colors.lightGray,
+    borderRadius: 12,
+    flex: 1,
+  },
+  radioSelected: {
+    borderColor: Colors.primary,
+    backgroundColor: '#f0f7ff',
+  },
+  radioCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: Colors.lightGray,
+    marginRight: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  radioCircleSelected: {
+    borderColor: Colors.primary,
+  },
+  radioInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: Colors.primary,
+  },
+  radioLabel: {
+    fontSize: 16,
+    color: Colors.black,
+    fontWeight: '500',
+  },
+  radioLabelSelected: {
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  locationSelectable: {
+    backgroundColor: '#f8f9fa',
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+  // Modal styles
+  modalContainer: {
+    flex: 1,
+    backgroundColor: Colors.white,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGray,
+  },
+  modalCloseButton: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.black,
+  },
+  modalContent: {
+    flex: 1,
+  },
+  emptyLocationsContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  emptyLocationsText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: Colors.black,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyLocationsSubtext: {
+    fontSize: 14,
+    color: Colors.gray,
+    textAlign: 'center',
+  },
+  locationItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGray,
+  },
+  locationItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  locationTypeIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  locationTextContainer: {
+    flex: 1,
+  },
+  locationItemName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.black,
+    marginBottom: 4,
+  },
+  locationItemAddress: {
+    fontSize: 13,
+    color: Colors.gray,
+    marginBottom: 2,
+  },
+  locationItemDetails: {
+    fontSize: 12,
+    color: Colors.gray,
+    fontStyle: 'italic',
+  },
+  modalFooter: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: Colors.lightGray,
+  },
+  addLocationButton: {
+    marginTop: 0,
+  },
 });
+

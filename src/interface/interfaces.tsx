@@ -754,11 +754,28 @@ export interface JobResponse {
   };
 }
 
+// Location types for job creation
+export interface SavedLocation {
+  id: string;
+  name: string;
+  fullAddress: string;
+  latitude: number;
+  longitude: number;
+  addressDetails?: string;
+  createdAt: number;
+}
+
+export interface PickupLocations {
+  source: SavedLocation;
+  destination: SavedLocation;
+}
+
 export interface CreateJobPayload {
   title: string;
   description: string;
   cost: string;
-  location: string;
+  jobType: 'OnSite' | 'Pickup';
+  location: SavedLocation | PickupLocations;
   urgency: string;
   scheduledDate: string;
   scheduledTime: string;

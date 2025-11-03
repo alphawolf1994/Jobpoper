@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Platform, ScrollView } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,18 +9,19 @@ import MyTextInput from "../../components/MyTextInput";
 import LocationAutocomplete from "../../components/LocationAutocomplete";
 import MapView, { Region } from "react-native-maps";
 import * as ExpoLocation from "expo-location";
-import { useDispatch } from "react-redux";
-import { addLocation } from "../../redux/slices/locationsSlice";
-import { v4 as uuidv4 } from 'uuid';
+import { useDispatch, useSelector } from "react-redux";
+import { saveLocation } from "../../redux/slices/locationsSlice";
+import { RootState } from "../../redux/store";
+import Loader from "../../components/Loader";
 
 const AddLocationScreen = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch();
+  const { loading } = useSelector((state: RootState) => state.locations);
   const [addressLabel, setAddressLabel] = useState("KPR St");
   const [addressLine, setAddressLine] = useState("");
   const [locationName, setLocationName] = useState("");
   const [region, setRegion] = useState<Region | null>(null);
-  const [markerCoord, setMarkerCoord] = useState<{ latitude: number; longitude: number } | null>(null);
 
   const GOOGLE_API_KEY = "AIzaSyDx-5zOU35lqenxx6TCR-OkQRj6cHpi5-U"; // keep consistent with LocationAutocomplete
 
@@ -36,7 +37,6 @@ const AddLocationScreen = () => {
       longitudeDelta: 0.01,
     };
     setRegion(nextRegion);
-    setMarkerCoord({ latitude, longitude });
   }, []);
 
   useEffect(() => {
@@ -58,7 +58,6 @@ const AddLocationScreen = () => {
           longitudeDelta: 0.01,
         };
         setRegion(nextRegion);
-        setMarkerCoord({ latitude: lat, longitude: lng });
       }
     } catch (e) {
       // ignore silently, map will keep previous region
@@ -78,6 +77,7 @@ const AddLocationScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+      <Loader visible={loading} message="Saving location..." />
       <ScrollView
         contentContainerStyle={{ paddingBottom: 24 }}
         keyboardShouldPersistTaps="handled"
@@ -104,7 +104,6 @@ const AddLocationScreen = () => {
                     longitudeDelta: 0.01,
                   };
                   setRegion(nextRegion);
-                  setMarkerCoord({ latitude: loc.latitude, longitude: loc.longitude });
                 } else {
                   geocodeAddress(loc.fullAddress);
                 }
@@ -120,7 +119,6 @@ const AddLocationScreen = () => {
               region={region}
               onRegionChangeComplete={(r: any) => {
                 setRegion(r);
-                setMarkerCoord({ latitude: r.latitude, longitude: r.longitude });
                 reverseGeocode(r.latitude, r.longitude);
               }}
             />
@@ -156,32 +154,33 @@ const AddLocationScreen = () => {
 
           <Button
             label="Save address"
-            onPress={() => {
-              if (!region) return;
-              const id = uuidv4();
-              console.log({
-                id,
-                name: locationName || 'Saved place',
-                fullAddress: addressLabel,
-                latitude: region.latitude,
-                longitude: region.longitude,
-                addressDetails: addressLine,
-                createdAt: Date.now(),
-              })
-              dispatch(
-                addLocation({
-                  id,
-                  name: locationName || 'Saved place',
-                  fullAddress: addressLabel,
-                  latitude: region.latitude,
-                  longitude: region.longitude,
-                  addressDetails: addressLine,
-                  createdAt: Date.now(),
-                })
-              );
-              (navigation as any).goBack();
+            onPress={async () => {
+              if (!region) {
+                Alert.alert("Error", "Please select a location on the map");
+                return;
+              }
+              try {
+                const result = await dispatch(
+                  saveLocation({
+                    name: locationName || 'Saved place',
+                    fullAddress: addressLabel,
+                    latitude: region.latitude,
+                    longitude: region.longitude,
+                    addressDetails: addressLine,
+                    createdAt: Date.now(),
+                  }) as any
+                );
+                if (result.type === 'locations/saveLocation/fulfilled') {
+                  (navigation as any).goBack();
+                } else if (result.type === 'locations/saveLocation/rejected') {
+                  Alert.alert("Error", result.payload as string);
+                }
+              } catch (err: any) {
+                Alert.alert("Error", err.message || "Failed to save location");
+              }
             }}
             style={{ marginTop: 10 }}
+            disabled={loading}
           />
         </View>
       </ScrollView>

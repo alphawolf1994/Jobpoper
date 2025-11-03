@@ -1,15 +1,14 @@
 import React, { useMemo } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, FlatList } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert } from "react-native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../utils";
-import Header from "../../components/Header";
-import LocationAutocomplete from "../../components/LocationAutocomplete";
 import { useDispatch, useSelector } from "react-redux";
 import { RootState } from "../../redux/store";
-import { removeLocation } from "../../redux/slices/locationsSlice";
+import { removeLocationById, fetchLocations } from "../../redux/slices/locationsSlice";
 import Button from "../../components/Button";
+import Loader from "../../components/Loader";
 
 type SavedLocation = {
   id: string;
@@ -23,7 +22,14 @@ type SavedLocation = {
 const ManageLocationsScreen = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch();
-  const saved = useSelector((state: RootState) => state.locations.items);
+  const { items: saved, loading } = useSelector((state: RootState) => state.locations);
+  
+  // Fetch locations when screen is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      dispatch(fetchLocations() as any);
+    }, [dispatch])
+  );
 
   const savedLocations: SavedLocation[] = useMemo(() => {
     return (saved || []).map((l) => ({
@@ -49,7 +55,32 @@ const ManageLocationsScreen = () => {
           </View>
           <TouchableOpacity
             style={styles.cardActionButton}
-            onPress={() => dispatch(removeLocation(item.id))}
+            onPress={async () => {
+              Alert.alert(
+                "Delete Location",
+                `Are you sure you want to delete "${item.label}"?`,
+                [
+                  {
+                    text: "Cancel",
+                    style: "cancel"
+                  },
+                  {
+                    text: "Delete",
+                    style: "destructive",
+                    onPress: async () => {
+                      try {
+                        const result = await dispatch(removeLocationById(item.id) as any);
+                        if (result.type === 'locations/removeLocationById/rejected') {
+                          Alert.alert("Error", result.payload as string);
+                        }
+                      } catch (err: any) {
+                        Alert.alert("Error", err.message || "Failed to delete location");
+                      }
+                    }
+                  }
+                ]
+              );
+            }}
           >
             <Ionicons name="trash-outline" size={16} color={Colors.primary} />
           </TouchableOpacity>
@@ -72,6 +103,7 @@ const ManageLocationsScreen = () => {
 
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
+      <Loader visible={loading} message="Loading locations..." />
       {/* <Header /> */}
 
       <View style={styles.headerSection}>
@@ -99,12 +131,20 @@ const ManageLocationsScreen = () => {
         <Text style={styles.listHeaderText}>SAVED ADDRESSES</Text>
       </View>
 
-      <FlatList
-        contentContainerStyle={{ padding: 16, paddingTop: 0 }}
-        data={savedLocations}
-        keyExtractor={(i) => i.id}
-        renderItem={renderLocationItem}
-      />
+      {savedLocations.length === 0 && !loading ? (
+        <View style={styles.emptyContainer}>
+          <Ionicons name="location-outline" size={64} color={Colors.lightGray} />
+          <Text style={styles.emptyTitle}>No Saved Locations</Text>
+          <Text style={styles.emptyMessage}>You haven't saved any locations yet. Tap the 'Add' button to save your first location.</Text>
+        </View>
+      ) : (
+        <FlatList
+          contentContainerStyle={{ padding: 16, paddingTop: 0 }}
+          data={savedLocations}
+          keyExtractor={(i) => i.id}
+          renderItem={renderLocationItem}
+        />
+      )}
     </SafeAreaView>
   );
 };
@@ -207,6 +247,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: Colors.white,
+  },
+  emptyContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+    paddingTop: 80,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: Colors.black,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyMessage: {
+    fontSize: 14,
+    color: Colors.gray,
+    textAlign: "center",
+    lineHeight: 20,
   },
 });
 
