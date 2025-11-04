@@ -65,7 +65,7 @@ const ListedJobs: React.FC = () => {
   };
 
   const renderJobCard = ({ item }: { item: Job }) => (
-    <TouchableOpacity style={styles.jobCard} activeOpacity={0.7} onPress={()=>{navigation.navigate('JobDetailsScreen')}}>
+    <TouchableOpacity style={styles.jobCard} activeOpacity={0.7} onPress={()=>{navigation.navigate('JobDetailsScreen', { jobId: item._id })}}>
       {/* Left Side - Avatar and Job Info */}
       <View style={styles.leftSection}>
         <View style={styles.avatar}>
@@ -84,7 +84,7 @@ const ListedJobs: React.FC = () => {
         <View style={styles.rightTopGroup}>
           <Text style={styles.cost}>{item.cost}</Text>
           <Text style={styles.location}>
-            {item.location.includes('http') ? 'View Location' : item.location}
+            {item.jobType}
           </Text>
         </View>
         <Text style={styles.dateTime}>
@@ -99,7 +99,7 @@ const ListedJobs: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Listed Jobs</Text>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('AllListedJobsScreen')}>
           <Text style={styles.seeAllText}>See all</Text>
         </TouchableOpacity>
       </View>

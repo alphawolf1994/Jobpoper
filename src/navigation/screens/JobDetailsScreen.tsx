@@ -1,265 +1,367 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { 
   View, 
   Text, 
   StyleSheet, 
   TouchableOpacity, 
   ScrollView, 
-  Image,
-  Alert 
+  Alert,
+  ActivityIndicator,
+  FlatList,
+  Dimensions
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from "../../utils";
 import { Ionicons, AntDesign } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
+import { useDispatch, useSelector } from 'react-redux';
+import { getJobById } from '../../redux/slices/jobSlice';
+import { AppDispatch, RootState } from '../../redux/store';
+import { Job, SavedLocationData, InterestedUserEntry } from '../../interface/interfaces';
+import { Image } from 'expo-image';
+import { IMAGE_BASE_URL } from '../../api/baseURL';
+import { showInterestOnJobApi } from '../../api/jobApis';
 
-interface JobDetails {
-  id: string;
-  title: string;
-  poster: string;
-  avatar: string;
-  cost: string;
-  location: string;
-  tags: string[];
-  description: string;
-  responsibilities: string[];
-  requirements: string[];
-  posterDetails: {
-    name: string;
-    avatar: string;
-    rating: number;
-    reviews: number;
-    joinedDate: string;
-    completedJobs: number;
-    bio: string;
-  };
-}
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 const JobDetailsScreen = () => {
-  const [activeTab, setActiveTab] = useState<'summary' | 'about'>('summary');
-  const navigation = useNavigation();
+  const [activeTab, setActiveTab] = useState<'summary' | 'about' | 'interests'>('summary');
+  const navigation = useNavigation<any>();
+  const route = useRoute();
+  const dispatch = useDispatch<AppDispatch>();
+  const { currentJob, loading, error } = useSelector((state: RootState) => state.job);
+  const { user } = useSelector((state: RootState) => state.auth);
+  
+  // Get jobId from route params
+  const jobId = (route.params as any)?.jobId;
 
-  // Function to get job details based on job ID (you can pass this via navigation params)
-  const getJobDetails = (jobId: string): JobDetails => {
-    const jobs: { [key: string]: JobDetails } = {
-      '1': {
-        id: '1',
-        title: 'Need House Cleaner',
-        poster: 'Sarah M.',
-        avatar: 'S',
-        cost: '$50/day',
-        location: 'Downtown, NYC',
-        tags: ['Today', '2:00 PM', 'Urgent'],
-        description: 'Looking for a reliable house cleaner for weekly cleaning. 3-bedroom house, must have experience with deep cleaning, organizing, and maintaining a clean environment. Need someone trustworthy and detail-oriented.',
-        responsibilities: [
-          'Deep clean all rooms including kitchen, bathrooms, and living areas',
-          'Vacuum carpets and mop hardwood floors thoroughly',
-          'Clean and sanitize kitchen appliances and surfaces',
-          'Organize and tidy up all rooms and storage areas',
-          'Take out trash and recycling as needed'
-        ],
-        requirements: [
-          'Must be available today at 2:00 PM',
-          'Previous house cleaning experience required',
-          'Own cleaning supplies and equipment',
-          'Reliable transportation to Downtown, NYC',
-          'Good communication skills and professional attitude'
-        ],
-        posterDetails: {
-          name: 'Sarah M.',
-          avatar: 'S',
-          rating: 4.9,
-          reviews: 23,
-          joinedDate: 'January 2023',
-          completedJobs: 12,
-          bio: 'Homeowner looking for reliable help with house maintenance. I appreciate quality work and fair pricing. Clean and organized home, flexible scheduling.'
-        }
-      },
-      '2': {
-        id: '2',
-        title: 'Carpenter for Kitchen Repair',
-        poster: 'Mike R.',
-        avatar: 'M',
-        cost: '$200/project',
-        location: 'Brooklyn, NYC',
-        tags: ['Tomorrow', '9:00 AM', 'Flexible'],
-        description: 'Need experienced carpenter to repair kitchen cabinets and install new hardware. Some cabinets have loose hinges and need adjustment. Looking for quality workmanship and attention to detail.',
-        responsibilities: [
-          'Inspect and repair loose cabinet hinges and doors',
-          'Install new cabinet hardware and handles',
-          'Adjust cabinet alignment and ensure proper closure',
-          'Clean up work area and dispose of old hardware',
-          'Provide recommendations for future maintenance'
-        ],
-        requirements: [
-          'Available tomorrow at 9:00 AM',
-          'Minimum 2 years carpentry experience',
-          'Own tools and transportation',
-          'References from previous kitchen repair projects',
-          'Professional and punctual work ethic'
-        ],
-        posterDetails: {
-          name: 'Mike R.',
-          avatar: 'M',
-          rating: 4.7,
-          reviews: 18,
-          joinedDate: 'March 2022',
-          completedJobs: 8,
-          bio: 'Homeowner in Brooklyn looking for skilled craftspeople. I value quality work and fair pricing. Flexible with timing as long as the job is done well.'
-        }
-      },
-      '3': {
-        id: '3',
-        title: 'Garden Landscaping Help',
-        poster: 'Jennifer L.',
-        avatar: 'J',
-        cost: '$80/day',
-        location: 'Queens, NYC',
-        tags: ['This Week', 'Weekend', 'Ongoing'],
-        description: 'Need help with garden maintenance and landscaping. Front and back yard work required including planting, weeding, and general garden cleanup. Perfect for someone who enjoys outdoor work.',
-        responsibilities: [
-          'Plant new flowers and shrubs in designated areas',
-          'Weed garden beds and remove unwanted plants',
-          'Prune existing bushes and small trees',
-          'Mulch garden beds and maintain pathways',
-          'Water plants and maintain irrigation system'
-        ],
-        requirements: [
-          'Available this weekend for ongoing project',
-          'Physical ability to do outdoor manual labor',
-          'Basic knowledge of plants and gardening',
-          'Own gardening tools (shovel, rake, pruners)',
-          'Reliable transportation to Queens location'
-        ],
-        posterDetails: {
-          name: 'Jennifer L.',
-          avatar: 'J',
-          rating: 4.8,
-          reviews: 31,
-          joinedDate: 'November 2022',
-          completedJobs: 15,
-          bio: 'Passionate gardener looking for help maintaining my beautiful yard. I love working with people who share my enthusiasm for plants and outdoor spaces.'
-        }
-      }
-    };
-    
-    return jobs[jobId] || jobs['1']; // Default to first job if ID not found
+  useEffect(() => {
+    if (jobId) {
+      dispatch(getJobById(jobId));
+    }
+  }, [dispatch, jobId]);
+
+  const getInitials = (name: string) => {
+    return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
-  // Get job details (you can pass jobId via navigation params)
-  const jobDetails = getJobDetails('1'); // For now, using job ID '1'
+  const formatJobTags = (job: Job) => {
+    const tags = [];
+    
+    // Add urgency
+    if (job.urgency === 'Urgent') {
+      tags.push('Urgent');
+    } else {
+      tags.push('Normal');
+    }
+    
+    // Add scheduled time
+    if (job.scheduledTime) {
+      tags.push(job.scheduledTime);
+    }
+    
+    // Add status
+    if (job.status) {
+      tags.push(job.status);
+    }
+    
+    return tags;
+  };
+
+  const getLocationDisplay = (job: Job): string => {
+    if (!job.location) return 'Location not specified';
+    
+    if (job.jobType === 'Pickup') {
+      const pickupLocation = job.location as { source: SavedLocationData; destination: SavedLocationData };
+      if (pickupLocation.source && pickupLocation.destination) {
+        return `${pickupLocation.source.fullAddress} → ${pickupLocation.destination.fullAddress}`;
+      }
+    } else {
+      const onSiteLocation = job.location as SavedLocationData;
+      if (onSiteLocation.fullAddress) {
+        return onSiteLocation.fullAddress;
+      }
+    }
+    
+    return job.displayAddress || 'Location not specified';
+  };
 
   const handleContact = () => {
-    Alert.alert('Contact', `Contact ${jobDetails.poster} about this job?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Contact', onPress: () => console.log('Contact pressed') },
-    ]);
+    if (!currentJob) return;
+    
+    const contactInfo = currentJob.contactInfo || currentJob.postedBy?.phoneNumber;
+    
+    if (contactInfo) {
+      Alert.alert(
+        'Contact Job Poster', 
+        `Would you like to contact ${currentJob.postedBy?.profile?.fullName || 'the job poster'}?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { 
+            text: 'Contact', 
+            onPress: () => {
+              // TODO: Implement actual contact functionality (call, message, etc.)
+              Alert.alert('Contact', `Phone: ${contactInfo}`);
+            }
+          },
+        ]
+      );
+    } else {
+      Alert.alert('Contact', 'Contact information not available');
+    }
+  };
+
+  const handleShowInterest = () => {
+    if (!currentJob) return;
+
+    Alert.alert(
+      'Show Interest',
+      `Show interest in "${currentJob.title}"?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Show Interest',
+          onPress: async () => {
+            try {
+              const res = await showInterestOnJobApi(currentJob._id);
+              Alert.alert('Success', res?.message || 'Interest recorded successfully');
+              // Refresh details to reflect any changes (e.g., interestedUsers)
+              if ((route.params as any)?.jobId) {
+                dispatch(getJobById((route.params as any).jobId));
+              }
+            } catch (e: any) {
+              Alert.alert('Error', e?.message || 'Failed to record interest');
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleBookmark = () => {
     Alert.alert('Bookmark', 'Job bookmarked successfully!');
   };
 
-  const renderSummaryTab = () => (
-    <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Job Description</Text>
-        <Text style={styles.descriptionText}>{jobDetails.description}</Text>
-        <TouchableOpacity style={styles.readMoreButton}>
-          <Text style={styles.readMoreText}>Read More...</Text>
-        </TouchableOpacity>
-      </View>
+  const renderLocationSection = () => {
+    if (!currentJob || !currentJob.location) return null;
 
-     
-
-     
-    </ScrollView>
-  );
-
-  const renderAboutTab = () => (
-    <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
-      <View style={styles.aboutSection}>
-        <View style={styles.posterHeader}>
-          <View style={styles.aboutPosterAvatar}>
-            <Text style={styles.posterAvatarText}>{jobDetails.posterDetails.avatar}</Text>
+    if (currentJob.jobType === 'Pickup') {
+      const pickupLocation = currentJob.location as { source: SavedLocationData; destination: SavedLocationData };
+      return (
+        <View style={styles.locationSection}>
+          <Text style={styles.sectionTitle}>Pickup Details</Text>
+          <View style={styles.locationCard}>
+            <View style={styles.locationRow}>
+              <Ionicons name="location-outline" size={20} color={Colors.primary} />
+              <View style={styles.locationInfo}>
+                <Text style={styles.locationLabel}>Pickup Location</Text>
+                <Text style={styles.locationText}>{pickupLocation.source?.fullAddress}</Text>
+                {pickupLocation.source?.addressDetails && (
+                  <Text style={styles.locationDetails}>{pickupLocation.source.addressDetails}</Text>
+                )}
+              </View>
+            </View>
           </View>
-          <View style={styles.posterInfo}>
-            <Text style={styles.posterName}>{jobDetails.posterDetails.name}</Text>
-            <Text style={styles.posterTitle}>Job Poster</Text>
-            {/* <Text style={styles.posterCompany}>Local Community Member</Text> */}
-          </View>
-        </View>
-
-     
-
-        <View style={styles.posterStats}>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{jobDetails.posterDetails.completedJobs}</Text>
-            <Text style={styles.statLabel}>Jobs Posted</Text>
-          </View>
-          <View style={styles.statItem}>
-            <Text style={styles.statValue}>{jobDetails.posterDetails.joinedDate}</Text>
-            <Text style={styles.statLabel}>Joined</Text>
+          <View style={styles.locationCard}>
+            <View style={styles.locationRow}>
+              <Ionicons name="location" size={20} color={Colors.primary} />
+              <View style={styles.locationInfo}>
+                <Text style={styles.locationLabel}>Destination</Text>
+                <Text style={styles.locationText}>{pickupLocation.destination?.fullAddress}</Text>
+                {pickupLocation.destination?.addressDetails && (
+                  <Text style={styles.locationDetails}>{pickupLocation.destination.addressDetails}</Text>
+                )}
+              </View>
+            </View>
           </View>
         </View>
+      );
+    } else {
+      const onSiteLocation = currentJob.location as SavedLocationData;
+      return (
+        <View style={styles.locationSection}>
+          <Text style={styles.sectionTitle}>Location</Text>
+          <View style={styles.locationCard}>
+            <View style={styles.locationRow}>
+              <Ionicons name="location-outline" size={20} color={Colors.primary} />
+              <View style={styles.locationInfo}>
+                <Text style={styles.locationText}>{onSiteLocation.fullAddress}</Text>
+                {onSiteLocation.addressDetails && (
+                  <Text style={styles.locationDetails}>{onSiteLocation.addressDetails}</Text>
+                )}
+              </View>
+            </View>
+          </View>
+        </View>
+      );
+    }
+  };
 
-       
+  const renderAttachments = () => {
+    if (!currentJob || !currentJob.attachments || currentJob.attachments.length === 0) {
+      return null;
+    }
+
+    return (
+      <View style={styles.attachmentsSection}>
+        <Text style={styles.sectionTitle}>Attachments ({currentJob.attachments.length})</Text>
+        <FlatList
+          data={currentJob.attachments}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(item, index) => `${item}-${index}`}
+          renderItem={({ item }) => (
+            <View style={styles.attachmentCard}>
+              <Image
+                source={{ uri: `${IMAGE_BASE_URL}${item.startsWith("/") ? item : `/${item}`}` }}
+                style={styles.attachmentImage}
+                contentFit="cover"
+              />
+            </View>
+          )}
+          ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
+        />
       </View>
-    </ScrollView>
-  );
+    );
+  };
+
+  const renderSummaryTab = () => {
+    if (!currentJob) return null;
+
+    return (
+      <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Job Description</Text>
+          <Text style={styles.descriptionText}>{currentJob.description}</Text>
+        </View>
+
+        {renderLocationSection()}
+
+        {renderAttachments()}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Job Details</Text>
+          <View style={styles.detailRow}>
+            <Ionicons name="calendar-outline" size={20} color={Colors.primary} />
+            <Text style={styles.detailText}>
+              {currentJob.formattedScheduledDate || new Date(currentJob.scheduledDate).toLocaleDateString()}
+            </Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Ionicons name="time-outline" size={20} color={Colors.primary} />
+            <Text style={styles.detailText}>{currentJob.scheduledTime}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <Ionicons name="cash-outline" size={20} color={Colors.primary} />
+            <Text style={styles.detailText}>{currentJob.cost}</Text>
+          </View>
+        </View>
+      </ScrollView>
+    );
+  };
+
+  const renderAboutTab = () => {
+    if (!currentJob) return null;
+
+    return (
+      <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+        <View style={styles.aboutSection}>
+          <View style={styles.posterHeader}>
+            <View style={styles.aboutPosterAvatar}>
+              <Text style={styles.posterAvatarText}>
+                {getInitials(currentJob.postedBy?.profile?.fullName || 'U')}
+              </Text>
+            </View>
+            <View style={styles.posterInfo}>
+              <Text style={styles.posterName}>{currentJob.postedBy?.profile?.fullName || 'Unknown'}</Text>
+              <Text style={styles.posterTitle}>Job Poster</Text>
+            </View>
+          </View>
+
+          <View style={styles.posterStats}>
+            <View style={styles.statItem}>
+              <Text style={styles.statLabel}>Email</Text>
+              <Text style={styles.statValue}>{currentJob.postedBy?.profile?.email || 'N/A'}</Text>
+            </View>
+            {currentJob.postedBy?.profile?.location && (
+              <View style={styles.statItem}>
+                <Text style={styles.statLabel}>Location</Text>
+                <Text style={styles.statValue}>{currentJob.postedBy.profile.location}</Text>
+              </View>
+            )}
+          </View>
+        </View>
+      </ScrollView>
+    );
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView edges={['top']} style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={Colors.primary} />
+          <Text style={styles.loadingText}>Loading job details...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error || !currentJob) {
+    return (
+      <SafeAreaView edges={['top']} style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Ionicons name="alert-circle-outline" size={64} color={Colors.gray} />
+          <Text style={styles.errorText}>{error || 'Job not found'}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={() => navigation.goBack()}>
+            <Text style={styles.retryButtonText}>Go Back</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const jobTags = formatJobTags(currentJob);
+  const locationDisplay = getLocationDisplay(currentJob);
+  const isDirectContact = currentJob.responsePreference === 'direct_contact' || !currentJob.responsePreference;
+  const isMyJob = !!user && currentJob.postedBy?._id === user.id;
+  const interestedUsers: InterestedUserEntry[] = currentJob.interestedUsers || [];
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
-     
-     
-
       {/* Header Section with Blue Background */}
       <View style={styles.headerSection}>
         {/* Navigation and Bookmark */}
         <View style={styles.headerTop}>
-          <TouchableOpacity style={styles.backButton} onPress={() => (navigation as any).goBack()}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <AntDesign name="arrow-left" size={24} color={Colors.white} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.bookmarkButton} >
-          <Ionicons name="flame" size={20} color={Colors.orange} />
-
+          <TouchableOpacity style={styles.bookmarkButton} onPress={handleBookmark}>
+            <Ionicons name="flame" size={20} color={Colors.orange} />
           </TouchableOpacity>
         </View>
-
-        {/* Background Pattern */}
-        {/* <View style={styles.backgroundPattern}>
-          <View style={styles.patternRow}>
-            <View style={styles.patternShape} />
-            <View style={styles.patternShape} />
-            <View style={styles.patternShape} />
-          </View>
-          <View style={styles.patternRow}>
-            <View style={styles.patternShape} />
-            <View style={styles.patternShape} />
-            <View style={styles.patternShape} />
-          </View>
-        </View> */}
 
         {/* Poster Avatar */}
         <View style={styles.logoContainer}>
           <View style={styles.posterAvatar}>
-            <Text style={styles.logoText}>{jobDetails.avatar}</Text>
+            <Text style={styles.logoText}>
+              {getInitials(currentJob.postedBy?.profile?.fullName || 'U')}
+            </Text>
           </View>
         </View>
 
         {/* Job Info */}
         <View style={styles.jobInfo}>
-          <Text style={styles.jobTitle}>{jobDetails.title}</Text>
-          <Text style={styles.companyName}>Posted by {jobDetails.poster}</Text>
+          <Text style={styles.jobTitle}>{currentJob.title}</Text>
+          <Text style={styles.companyName}>Posted by {currentJob.postedBy?.profile?.fullName || 'Unknown'}</Text>
           
           <View style={styles.salaryLocationRow}>
-            <Text style={styles.salary}>{jobDetails.cost}</Text>
-            <Text style={styles.location}>{jobDetails.location}</Text>
+            <Text style={styles.salary}>{currentJob.cost}</Text>
+            <Text style={styles.location} numberOfLines={1}>{locationDisplay}</Text>
           </View>
 
           {/* Tags */}
           <View style={styles.tagsContainer}>
-            {jobDetails.tags.map((tag, index) => (
+            {jobTags.map((tag, index) => (
               <View key={index} style={styles.tag}>
                 <Text style={styles.tagText}>{tag}</Text>
               </View>
@@ -289,17 +391,79 @@ const JobDetailsScreen = () => {
           </Text>
           {activeTab === 'about' && <View style={styles.tabIndicator} />}
         </TouchableOpacity>
+        {isMyJob && (
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === 'interests' && styles.activeTab]} 
+            onPress={() => setActiveTab('interests')}
+          >
+            <Text style={[styles.tabText, activeTab === 'interests' && styles.activeTabText]}>
+              Interested ({interestedUsers.length})
+            </Text>
+            {activeTab === 'interests' && <View style={styles.tabIndicator} />}
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Tab Content */}
-      {activeTab === 'summary' ? renderSummaryTab() : renderAboutTab()}
+      {activeTab === 'summary' && renderSummaryTab()}
+      {activeTab === 'about' && renderAboutTab()}
+      {activeTab === 'interests' && isMyJob && (
+        <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+          {interestedUsers.length === 0 ? (
+            <View style={styles.emptyInterestsContainer}>
+              <Ionicons name="people-outline" size={64} color={Colors.gray} />
+              <Text style={styles.emptyInterestsText}>No interests yet</Text>
+            </View>
+          ) : (
+            <View style={{ gap: 12 }}>
+              {interestedUsers.map((entry) => (
+                <View key={entry._id} style={styles.interestCard}>
+                  <View style={styles.interestLeft}>
+                    <View style={styles.interestAvatar}>
+                      {entry.user.profile.profileImage ? (
+                        <Image 
+                          source={{ uri: `${IMAGE_BASE_URL}${entry.user.profile.profileImage.startsWith('/') ? entry.user.profile.profileImage : `/${entry.user.profile.profileImage}`}` }}
+                          style={styles.interestAvatarImage}
+                          contentFit="cover"
+                        />
+                      ) : (
+                        <Text style={styles.interestAvatarText}>
+                          {(entry.user.profile.fullName || 'U').split(' ').map(n => n[0]).join('').toUpperCase()}
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.interestInfo}>
+                      <Text style={styles.interestName}>{entry.user.profile.fullName}</Text>
+                      <Text style={styles.interestEmail}>{entry.user.profile.email}</Text>
+                      <Text style={styles.interestNotedAt}>Noted at {new Date(entry.notedAt).toLocaleString()}</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.contactSmallButton}
+                    onPress={() => Alert.alert('Contact', entry.user.phoneNumber ? `Phone: ${entry.user.phoneNumber}` : 'No phone number available')}
+                  >
+                    <Text style={styles.contactSmallButtonText}>Contact</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+        </ScrollView>
+      )}
 
-      {/* Contact Button */}
-      <View style={styles.contactButtonContainer}>
-        <TouchableOpacity style={styles.contactButton} onPress={handleContact}>
-          <Text style={styles.contactButtonText}>Contact</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Action Button */}
+      {!isMyJob && (
+        <View style={styles.contactButtonContainer}>
+          <TouchableOpacity 
+            style={styles.contactButton} 
+            onPress={isDirectContact ? handleContact : handleShowInterest}
+          >
+            <Text style={styles.contactButtonText}>
+              {isDirectContact ? 'Contact' : 'Show Interest'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -311,23 +475,39 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.white,
   },
-  statusBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: Colors.gray,
+    marginTop: 12,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  errorText: {
+    fontSize: 16,
+    color: Colors.gray,
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  retryButton: {
     backgroundColor: Colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 8,
   },
-  statusTime: {
-    fontSize: 14,
-    fontWeight: 'bold',
+  retryButtonText: {
     color: Colors.white,
-  },
-  statusIcons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
+    fontSize: 16,
+    fontWeight: '600',
   },
   headerSection: {
     backgroundColor: Colors.primary,
@@ -348,27 +528,8 @@ const styles = StyleSheet.create({
   },
   bookmarkButton: {
     padding: 8,
-    backgroundColor:Colors.white,
-    borderRadius:50
-  },
-  backgroundPattern: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    opacity: 0.1,
-  },
-  patternRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginVertical: 10,
-  },
-  patternShape: {
-    width: 20,
-    height: 20,
     backgroundColor: Colors.white,
-    borderRadius: 4,
+    borderRadius: 50,
   },
   logoContainer: {
     alignItems: 'center',
@@ -419,11 +580,14 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: Colors.white,
+    flex: 1,
   },
   location: {
-    fontSize: 16,
+    fontSize: 14,
     color: Colors.white,
     opacity: 0.9,
+    flex: 1,
+    textAlign: 'right',
   },
   tagsContainer: {
     flexDirection: 'row',
@@ -495,30 +659,64 @@ const styles = StyleSheet.create({
     color: Colors.gray,
     lineHeight: 20,
   },
-  readMoreButton: {
-    marginTop: 8,
+  locationSection: {
+    marginBottom: 24,
   },
-  readMoreText: {
-    fontSize: 14,
-    color: Colors.primary,
-    fontWeight: '500',
+  locationCard: {
+    backgroundColor: Colors.lightGray,
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
   },
-  bulletPoint: {
+  locationRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 8,
   },
-  bullet: {
-    fontSize: 16,
-    color: Colors.gray,
-    marginRight: 8,
-    marginTop: 2,
-  },
-  bulletText: {
-    fontSize: 14,
-    color: Colors.gray,
-    lineHeight: 20,
+  locationInfo: {
     flex: 1,
+    marginLeft: 12,
+  },
+  locationLabel: {
+    fontSize: 12,
+    color: Colors.gray,
+    marginBottom: 4,
+    fontWeight: '500',
+  },
+  locationText: {
+    fontSize: 14,
+    color: Colors.black,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  locationDetails: {
+    fontSize: 12,
+    color: Colors.gray,
+    fontStyle: 'italic',
+  },
+  attachmentsSection: {
+    marginBottom: 24,
+  },
+  attachmentCard: {
+    width: SCREEN_WIDTH * 0.7,
+    height: 200,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: Colors.lightGray,
+  },
+  attachmentImage: {
+    width: '100%',
+    height: '100%',
+  },
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  detailText: {
+    fontSize: 14,
+    color: Colors.black,
+    marginLeft: 12,
+    fontWeight: '500',
   },
   aboutSection: {
     paddingBottom: 20,
@@ -556,29 +754,6 @@ const styles = StyleSheet.create({
     color: Colors.gray,
     marginBottom: 2,
   },
-  posterCompany: {
-    fontSize: 14,
-    color: Colors.primary,
-    fontWeight: '500',
-  },
-  ratingContainer: {
-    marginBottom: 16,
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  ratingText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: Colors.black,
-    marginLeft: 4,
-  },
-  reviewsText: {
-    fontSize: 14,
-    color: Colors.gray,
-    marginLeft: 8,
-  },
   posterStats: {
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -600,18 +775,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.gray,
   },
-  posterDescription: {
-    backgroundColor: Colors.lightGray,
-    borderRadius: 12,
-    padding: 16,
-  },
   contactButtonContainer: {
     paddingHorizontal: 16,
-    // paddingVertic: 36,
-    paddingBottom:50,
+    paddingBottom: 50,
     backgroundColor: Colors.white,
-    // borderTopWidth: 1,
-    // borderTopColor: Colors.lightGray,
   },
   contactButton: {
     backgroundColor: Colors.primary,
@@ -628,5 +795,75 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
     color: Colors.white,
+  },
+  // Interests tab styles
+  emptyInterestsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  emptyInterestsText: {
+    fontSize: 16,
+    color: Colors.gray,
+    marginTop: 12,
+  },
+  interestCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.lightGray,
+    borderRadius: 12,
+    padding: 12,
+  },
+  interestLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  interestAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  interestAvatarText: {
+    color: Colors.white,
+    fontWeight: 'bold',
+  },
+  interestAvatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+  },
+  interestInfo: {
+    flex: 1,
+  },
+  interestName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.black,
+  },
+  interestEmail: {
+    fontSize: 12,
+    color: Colors.gray,
+  },
+  interestNotedAt: {
+    fontSize: 12,
+    color: Colors.gray,
+    marginTop: 2,
+  },
+  contactSmallButton: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  contactSmallButtonText: {
+    color: Colors.white,
+    fontWeight: '600',
+    fontSize: 12,
   },
 });

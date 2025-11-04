@@ -5,10 +5,13 @@ export const createJobApi = async (jobData: {
     title: string;
     description: string;
     cost: string;
-    location: string;
+    // location and jobType can be strings or objects now
+    location: string | object;
+    jobType?: string | object;
     urgency: string;
     scheduledDate: string;
     scheduledTime: string;
+    responsePreference?: 'direct_contact' | 'show_interest';
     attachments?: string[];
 }) => {
     try {
@@ -17,11 +20,26 @@ export const createJobApi = async (jobData: {
         formData.append("title", jobData.title);
         formData.append("description", jobData.description);
         formData.append("cost", jobData.cost);
-        formData.append("location", jobData.location);
+        // jobType and location may be objects (e.g. { source, destination } or saved location objects)
+        // Stringify objects so backend can parse them; leave strings as-is.
+        if (jobData.jobType !== undefined) {
+            formData.append(
+                "jobType",
+                typeof jobData.jobType === 'string' ? jobData.jobType : JSON.stringify(jobData.jobType)
+            );
+        }
+
+        formData.append(
+            "location",
+            typeof jobData.location === 'string' ? jobData.location : JSON.stringify(jobData.location)
+        );
         formData.append("urgency", jobData.urgency);
         formData.append("scheduledDate", jobData.scheduledDate);
         formData.append("scheduledTime", jobData.scheduledTime);
-
+        if (jobData.responsePreference) {
+            formData.append("responsePreference", jobData.responsePreference);
+        }
+console.log("Job Data Attachments:", formData);
         // Append up to 5 images using the same field name: attachments
         if (jobData.attachments && Array.isArray(jobData.attachments)) {
             jobData.attachments.slice(0, 5).forEach((uri, index) => {
@@ -54,7 +72,7 @@ export const getAllJobsApi = async () => {
 // Get job by ID API
 export const getJobByIdApi = async (jobId: string) => {
     try {
-        const res = await axiosInstance.get(`/api/jobs/${jobId}`);
+        const res = await axiosInstance.get(`/jobs/${jobId}`);
         return res.data;
     } catch (error: any) {
         throw new Error(error.response?.data?.message || "Failed to fetch job");
@@ -87,6 +105,16 @@ export const deleteJobApi = async (jobId: string) => {
         return res.data;
     } catch (error: any) {
         throw new Error(error.response?.data?.message || "Failed to delete job");
+    }
+};
+
+// Show interest in a job API
+export const showInterestOnJobApi = async (jobId: string) => {
+    try {
+        const res = await axiosInstance.post(`/jobs/${jobId}/interest`);
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Failed to record interest");
     }
 };
 

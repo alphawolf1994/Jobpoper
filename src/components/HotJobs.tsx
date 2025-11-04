@@ -74,7 +74,7 @@ const HotJobs: React.FC = () => {
   };
 
   const renderJobCard = (job: Job) => (
-    <TouchableOpacity key={job._id} style={styles.jobCard} activeOpacity={0.8} onPress={()=>{navigation.navigate('JobDetailsScreen')}}>
+    <TouchableOpacity key={job._id} style={styles.jobCard} activeOpacity={0.8} onPress={()=>{navigation.navigate('JobDetailsScreen', { jobId: job._id })}}>
       {/* Hot/Fire Label */}
       <View style={styles.hotLabel}>
         <Ionicons name="flame" size={16} color={Colors.orange} />
@@ -106,8 +106,8 @@ const HotJobs: React.FC = () => {
       {/* Bottom Row - Cost and Location */}
       <View style={styles.bottomRow}>
         <Text style={styles.cost}>{job.cost}</Text>
-        <Text style={styles.location} numberOfLines={1}>
-          {job.location.includes('http') ? 'View Location' : job.location}
+        <Text style={styles.cost} numberOfLines={1}>
+          {job.jobType}
         </Text>
       </View>
     </TouchableOpacity>
@@ -118,7 +118,7 @@ const HotJobs: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Hot Jobs</Text>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.navigate('Hot Jobs')}>
           <Text style={styles.seeAllText}>See all</Text>
         </TouchableOpacity>
       </View>

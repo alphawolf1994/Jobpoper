@@ -35,6 +35,9 @@ const PostJobScreen = () => {
   // Job type state
   const [jobType, setJobType] = useState<'OnSite' | 'Pickup'>('OnSite');
   
+  // Response preference state
+  const [responsePreference, setResponsePreference] = useState<'direct_contact' | 'show_interest'>('direct_contact');
+  
   // Selected locations for different types
   const [selectedOnSiteLocation, setSelectedOnSiteLocation] = useState<SavedLocation | null>(null);
   const [selectedPickupSource, setSelectedPickupSource] = useState<SavedLocation | null>(null);
@@ -241,48 +244,51 @@ const PostJobScreen = () => {
         urgency: urgencyValue || 'Normal',
         scheduledDate: formatDateForAPI(selectedDate!),
         scheduledTime: formatTime(selectedTime!),
+        responsePreference: responsePreference,
         attachments: attachments.length > 0 ? attachments : undefined,
       };
 console.log(jobData);
       // Dispatch the create job action and await the result
-      // const result = await dispatch(createJob(jobData)).unwrap();
+      const result = await dispatch(createJob(jobData)).unwrap();
       
-      // if (result.status === 'success') {
-      //   Alert.alert(
-      //     'Success!', 
-      //     'Your job has been posted successfully!',
-      //     [
-      //       {
-      //         text: 'OK',
-      //         onPress: () => {
-      //           // Reset form
-      //           setFormData({
-      //             title: '',
-      //             description: '',
-      //             cost: '',
-      //             location: '',
-      //             day: '',
-      //             time: '',
-      //             urgency: '',
-      //           });
-      //           // Reset date/time values
-      //           setSelectedDate(null);
-      //           setSelectedTime(null);
-      //           setUrgencyValue(null);
-      //           // Reset job type and locations
-      //           setJobType('OnSite');
-      //           setSelectedOnSiteLocation(null);
-      //           setSelectedPickupSource(null);
-      //           setSelectedPickupDestination(null);
-      //           // Reset attachments
-      //           setAttachments([]);
-      //           // Navigate back
-      //           navigation.goBack();
-      //         }
-      //       }
-      //     ]
-      //   );
-      // }
+      if (result.status === 'success') {
+        Alert.alert(
+          'Success!', 
+          'Your job has been posted successfully!',
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                // Reset form
+                setFormData({
+                  title: '',
+                  description: '',
+                  cost: '',
+                  location: '',
+                  day: '',
+                  time: '',
+                  urgency: '',
+                });
+                // Reset date/time values
+                setSelectedDate(null);
+                setSelectedTime(null);
+                setUrgencyValue(null);
+                // Reset job type and locations
+                setJobType('OnSite');
+                setSelectedOnSiteLocation(null);
+                setSelectedPickupSource(null);
+                setSelectedPickupDestination(null);
+                // Reset response preference
+                setResponsePreference('direct_contact');
+                // Reset attachments
+                setAttachments([]);
+                // Navigate back
+                navigation.goBack();
+              }
+            }
+          ]
+        );
+      }
     } catch (error: any) {
       const errorMessage = error?.message || 'Failed to post job. Please try again.';
       Alert.alert('Error', errorMessage);
@@ -360,9 +366,9 @@ console.log(jobData);
         {/* Job Type Selection */}
         <View style={styles.inputGroup}>
           <Text style={styles.label}>Job Type *</Text>
-          <View style={styles.radioGroup}>
+          <View style={styles.radioGroupHorizontal}>
             <TouchableOpacity 
-              style={[styles.radioOption, jobType === 'OnSite' && styles.radioSelected]}
+              style={[styles.radioOptionHorizontal, jobType === 'OnSite' && styles.radioSelected]}
               onPress={() => setJobType('OnSite')}
               activeOpacity={0.7}
             >
@@ -373,7 +379,7 @@ console.log(jobData);
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={[styles.radioOption, jobType === 'Pickup' && styles.radioSelected]}
+              style={[styles.radioOptionHorizontal, jobType === 'Pickup' && styles.radioSelected]}
               onPress={() => setJobType('Pickup')}
               activeOpacity={0.7}
             >
@@ -439,6 +445,51 @@ console.log(jobData);
               </View>
             </>
           )}
+        </View>
+
+        {/* Response Preference Selection */}
+        <View style={styles.inputGroup}>
+          <Text style={styles.label}>How should users respond to your job? *</Text>
+          <View style={styles.radioGroup}>
+            <TouchableOpacity 
+              style={[styles.radioOption, responsePreference === 'direct_contact' && styles.radioSelected]}
+              onPress={() => setResponsePreference('direct_contact')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.radioCircle, responsePreference === 'direct_contact' && styles.radioCircleSelected]}>
+                {responsePreference === 'direct_contact' && <View style={styles.radioInner} />}
+              </View>
+              <View style={styles.radioLabelContainer}>
+                <Text style={[styles.radioLabel, responsePreference === 'direct_contact' && styles.radioLabelSelected]}>
+                  Direct Contact
+                </Text>
+                <Text style={styles.radioDescription}>
+                  Users can contact you directly for this job
+                </Text>
+              </View>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.radioOption, responsePreference === 'show_interest' && styles.radioSelected]}
+              onPress={() => setResponsePreference('show_interest')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.radioCircle, responsePreference === 'show_interest' && styles.radioCircleSelected]}>
+                {responsePreference === 'show_interest' && <View style={styles.radioInner} />}
+              </View>
+              <View style={styles.radioLabelContainer}>
+                <Text style={[styles.radioLabel, responsePreference === 'show_interest' && styles.radioLabelSelected]}>
+                  Show Interest
+                </Text>
+                <Text style={styles.radioDescription}>
+                  Multiple users can show interest, you choose who to contact
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.helpText}>
+            💡 Direct Contact: Users can reach out to you immediately • Show Interest: Review interested users and select the best fit
+          </Text>
         </View>
 
  {/* Urgency Selection */}
@@ -917,10 +968,22 @@ const styles = StyleSheet.create({
   },
   // Radio button styles
   radioGroup: {
+    gap: 12,
+  },
+  radioGroupHorizontal: {
     flexDirection: 'row',
     gap: 16,
   },
   radioOption: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 14,
+    borderWidth: 2,
+    borderColor: Colors.lightGray,
+    borderRadius: 12,
+    width: '100%',
+  },
+  radioOptionHorizontal: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 12,
@@ -960,6 +1023,16 @@ const styles = StyleSheet.create({
   radioLabelSelected: {
     color: Colors.primary,
     fontWeight: '600',
+  },
+  radioLabelContainer: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  radioDescription: {
+    fontSize: 12,
+    color: Colors.gray,
+    marginTop: 2,
+    fontWeight: '400',
   },
   locationSelectable: {
     backgroundColor: '#f8f9fa',

@@ -10,6 +10,7 @@ import bell from "../assets/bell.png";
 import newspaper from "../assets/newspaper.png";
 import HomeScreen from "./screens/HomeScreen";
 import HotJobsScreen from "./screens/HotJobsScreen";
+import AllListedJobsScreen from "./screens/AllListedJobsScreen";
 import MyJobsScreen from "./screens/MyJobsScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import PostJobScreen from "./screens/PostJobScreen";
@@ -157,6 +158,12 @@ const RootStack = createNativeStackNavigator({
     },
     JobDetailsScreen: {
       screen: JobDetailsScreen,
+      options: {
+        headerShown: false,
+      },
+    },
+    AllListedJobsScreen: {
+      screen: AllListedJobsScreen,
       options: {
         headerShown: false,
       },

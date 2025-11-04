@@ -721,28 +721,64 @@ export interface PaymentMethod {
     paypal?: { account: string };
 }
 
+// Saved Location interface (matches API response)
+export interface SavedLocationData {
+  id: string;
+  name: string;
+  fullAddress: string;
+  latitude: number;
+  longitude: number;
+  addressDetails?: string;
+  createdAt: number;
+}
+
+export interface InterestedUserEntry {
+  user: {
+    _id: string;
+    phoneNumber?: string;
+    profile: {
+      fullName: string;
+      email: string;
+      profileImage?: string;
+    };
+  };
+  notedAt: string;
+  _id: string;
+}
+
 // JobPoper Job Interfaces
 export interface Job {
   _id: string;
   title: string;
   description: string;
   cost: string;
-  location: string;
+  location: SavedLocationData | { source: SavedLocationData; destination: SavedLocationData };
   urgency: 'Urgent' | 'Normal';
   scheduledDate: string;
   scheduledTime: string;
   attachments?: string[];
   status: 'open' | 'in-progress' | 'completed' | 'cancelled';
-  jobType?: string;
+  jobType?: 'OnSite' | 'Pickup';
+  responsePreference?: 'direct_contact' | 'show_interest';
   postedBy: {
     profile: {
       email: string;
       fullName: string;
+      location?: string;
     };
     _id: string;
+    phoneNumber?: string;
   };
   createdAt: string;
   updatedAt: string;
+  displayAddress?: string;
+  jobLocation?: {
+    type: 'single' | 'multiple';
+    data: SavedLocationData | { source: SavedLocationData; destination: SavedLocationData };
+  };
+  formattedScheduledDate?: string;
+  contactInfo?: string;
+  interestedUsers?: InterestedUserEntry[];
 }
 
 export interface JobResponse {
@@ -779,6 +815,7 @@ export interface CreateJobPayload {
   urgency: string;
   scheduledDate: string;
   scheduledTime: string;
+  responsePreference?: 'direct_contact' | 'show_interest';
   attachments?: string[];
 }
 

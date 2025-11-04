@@ -16,8 +16,25 @@ interface JobState {
   userJobs: Job[];
   hotJobs: Job[];
   listedJobs: Job[];
+  allHotJobs: Job[];
+  allHotJobsPagination: {
+    currentPage: number;
+    totalPages: number;
+    totalJobs: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  } | null;
+  allListedJobs: Job[];
+  allListedJobsPagination: {
+    currentPage: number;
+    totalPages: number;
+    totalJobs: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  } | null;
   currentJob: Job | null;
   loading: boolean;
+  loadingMore: boolean;
   error: string | null;
   createJobSuccess: boolean;
   currentLocation: string | null;
@@ -28,8 +45,13 @@ const initialState: JobState = {
   userJobs: [],
   hotJobs: [],
   listedJobs: [],
+  allHotJobs: [],
+  allHotJobsPagination: null,
+  allListedJobs: [],
+  allListedJobsPagination: null,
   currentJob: null,
   loading: false,
+  loadingMore: false,
   error: null,
   createJobSuccess: false,
   currentLocation: null,
@@ -143,6 +165,44 @@ export const getListedJobs = createAsyncThunk(
     try {
       const response = await getListedJobsApi(location, page, limit, sortOrder);
       return response;
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "Failed to fetch listed jobs");
+    }
+  }
+);
+
+// Get All Hot Jobs with Pagination (for AllHotJobsScreen)
+export const getAllHotJobsPaginated = createAsyncThunk(
+  "job/getAllHotJobsPaginated",
+  async ({ location, page = 1, limit = 10, sortOrder = 'desc', append = false }: { 
+    location: string; 
+    page?: number; 
+    limit?: number; 
+    sortOrder?: string;
+    append?: boolean;
+  }, { rejectWithValue }) => {
+    try {
+      const response = await getHotJobsApi(location, page, limit, sortOrder);
+      return { ...response, append };
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "Failed to fetch hot jobs");
+    }
+  }
+);
+
+// Get All Listed Jobs with Pagination (for AllListedJobsScreen)
+export const getAllListedJobsPaginated = createAsyncThunk(
+  "job/getAllListedJobsPaginated",
+  async ({ location, page = 1, limit = 10, sortOrder = 'desc', append = false }: { 
+    location: string; 
+    page?: number; 
+    limit?: number; 
+    sortOrder?: string;
+    append?: boolean;
+  }, { rejectWithValue }) => {
+    try {
+      const response = await getListedJobsApi(location, page, limit, sortOrder);
+      return { ...response, append };
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to fetch listed jobs");
     }
@@ -321,6 +381,72 @@ const jobSlice = createSlice({
       .addCase(getListedJobs.rejected, (state, action) => {
         state.error = action.payload as string;
         state.loading = false;
+      })
+      // Get All Hot Jobs Paginated
+      .addCase(getAllHotJobsPaginated.pending, (state, action) => {
+        if (action.meta.arg.append) {
+          state.loadingMore = true;
+        } else {
+          state.loading = true;
+          state.allHotJobs = [];
+        }
+        state.error = null;
+      })
+      .addCase(getAllHotJobsPaginated.fulfilled, (state, action) => {
+        const response = action.payload as HotJobsResponse & { append: boolean };
+        if (response.status === 'success' && response.data?.jobs) {
+          if (response.append) {
+            // Append new jobs to existing list
+            state.allHotJobs = [...state.allHotJobs, ...response.data.jobs];
+          } else {
+            // Replace with new jobs (refresh)
+            state.allHotJobs = response.data.jobs;
+          }
+          if (response.data.pagination) {
+            state.allHotJobsPagination = response.data.pagination;
+          }
+        }
+        state.loading = false;
+        state.loadingMore = false;
+        state.error = null;
+      })
+      .addCase(getAllHotJobsPaginated.rejected, (state, action) => {
+        state.error = action.payload as string;
+        state.loading = false;
+        state.loadingMore = false;
+      })
+      // Get All Listed Jobs Paginated
+      .addCase(getAllListedJobsPaginated.pending, (state, action) => {
+        if (action.meta.arg.append) {
+          state.loadingMore = true;
+        } else {
+          state.loading = true;
+          state.allListedJobs = [];
+        }
+        state.error = null;
+      })
+      .addCase(getAllListedJobsPaginated.fulfilled, (state, action) => {
+        const response = action.payload as ListedJobsResponse & { append: boolean };
+        if (response.status === 'success' && response.data?.jobs) {
+          if (response.append) {
+            // Append new jobs to existing list
+            state.allListedJobs = [...state.allListedJobs, ...response.data.jobs];
+          } else {
+            // Replace with new jobs (refresh)
+            state.allListedJobs = response.data.jobs;
+          }
+          if (response.data.pagination) {
+            state.allListedJobsPagination = response.data.pagination;
+          }
+        }
+        state.loading = false;
+        state.loadingMore = false;
+        state.error = null;
+      })
+      .addCase(getAllListedJobsPaginated.rejected, (state, action) => {
+        state.error = action.payload as string;
+        state.loading = false;
+        state.loadingMore = false;
       });
   },
 });
