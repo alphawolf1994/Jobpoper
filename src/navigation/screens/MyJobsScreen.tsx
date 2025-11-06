@@ -1,117 +1,129 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
 import { Colors } from "../../utils";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../components/Header";
 import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from '@react-navigation/native';
-
-interface MyJob {
-  id: string;
-  title: string;
-  description: string;
-  cost: string;
-  location: string;
-  status: 'active' | 'completed' | 'paused';
-  postedDate: string;
-
-}
+import { useDispatch, useSelector } from 'react-redux';
+import { AppDispatch, RootState } from '../../redux/store';
+import { getUserJobs, getMyInterestedJobs, deleteJob, updateJobStatus } from '../../redux/slices/jobSlice';
+import { Job } from '../../interface/interfaces';
 
 const MyJobsScreen = () => {
   const navigation = useNavigation<any>();
-  const [myJobs, setMyJobs] = useState<MyJob[]>([
-    {
-      id: '1',
-      title: 'Need House Cleaner',
-      description: 'Looking for a reliable house cleaner for weekly cleaning. 3-bedroom house, must have experience.',
-      cost: '$50/day',
-      location: 'Downtown, NYC',
-      status: 'active',
-      postedDate: '2 days ago',
-     
-    },
-    {
-      id: '2',
-      title: 'Garden Landscaping Help',
-      description: 'Need help with garden maintenance and landscaping. Front and back yard work required.',
-      cost: '$80/day',
-      location: 'Queens, NYC',
-      status: 'active',
-      postedDate: '1 week ago',
-   
-    },
-    {
-      id: '3',
-      title: 'Moving Day Assistant',
-      description: 'Need help moving furniture and boxes. Heavy lifting required. 2-bedroom apartment.',
-      cost: '$25/hour',
-      location: 'Manhattan, NYC',
-      status: 'completed',
-      postedDate: '2 weeks ago',
-    
-    },
-    {
-      id: '4',
-      title: 'Pet Walking Service',
-      description: 'Need someone to walk my dog twice daily. Small breed, very friendly. Long-term arrangement preferred.',
-      cost: '$35/day',
-      location: 'Brooklyn, NYC',
-      status: 'paused',
-      postedDate: '3 weeks ago',
-      
-    },
-    {
-      id: '5',
-      title: 'Kitchen Renovation Help',
-      description: 'Looking for skilled carpenter for kitchen cabinet installation and minor repairs.',
-      cost: '$200/project',
-      location: 'Staten Island, NYC',
-      status: 'active',
-      postedDate: '4 days ago',
-   
-    },
-  ]);
+  const dispatch = useDispatch<AppDispatch>();
+  const [activeTab, setActiveTab] = useState<'myJobs' | 'interested'>('myJobs');
+  
+  const { userJobs, interestedJobs, loading, error } = useSelector((state: RootState) => state.job);
 
-  const handleEditJob = (job: MyJob) => {
-    Alert.alert('Edit Job', `Edit "${job.title}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Edit', onPress: () => console.log('Edit job:', job.id) },
-    ]);
+  useEffect(() => {
+    // Fetch data when component mounts
+    if (activeTab === 'myJobs') {
+      dispatch(getUserJobs());
+    } else {
+      dispatch(getMyInterestedJobs({ page: 1, limit: 10 }));
+    }
+  }, [activeTab, dispatch]);
+
+  const handleCompleteJob = (job: Job) => {
+    Alert.alert(
+      'Complete Job', 
+      `Are you sure you want to mark "${job.title}" as completed?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Complete',
+          onPress: async () => {
+            try {
+              await dispatch(updateJobStatus({ jobId: job._id, status: 'completed' })).unwrap();
+              // Refresh the job list to show updated status
+              dispatch(getUserJobs());
+              Alert.alert('Success', 'Job status updated to completed');
+            } catch (error: any) {
+              Alert.alert('Error', error || 'Failed to update job status');
+            }
+          },
+        },
+      ]
+    );
   };
 
-  const handleDeleteJob = (job: MyJob) => {
+  const handleDeleteJob = (job: Job) => {
     Alert.alert('Delete Job', `Are you sure you want to delete "${job.title}"?`, [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',
         style: 'destructive',
-        onPress: () => {
-          setMyJobs(prevJobs => prevJobs.filter(j => j.id !== job.id));
+        onPress: async () => {
+          try {
+            await dispatch(deleteJob(job._id)).unwrap();
+            // Refresh the list
+            dispatch(getUserJobs());
+          } catch (error: any) {
+            Alert.alert('Error', error || 'Failed to delete job');
+          }
         },
       },
     ]);
   };
 
+  const handleJobPress = (job: Job) => {
+    navigation.navigate('JobDetailsScreen', { jobId: job._id });
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active': return Colors.green;
+      case 'open': return Colors.green;
       case 'completed': return Colors.gray;
-      case 'paused': return Colors.orange;
+      case 'in-progress': return Colors.primary;
+      case 'cancelled': return Colors.red;
       default: return Colors.gray;
     }
   };
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'active': return 'Active';
+      case 'open': return 'Open';
       case 'completed': return 'Completed';
-      case 'paused': return 'Paused';
+      case 'in-progress': return 'In Progress';
+      case 'cancelled': return 'Cancelled';
       default: return 'Unknown';
     }
   };
 
-  const renderJobCard = ({ item }: { item: MyJob }) => (
-    <View style={styles.jobCard}>
+  const formatLocation = (location: any): string => {
+    if (typeof location === 'string') {
+      return location;
+    }
+    if (location?.displayAddress) {
+      return location.displayAddress;
+    }
+    if (location?.source?.displayAddress) {
+      return location.source.displayAddress;
+    }
+    return 'Location not specified';
+  };
+
+  const formatDate = (dateString: string): string => {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return '1 day ago';
+    if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+    return `${Math.floor(diffDays / 30)} months ago`;
+  };
+
+  const renderMyJobCard = ({ item }: { item: Job }) => (
+    <TouchableOpacity 
+      style={styles.jobCard}
+      onPress={() => handleJobPress(item)}
+      activeOpacity={0.7}
+    >
       {/* Header Row - Title and Status */}
       <View style={styles.headerRow}>
         <Text style={styles.jobTitle}>{item.title}</Text>
@@ -132,26 +144,26 @@ const MyJobsScreen = () => {
           <Text style={styles.infoText}>{item.cost}</Text>
         </View>
         <View style={styles.infoItem}>
-          <Ionicons name="location-outline" size={16} color={Colors.primary} />
-          <Text style={styles.infoText}>{item.location}</Text>
+          <Ionicons name="calendar-outline" size={16} color={Colors.primary} />
+          <Text style={styles.infoText} numberOfLines={1}>{item.formattedScheduledDate || new Date(item.scheduledDate).toLocaleDateString()}</Text>
         </View>
         <View style={styles.infoItem}>
           <Ionicons name="time-outline" size={16} color={Colors.primary} />
-          <Text style={styles.infoText}>{item.postedDate}</Text>
+          <Text style={styles.infoText}>{formatDate(item.createdAt)}</Text>
         </View>
       </View>
 
-     
-
       {/* Action Buttons */}
       <View style={styles.actionRow}>
-        <TouchableOpacity 
-          style={[styles.actionButton, styles.editButton]} 
-          onPress={() => handleEditJob(item)}
-        >
-          <Ionicons name="create-outline" size={18} color={Colors.primary} />
-          <Text style={styles.editButtonText}>Edit</Text>
-        </TouchableOpacity>
+        {item.status !== 'completed' && (
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.completeButton]} 
+            onPress={() => handleCompleteJob(item)}
+          >
+            <Ionicons name="checkmark-circle-outline" size={18} color={Colors.white} />
+            <Text style={styles.completeButtonText}>Complete Job</Text>
+          </TouchableOpacity>
+        )}
         
         <TouchableOpacity 
           style={[styles.actionButton, styles.deleteButton]} 
@@ -161,8 +173,81 @@ const MyJobsScreen = () => {
           <Text style={styles.deleteButtonText}>Delete</Text>
         </TouchableOpacity>
       </View>
+    </TouchableOpacity>
+  );
+
+  const renderInterestedJobCard = ({ item }: { item: Job }) => (
+    <TouchableOpacity 
+      style={styles.jobCard}
+      onPress={() => handleJobPress(item)}
+      activeOpacity={0.7}
+    >
+      {/* Header Row - Title and Status */}
+      <View style={styles.headerRow}>
+        <Text style={styles.jobTitle}>{item.title}</Text>
+        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+          <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
+        </View>
+      </View>
+
+      {/* Description */}
+      <Text style={styles.description} numberOfLines={2}>
+        {item.description}
+      </Text>
+
+      {/* Info Row - Cost, Location, Date */}
+      <View style={styles.infoRow}>
+        <View style={styles.infoItem}>
+          <Ionicons name="cash-outline" size={16} color={Colors.primary} />
+          <Text style={styles.infoText}>{item.cost}</Text>
+        </View>
+        <View style={styles.infoItem}>
+          <Ionicons name="calendar-outline" size={16} color={Colors.primary} />
+          <Text style={styles.infoText} numberOfLines={1}>{item.formattedScheduledDate || new Date(item.scheduledDate).toLocaleDateString()}</Text>
+        </View>
+        <View style={styles.infoItem}>
+          <Ionicons name="time-outline" size={16} color={Colors.primary} />
+          <Text style={styles.infoText}>{formatDate(item.createdAt)}</Text>
+        </View>
+      </View>
+
+      {/* Posted By Info */}
+      <View style={styles.postedByRow}>
+        <Ionicons name="person-outline" size={16} color={Colors.primary} />
+        <Text style={styles.postedByText}>
+          Posted by {item.postedBy?.profile?.fullName || 'Unknown'}
+        </Text>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyContainer}>
+      <Ionicons name="briefcase-outline" size={64} color={Colors.gray} />
+      <Text style={styles.emptyText}>
+        {activeTab === 'myJobs' 
+          ? 'No jobs posted yet' 
+          : 'No interested jobs yet'}
+      </Text>
+      {activeTab === 'myJobs' && (
+        <TouchableOpacity 
+          style={styles.emptyButton}
+          onPress={() => navigation.navigate('PostJobScreen')}
+        >
+          <Text style={styles.emptyButtonText}>Post Your First Job</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
+
+  // Safeguards against undefined and different API shapes
+  const safeUserJobs: any[] = Array.isArray(userJobs) ? userJobs : [];
+  const safeInterestedRaw: any[] = Array.isArray(interestedJobs) ? interestedJobs : [];
+  // Normalize interested jobs in case API returns items like { job: {...} }
+  const normalizedInterestedJobs: any[] = safeInterestedRaw.map((entry) => entry?.job ?? entry).filter(Boolean);
+
+  const currentJobs: any[] = activeTab === 'myJobs' ? safeUserJobs : normalizedInterestedJobs;
+  const jobCount = currentJobs?.length ?? 0;
 
   return (
     <SafeAreaView edges={['top','bottom','left','right']} style={styles.container}>
@@ -171,28 +256,66 @@ const MyJobsScreen = () => {
       {/* Header Section */}
       <View style={styles.headerSection}>
         <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>My Posted Jobs</Text>
-          <Text style={styles.headerSubtitle}>{myJobs.length} jobs posted</Text>
+          <Text style={styles.headerTitle}>My Jobs</Text>
+          <Text style={styles.headerSubtitle}>
+            {activeTab === 'myJobs' 
+              ? `${jobCount} jobs posted` 
+              : `${jobCount} jobs interested`}
+          </Text>
         </View>
+        {activeTab === 'myJobs' && (
+          <TouchableOpacity 
+            style={styles.plusButton} 
+            activeOpacity={0.7}
+            onPress={() => navigation.navigate('PostJobScreen')}
+          >
+            <Ionicons name="add" size={24} color={Colors.white} />
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {/* Tab Navigation */}
+      <View style={styles.tabContainer}>
         <TouchableOpacity 
-          style={styles.plusButton} 
-          activeOpacity={0.7}
-          onPress={() => navigation.navigate('PostJobScreen')}
+          style={[styles.tab, activeTab === 'myJobs' && styles.activeTab]} 
+          onPress={() => setActiveTab('myJobs')}
         >
-          <Ionicons name="add" size={24} color={Colors.white} />
+          <Text style={[styles.tabText, activeTab === 'myJobs' && styles.activeTabText]}>
+            My Jobs
+          </Text>
+          {activeTab === 'myJobs' && <View style={styles.tabIndicator} />}
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'interested' && styles.activeTab]} 
+          onPress={() => setActiveTab('interested')}
+        >
+          <Text style={[styles.tabText, activeTab === 'interested' && styles.activeTabText]}>
+            My Interested Jobs
+          </Text>
+          {activeTab === 'interested' && <View style={styles.tabIndicator} />}
         </TouchableOpacity>
       </View>
 
       {/* Jobs List */}
-      <View style={{paddingBottom:25}}>
-      <FlatList
-        data={myJobs}
-        renderItem={renderJobCard}
-        keyExtractor={(item) => item.id}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-      />
+      <View style={{paddingBottom:25, flex: 1}}>
+        {loading && (currentJobs?.length ?? 0) === 0 ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+            <Text style={styles.loadingText}>Loading jobs...</Text>
+          </View>
+        ) : (currentJobs?.length ?? 0) === 0 ? (
+          renderEmptyState()
+        ) : (
+          <FlatList
+            data={currentJobs}
+            renderItem={activeTab === 'myJobs' ? renderMyJobCard : renderInterestedJobCard}
+            keyExtractor={(item: any) => item?._id || item?.id || item?.job?._id || Math.random().toString(36).slice(2)}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.scrollContent}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+          />
+        )}
       </View>
     </SafeAreaView>
   );
@@ -241,6 +364,38 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: Colors.white,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGray,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 16,
+    alignItems: 'center',
+    position: 'relative',
+  },
+  activeTab: {
+    backgroundColor: Colors.white,
+  },
+  tabText: {
+    fontSize: 16,
+    color: Colors.gray,
+    fontWeight: '500',
+  },
+  activeTabText: {
+    color: Colors.primary,
+    fontWeight: '600',
+  },
+  tabIndicator: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 3,
+    backgroundColor: Colors.primary,
   },
   scrollContent: {
     paddingHorizontal: 16,
@@ -307,12 +462,15 @@ const styles = StyleSheet.create({
     marginLeft: 6,
     flex: 1,
   },
-  applicantsRow: {
+  postedByRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginTop: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: Colors.lightGray,
   },
-  applicantsText: {
+  postedByText: {
     fontSize: 13,
     color: Colors.gray,
     marginLeft: 6,
@@ -322,6 +480,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 12,
+    marginTop: 8,
   },
   actionButton: {
     flex: 1,
@@ -332,14 +491,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
   },
-  editButton: {
-    backgroundColor: Colors.white,
+  completeButton: {
+    backgroundColor: Colors.primary,
     borderColor: Colors.primary,
   },
-  editButtonText: {
+  completeButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.primary,
+    color: Colors.white,
     marginLeft: 6,
   },
   deleteButton: {
@@ -352,5 +511,40 @@ const styles = StyleSheet.create({
     color: Colors.red,
     marginLeft: 6,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: Colors.gray,
+  },
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 32,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: Colors.gray,
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  emptyButton: {
+    marginTop: 24,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  emptyButtonText: {
+    color: Colors.white,
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });
-

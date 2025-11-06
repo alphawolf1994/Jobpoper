@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../utils';
@@ -17,6 +18,7 @@ import { AppDispatch, RootState } from '../../redux/store';
 import { Job } from '../../interface/interfaces';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
+import { IMAGE_BASE_URL } from '@/src/api/baseURL';
 
 const AllListedJobsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -95,10 +97,18 @@ const AllListedJobsScreen: React.FC = () => {
     >
       {/* Left Side - Avatar and Job Info */}
       <View style={styles.leftSection}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {getInitials(job.postedBy?.profile?.fullName || 'U')}
-          </Text>
+      <View style={styles.avatar}>
+          {job.postedBy?.profile?.profileImage ? (
+            <Image
+              source={{ uri: `${IMAGE_BASE_URL}${job.postedBy.profile.profileImage.startsWith('/') ? job.postedBy.profile.profileImage : `/${job.postedBy.profile.profileImage}`}` }}
+              style={styles.avatarImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <Text style={styles.avatarText}>
+              {getInitials(job.postedBy?.profile?.fullName || 'U')}
+            </Text>
+          )}
         </View>
         <View style={styles.jobInfo}>
           <Text style={styles.jobTitle}>{job.title}</Text>
@@ -244,6 +254,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+  },
+  avatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   avatarText: {
     fontSize: 18,

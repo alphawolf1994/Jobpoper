@@ -14,6 +14,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { getHotJobs } from '../redux/slices/jobSlice';
 import { AppDispatch, RootState } from '../redux/store';
 import { Job } from '../interface/interfaces';
+import { IMAGE_BASE_URL } from '../api/baseURL';
 
 const HotJobs: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -84,12 +85,22 @@ const HotJobs: React.FC = () => {
       {/* Avatar and Title Row */}
       <View style={styles.avatarTitleRow}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {getInitials(job.postedBy?.profile?.fullName || 'U')}
-          </Text>
+          {job.postedBy?.profile?.profileImage ? (
+            <Image
+              source={{ uri: `${IMAGE_BASE_URL}${job.postedBy.profile.profileImage.startsWith('/') ? job.postedBy.profile.profileImage : `/${job.postedBy.profile.profileImage}`}` }}
+              style={styles.avatarImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <Text style={styles.avatarText}>
+              {getInitials(job.postedBy?.profile?.fullName || 'U')}
+            </Text>
+          )}
         </View>
         <View style={styles.titleContainer}>
-          <Text style={styles.jobTitle}>{job.title}</Text>
+          <Text style={styles.jobTitle} numberOfLines={2} ellipsizeMode="tail">
+            {job.title}
+          </Text>
           <Text style={styles.posterName}>{job.postedBy?.profile?.fullName || 'Unknown'}</Text>
         </View>
       </View>
@@ -222,6 +233,11 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     elevation: 2,
   },
+  avatarImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
   avatarText: {
     fontSize: 18,
     fontWeight: 'bold',
@@ -230,6 +246,7 @@ const styles = StyleSheet.create({
   titleContainer: {
     flex: 1,
     justifyContent: 'center',
+    minHeight:60
   },
   jobTitle: {
     fontSize: 18,
@@ -237,7 +254,8 @@ const styles = StyleSheet.create({
     color: Colors.white,
     marginBottom: 2,
     lineHeight: 20,
-    width: '90%',
+    width: '89%',
+    // flex: 1,
   },
   posterName: {
     fontSize: 14,

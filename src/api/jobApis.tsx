@@ -101,7 +101,7 @@ export const updateJobApi = async (jobId: string, jobData: {
 // Delete Job API
 export const deleteJobApi = async (jobId: string) => {
     try {
-        const res = await axiosInstance.delete(`/api/jobs/${jobId}`);
+        const res = await axiosInstance.delete(`/jobs/${jobId}`);
         return res.data;
     } catch (error: any) {
         throw new Error(error.response?.data?.message || "Failed to delete job");
@@ -121,7 +121,7 @@ export const showInterestOnJobApi = async (jobId: string) => {
 // Get user's jobs API
 export const getUserJobsApi = async () => {
     try {
-        const res = await axiosInstance.get("/api/jobs/my-jobs");
+        const res = await axiosInstance.get("/jobs/my-jobs");
         return res.data;
     } catch (error: any) {
         throw new Error(error.response?.data?.message || "Failed to fetch user jobs");
@@ -159,5 +159,36 @@ export const getListedJobsApi = async (location: string, page: number = 1, limit
         return res.data;
     } catch (error: any) {
         throw new Error(error.response?.data?.message || "Failed to fetch listed jobs");
+    }
+};
+
+// Get my interested jobs API
+export const getMyInterestedJobsApi = async (page: number = 1, limit: number = 10, sortBy?: string, sortOrder?: string) => {
+    try {
+        const params: any = {
+            page,
+            limit
+        };
+        if (sortBy) params.sortBy = sortBy;
+        if (sortOrder) params.sortOrder = sortOrder;
+        
+        const res = await axiosInstance.get("/jobs/my-interests", {
+            params
+        });
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Failed to fetch interested jobs");
+    }
+};
+
+// Update job status API
+export const updateJobStatusApi = async (jobId: string, status: string) => {
+    try {
+        const res = await axiosInstance.put(`/jobs/${jobId}/status`, {
+            status
+        });
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Failed to update job status");
     }
 };

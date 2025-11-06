@@ -7,13 +7,23 @@ import {
   deleteJobApi,
   getUserJobsApi,
   getHotJobsApi,
-  getListedJobsApi
+  getListedJobsApi,
+  getMyInterestedJobsApi,
+  updateJobStatusApi
 } from "../../api/jobApis";
 import { Job, JobResponse, CreateJobPayload, HotJobsResponse, ListedJobsResponse } from "../../interface/interfaces";
 
 interface JobState {
   jobs: Job[];
   userJobs: Job[];
+  interestedJobs: Job[];
+  interestedJobsPagination: {
+    currentPage: number;
+    totalPages: number;
+    totalJobs: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  } | null;
   hotJobs: Job[];
   listedJobs: Job[];
   allHotJobs: Job[];
@@ -43,6 +53,8 @@ interface JobState {
 const initialState: JobState = {
   jobs: [],
   userJobs: [],
+  interestedJobs: [],
+  interestedJobsPagination: null,
   hotJobs: [],
   listedJobs: [],
   allHotJobs: [],
@@ -205,6 +217,38 @@ export const getAllListedJobsPaginated = createAsyncThunk(
       return { ...response, append };
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to fetch listed jobs");
+    }
+  }
+);
+
+// Get My Interested Jobs Async Thunk
+export const getMyInterestedJobs = createAsyncThunk(
+  "job/getMyInterestedJobs",
+  async ({ page = 1, limit = 10, sortBy, sortOrder, append = false }: { 
+    page?: number; 
+    limit?: number; 
+    sortBy?: string;
+    sortOrder?: string;
+    append?: boolean;
+  }, { rejectWithValue }) => {
+    try {
+      const response = await getMyInterestedJobsApi(page, limit, sortBy, sortOrder);
+      return { ...response, append };
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "Failed to fetch interested jobs");
+    }
+  }
+);
+
+// Update Job Status Async Thunk
+export const updateJobStatus = createAsyncThunk(
+  "job/updateJobStatus",
+  async ({ jobId, status }: { jobId: string; status: string }, { rejectWithValue }) => {
+    try {
+      const response = await updateJobStatusApi(jobId, status);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "Failed to update job status");
     }
   }
 );
@@ -447,6 +491,68 @@ const jobSlice = createSlice({
         state.error = action.payload as string;
         state.loading = false;
         state.loadingMore = false;
+      })
+      // Get My Interested Jobs
+      .addCase(getMyInterestedJobs.pending, (state, action) => {
+        if (action.meta.arg.append) {
+          state.loadingMore = true;
+        } else {
+          state.loading = true;
+          state.interestedJobs = [];
+        }
+        state.error = null;
+      })
+      .addCase(getMyInterestedJobs.fulfilled, (state, action) => {
+        const response = action.payload as any;
+        if (response.status === 'success' && response.data?.jobs) {
+          if (response.append) {
+            // Append new jobs to existing list
+            state.interestedJobs = [...state.interestedJobs, ...response.data.jobs];
+          } else {
+            // Replace with new jobs (refresh)
+            state.interestedJobs = response.data.jobs;
+          }
+          if (response.data.pagination) {
+            state.interestedJobsPagination = response.data.pagination;
+          }
+        }
+        state.loading = false;
+        state.loadingMore = false;
+        state.error = null;
+      })
+      .addCase(getMyInterestedJobs.rejected, (state, action) => {
+        state.error = action.payload as string;
+        state.loading = false;
+        state.loadingMore = false;
+      })
+      // Update Job Status
+      .addCase(updateJobStatus.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateJobStatus.fulfilled, (state, action) => {
+        const response = action.payload as any;
+        if (response.status === 'success' && response.data?.job) {
+          const updatedJob = response.data.job;
+          // Update job in jobs array
+          state.jobs = state.jobs.map(job => 
+            job._id === updatedJob.id || job._id === updatedJob._id ? { ...job, ...updatedJob } : job
+          );
+          // Update job in userJobs array
+          state.userJobs = state.userJobs.map(job => 
+            job._id === updatedJob.id || job._id === updatedJob._id ? { ...job, ...updatedJob } : job
+          );
+          // Update currentJob if it matches
+          if (state.currentJob && (state.currentJob._id === updatedJob.id || state.currentJob._id === updatedJob._id)) {
+            state.currentJob = { ...state.currentJob, ...updatedJob };
+          }
+        }
+        state.loading = false;
+        state.error = null;
+      })
+      .addCase(updateJobStatus.rejected, (state, action) => {
+        state.error = action.payload as string;
+        state.loading = false;
       });
   },
 });

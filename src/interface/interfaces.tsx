@@ -765,6 +765,7 @@ export interface Job {
       email: string;
       fullName: string;
       location?: string;
+      profileImage?: string;
     };
     _id: string;
     phoneNumber?: string;

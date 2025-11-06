@@ -5,6 +5,7 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../utils';
@@ -13,6 +14,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { getListedJobs } from '../redux/slices/jobSlice';
 import { AppDispatch, RootState } from '../redux/store';
 import { Job } from '../interface/interfaces';
+import { IMAGE_BASE_URL } from '../api/baseURL';
 
 const ListedJobs: React.FC = () => {
   const navigation = useNavigation<any>();
@@ -69,9 +71,17 @@ const ListedJobs: React.FC = () => {
       {/* Left Side - Avatar and Job Info */}
       <View style={styles.leftSection}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {getInitials(item.postedBy?.profile?.fullName || 'U')}
-          </Text>
+          {item.postedBy?.profile?.profileImage ? (
+            <Image
+              source={{ uri: `${IMAGE_BASE_URL}${item.postedBy.profile.profileImage.startsWith('/') ? item.postedBy.profile.profileImage : `/${item.postedBy.profile.profileImage}`}` }}
+              style={styles.avatarImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <Text style={styles.avatarText}>
+              {getInitials(item.postedBy?.profile?.fullName || 'U')}
+            </Text>
+          )}
         </View>
         <View style={styles.jobInfo}>
           <Text style={styles.jobTitle}>{item.title}</Text>
@@ -178,6 +188,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
   },
   avatarText: {
     fontSize: 18,

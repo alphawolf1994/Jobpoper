@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../utils';
@@ -18,6 +19,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { getAllHotJobsPaginated } from '../../redux/slices/jobSlice';
 import { AppDispatch, RootState } from '../../redux/store';
 import { Job } from '../../interface/interfaces';
+import { IMAGE_BASE_URL } from '@/src/api/baseURL';
 
 const HotJobsScreen = () => {
   const navigation = useNavigation<any>();
@@ -115,10 +117,18 @@ const HotJobsScreen = () => {
 
       {/* Avatar and Title Row */}
       <View style={styles.avatarTitleRow}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>
-            {getInitials(job.postedBy?.profile?.fullName || 'U')}
-          </Text>
+      <View style={styles.avatar}>
+          {job.postedBy?.profile?.profileImage ? (
+            <Image
+              source={{ uri: `${IMAGE_BASE_URL}${job.postedBy.profile.profileImage.startsWith('/') ? job.postedBy.profile.profileImage : `/${job.postedBy.profile.profileImage}`}` }}
+              style={styles.avatarImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <Text style={styles.avatarText}>
+              {getInitials(job.postedBy?.profile?.fullName || 'U')}
+            </Text>
+          )}
         </View>
         <View style={styles.titleContainer}>
           <Text style={styles.jobTitle}>{job.title}</Text>
@@ -289,6 +299,11 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     shadowOffset: { width: 0, height: 1 },
     elevation: 2,
+  },
+  avatarImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   avatarText: {
     fontSize: 18,
