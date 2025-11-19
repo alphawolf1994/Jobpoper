@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  Image, 
-  Alert, 
-  ScrollView, 
-  KeyboardAvoidingView, 
-  Platform 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Image,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -26,11 +25,13 @@ import { useDispatch, useSelector } from "react-redux";
 import { getCurrentUser, completeProfile, logoutUser, clearAuth } from "../../redux/slices/authSlice";
 import { RootState, AppDispatch } from "../../redux/store";
 import { useNavigation } from "@react-navigation/native";
+import { useAlertModal } from "../../hooks/useAlertModal";
 
 const ProfileScreen = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch<AppDispatch>();
   const { user, loading, error } = useSelector((state: RootState) => state.auth);
+  const { showAlert, AlertComponent: alertModal } = useAlertModal();
   
   // Profile data state
   const [fullName, setFullName] = useState("");
@@ -78,7 +79,11 @@ const ProfileScreen = () => {
   const requestPermissions = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission denied', 'Sorry, we need camera roll permissions to update your profile picture!');
+      showAlert({
+        title: "Permission denied",
+        message: "Sorry, we need camera roll permissions to update your profile picture!",
+        type: "warning",
+      });
       return false;
     }
     return true;
@@ -104,7 +109,11 @@ const ProfileScreen = () => {
   // Handle profile update
   const handleUpdateProfile = async () => {
     if (!fullName.trim() || !email.trim()) {
-      Alert.alert('Error', 'Please fill in all required fields.');
+      showAlert({
+        title: "Error",
+        message: "Please fill in all required fields.",
+        type: "error",
+      });
       return;
     }
 
@@ -120,47 +129,49 @@ const ProfileScreen = () => {
       const result = await dispatch(completeProfile(profileData)).unwrap();
       
       if (result.status === 'success') {
-        Alert.alert('Success', 'Profile updated successfully!');
+        showAlert({
+          title: "Success",
+          message: "Profile updated successfully!",
+          type: "success",
+        });
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Profile update failed. Please try again.');
+      showAlert({
+        title: "Error",
+        message: error.message || "Profile update failed. Please try again.",
+        type: "error",
+      });
     }
   };
 
   // Handle logout
   const handleLogout = () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
+    showAlert({
+      title: "Logout",
+      message: "Are you sure you want to logout?",
+      type: "warning",
+      buttons: [
         {
-          text: 'Cancel',
-          style: 'cancel',
+          label: "Cancel",
+          variant: "secondary",
         },
         {
-          text: 'Logout',
-          style: 'destructive',
+          label: "Logout",
           onPress: async () => {
             try {
-              // Call logout API
               await dispatch(logoutUser()).unwrap();
-              
-              // Clear auth state
+            } finally {
               dispatch(clearAuth());
-              
-              // Navigate to IntroScreen
-              // Note: You might need to use navigation.reset() or similar
-              // depending on your navigation setup
-              Alert.alert('Success', 'Logged out successfully!');
-            } catch (error: any) {
-              // Even if API fails, clear local state
-              dispatch(clearAuth());
-              Alert.alert('Success', 'Logged out successfully!');
+              showAlert({
+                title: "Success",
+                message: "Logged out successfully!",
+                type: "success",
+              });
             }
           },
         },
-      ]
-    );
+      ],
+    });
   };
 
   const resolveImageUri = (uri?: string | null) => {
@@ -303,6 +314,7 @@ const ProfileScreen = () => {
           </View>
         </ScrollView>
         <Loader visible={loading} message="Updating your profile..." />
+        {alertModal}
       </SafeAreaView>
     </KeyboardAvoidingView>
   );

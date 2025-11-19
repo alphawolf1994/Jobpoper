@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -13,11 +13,13 @@ import { useDispatch, useSelector } from "react-redux";
 import { saveLocation } from "../../redux/slices/locationsSlice";
 import { RootState } from "../../redux/store";
 import Loader from "../../components/Loader";
+import { useAlertModal } from "../../hooks/useAlertModal";
 
 const AddLocationScreen = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch();
   const { loading } = useSelector((state: RootState) => state.locations);
+  const { showAlert, AlertComponent: alertModal } = useAlertModal();
   const [addressLabel, setAddressLabel] = useState("KPR St");
   const [addressLine, setAddressLine] = useState("");
   const [locationName, setLocationName] = useState("");
@@ -156,7 +158,11 @@ const AddLocationScreen = () => {
             label="Save address"
             onPress={async () => {
               if (!region) {
-                Alert.alert("Error", "Please select a location on the map");
+                showAlert({
+                  title: "Error",
+                  message: "Please select a location on the map",
+                  type: "error",
+                });
                 return;
               }
               try {
@@ -173,10 +179,18 @@ const AddLocationScreen = () => {
                 if (result.type === 'locations/saveLocation/fulfilled') {
                   (navigation as any).goBack();
                 } else if (result.type === 'locations/saveLocation/rejected') {
-                  Alert.alert("Error", result.payload as string);
+                  showAlert({
+                    title: "Error",
+                    message: (result.payload as string) || "Failed to save location",
+                    type: "error",
+                  });
                 }
               } catch (err: any) {
-                Alert.alert("Error", err.message || "Failed to save location");
+                showAlert({
+                  title: "Error",
+                  message: err.message || "Failed to save location",
+                  type: "error",
+                });
               }
             }}
             style={{ marginTop: 10 }}
@@ -184,6 +198,7 @@ const AddLocationScreen = () => {
           />
         </View>
       </ScrollView>
+      {alertModal}
     </SafeAreaView>
   );
 };

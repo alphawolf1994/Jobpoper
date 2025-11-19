@@ -1,14 +1,13 @@
 import React, { useState, useRef } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  TextInput, 
-  KeyboardAvoidingView, 
-  Platform, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
-  Alert 
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from "../../utils";
@@ -19,6 +18,7 @@ import { AntDesign } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
 import { registerUser, clearError, getCurrentUser } from "../../redux/slices/authSlice";
 import { RootState, AppDispatch } from "../../redux/store";
+import { useAlertModal } from "../../hooks/useAlertModal";
 
 const CreatePinScreen = () => {
   const navigation = useNavigation();
@@ -27,6 +27,7 @@ const CreatePinScreen = () => {
   const loading = authState?.loading || false;
   const error = authState?.error || null;
   const phoneNumber = authState?.phoneNumber || "";
+  const { showAlert, AlertComponent: alertModal } = useAlertModal();
   
   const [pin, setPin] = useState(['', '', '', '']);
   const [confirmPin, setConfirmPin] = useState(['', '', '', '']);
@@ -34,6 +35,26 @@ const CreatePinScreen = () => {
   
   const pinInputRefs = useRef<(TextInput | null)[]>([null, null, null, null]);
   const confirmPinInputRefs = useRef<(TextInput | null)[]>([null, null, null, null]);
+
+  const showErrorAlert = (message: string) =>
+    showAlert({
+      title: "Error",
+      message,
+      type: "error",
+    });
+
+  const showSuccessAlert = (message: string, onConfirm: () => void) =>
+    showAlert({
+      title: "Success",
+      message,
+      type: "success",
+      buttons: [
+        {
+          label: "OK",
+          onPress: onConfirm,
+        },
+      ],
+    });
 
   const handlePinChange = (value: string, index: number, isConfirm = false) => {
     if (value.length > 1) return; // Prevent multiple characters
@@ -93,24 +114,24 @@ const CreatePinScreen = () => {
     const confirmPinString = currentConfirmPin.join('');
     
     if (pinString.length !== 4) {
-      Alert.alert('Error', 'Please enter your 4-digit PIN.');
+      showErrorAlert('Please enter your 4-digit PIN.');
       return;
     }
 
     if (confirmPinString.length !== 4) {
-      Alert.alert('Error', 'Please confirm your 4-digit PIN.');
+      showErrorAlert('Please confirm your 4-digit PIN.');
       return;
     }
 
     if (pinString !== confirmPinString) {
-      Alert.alert('Error', 'PINs do not match. Please try again.');
+      showErrorAlert('PINs do not match. Please try again.');
       setConfirmPin(['', '', '', '']);
       confirmPinInputRefs.current[0]?.focus();
       return;
     }
 
     if (!phoneNumber) {
-      Alert.alert('Error', 'Phone number not found. Please start over.');
+      showErrorAlert('Phone number not found. Please start over.');
       return;
     }
 
@@ -130,41 +151,27 @@ const CreatePinScreen = () => {
             
             // Check if profile is complete
             if (userData.profile?.isProfileComplete) {
-              Alert.alert('Success', 'Account created successfully!', [
-                {
-                  text: 'OK',
-                  onPress: () => (navigation as any).navigate('HomeTabs')
-                }
-              ]);
+              showSuccessAlert('Account created successfully!', () => (navigation as any).navigate('HomeTabs'));
             } else {
-              Alert.alert('Success', 'Account created successfully! Please complete your profile.', [
-                {
-                  text: 'OK',
-                  onPress: () => (navigation as any).navigate('BasicProfileScreen')
-                }
-              ]);
+              showSuccessAlert('Account created successfully! Please complete your profile.', () =>
+                (navigation as any).navigate('BasicProfileScreen')
+              );
             }
           } else {
             // If getCurrentUser fails, navigate to BasicProfileScreen
-            Alert.alert('Success', 'Account created successfully!', [
-              {
-                text: 'OK',
-                onPress: () => (navigation as any).navigate('BasicProfileScreen')
-              }
-            ]);
+            showSuccessAlert('Account created successfully!', () =>
+              (navigation as any).navigate('BasicProfileScreen')
+            );
           }
         } catch (userError) {
           // If getCurrentUser fails, navigate to BasicProfileScreen
-          Alert.alert('Success', 'Account created successfully!', [
-            {
-              text: 'OK',
-              onPress: () => (navigation as any).navigate('BasicProfileScreen')
-            }
-          ]);
+          showSuccessAlert('Account created successfully!', () =>
+            (navigation as any).navigate('BasicProfileScreen')
+          );
         }
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Registration failed. Please try again.');
+      showErrorAlert(error.message || 'Registration failed. Please try again.');
       setPin(['', '', '', '']);
       setConfirmPin(['', '', '', '']);
       setStep(1);
@@ -290,6 +297,7 @@ const CreatePinScreen = () => {
           )}
         </ScrollView>
         <Loader visible={loading} message="Creating your account..." />
+        {alertModal}
       </SafeAreaView>
     </KeyboardAvoidingView>
   );

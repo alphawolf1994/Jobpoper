@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Colors } from "../../utils";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../components/Header";
@@ -9,6 +9,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../redux/store';
 import { getUserJobs, getMyInterestedJobs, deleteJob, updateJobStatus } from '../../redux/slices/jobSlice';
 import { Job } from '../../interface/interfaces';
+import { useAlertModal } from "../../hooks/useAlertModal";
 
 const MyJobsScreen = () => {
   const navigation = useNavigation<any>();
@@ -16,6 +17,7 @@ const MyJobsScreen = () => {
   const [activeTab, setActiveTab] = useState<'myJobs' | 'interested'>('myJobs');
   
   const { userJobs, interestedJobs, loading, error } = useSelector((state: RootState) => state.job);
+  const { showAlert, AlertComponent: alertModal } = useAlertModal();
 
   useEffect(() => {
     // Fetch data when component mounts
@@ -27,45 +29,66 @@ const MyJobsScreen = () => {
   }, [activeTab, dispatch]);
 
   const handleCompleteJob = (job: Job) => {
-    Alert.alert(
-      'Complete Job', 
-      `Are you sure you want to mark "${job.title}" as completed?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
+    showAlert({
+      title: "Complete Job",
+      message: `Are you sure you want to mark "${job.title}" as completed?`,
+      type: "warning",
+      buttons: [
         {
-          text: 'Complete',
+          label: "Cancel",
+          variant: "secondary",
+        },
+        {
+          label: "Complete",
           onPress: async () => {
             try {
-              await dispatch(updateJobStatus({ jobId: job._id, status: 'completed' })).unwrap();
-              // Refresh the job list to show updated status
+              await dispatch(updateJobStatus({ jobId: job._id, status: "completed" })).unwrap();
               dispatch(getUserJobs());
-              Alert.alert('Success', 'Job status updated to completed');
+              showAlert({
+                title: "Success",
+                message: "Job status updated to completed",
+                type: "success",
+              });
             } catch (error: any) {
-              Alert.alert('Error', error || 'Failed to update job status');
+              showAlert({
+                title: "Error",
+                message: error || "Failed to update job status",
+                type: "error",
+              });
             }
           },
         },
-      ]
-    );
+      ],
+    });
   };
 
   const handleDeleteJob = (job: Job) => {
-    Alert.alert('Delete Job', `Are you sure you want to delete "${job.title}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await dispatch(deleteJob(job._id)).unwrap();
-            // Refresh the list
-            dispatch(getUserJobs());
-          } catch (error: any) {
-            Alert.alert('Error', error || 'Failed to delete job');
-          }
+    showAlert({
+      title: "Delete Job",
+      message: `Are you sure you want to delete "${job.title}"?`,
+      type: "warning",
+      buttons: [
+        {
+          label: "Cancel",
+          variant: "secondary",
         },
-      },
-    ]);
+        {
+          label: "Delete",
+          onPress: async () => {
+            try {
+              await dispatch(deleteJob(job._id)).unwrap();
+              dispatch(getUserJobs());
+            } catch (error: any) {
+              showAlert({
+                title: "Error",
+                message: error || "Failed to delete job",
+                type: "error",
+              });
+            }
+          },
+        },
+      ],
+    });
   };
 
   const handleJobPress = (job: Job) => {
@@ -317,6 +340,7 @@ const MyJobsScreen = () => {
           />
         )}
       </View>
+      {alertModal}
     </SafeAreaView>
   );
 };

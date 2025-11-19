@@ -1,13 +1,12 @@
 import React, { useState } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  KeyboardAvoidingView, 
-  Platform, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
-  Alert 
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from "../../utils";
@@ -19,6 +18,7 @@ import { AntDesign } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
 import { sendPhoneVerification, setPhoneNumber, clearError } from "../../redux/slices/authSlice";
 import { RootState, AppDispatch } from "../../redux/store";
+import { useAlertModal } from "../../hooks/useAlertModal";
 
 const SignupPhoneScreen = () => {
   const navigation = useNavigation();
@@ -26,20 +26,29 @@ const SignupPhoneScreen = () => {
   const authState = useSelector((state: RootState) => state?.auth);
   const loading = authState?.loading || false;
   const error = authState?.error || null;
+  const { showAlert, AlertComponent: alertModal } = useAlertModal();
   
   const [phoneNumber, setPhoneNumber1] = useState("");
   const [formattedPhoneNumber, setFormattedPhoneNumber] = useState("");
 
   const handlePhoneSubmit = async () => {
     if (!formattedPhoneNumber.trim()) {
-      Alert.alert('Error', 'Please enter your phone number.');
+      showAlert({
+        title: "Error",
+        message: "Please enter your phone number.",
+        type: "error",
+      });
       return;
     }
 
     // Basic phone number validation for formatted number with country code
     const phoneRegex = /^\+[1-9]\d{1,14}$/;
     if (!phoneRegex.test(formattedPhoneNumber)) {
-      Alert.alert('Error', 'Please enter a valid phone number with country code.');
+      showAlert({
+        title: "Error",
+        message: "Please enter a valid phone number with country code.",
+        type: "error",
+      });
       return;
     }
 
@@ -50,19 +59,33 @@ const SignupPhoneScreen = () => {
       // Send verification code
       const result = await dispatch(sendPhoneVerification(formattedPhoneNumber)).unwrap();
       
-      if (result.status === 'success') {
-        Alert.alert('Code Sent', 'Verification code has been sent to your phone number.', [
-          {
-            text: 'OK',
-            onPress: () => (navigation as any).navigate('PhoneVerificationScreen', { 
-              isSignup: true,
-              phoneNumber: formattedPhoneNumber 
-            })
-          }
-        ]);
+      if (result.status === "success") {
+        showAlert({
+          title: "Code Sent",
+          message: "Verification code has been sent to your phone number.",
+          type: "success",
+          buttons: [
+            {
+              label: "OK",
+              onPress: () =>
+                (navigation as any).navigate("PhoneVerificationScreen", {
+                  isSignup: true,
+                  phoneNumber: formattedPhoneNumber,
+                }),
+            },
+          ],
+        });
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to send verification code. Please try again.');
+      const errorMessage =
+        typeof error === "string"
+          ? error
+          : error?.message || "Failed to send verification code. Please try again.";
+      showAlert({
+        title: "Error",
+        message: errorMessage,
+        type: "error",
+      });
     }
   };
 
@@ -126,6 +149,7 @@ const SignupPhoneScreen = () => {
           </View>
         </ScrollView>
         <Loader visible={loading} message="Sending verification code..." />
+        {alertModal}
       </SafeAreaView>
     </KeyboardAvoidingView>
   );
@@ -150,7 +174,7 @@ const styles = StyleSheet.create({
   },
   logoWrap: { 
     alignItems: "center", 
-    marginBottom: 50 
+    marginBottom: 0 
   },
   emoji: {
     fontSize: 60,
@@ -171,7 +195,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20
   },
   phoneSection: {
-    marginTop: 40,
+    marginTop: 20,
   },
   signupButton: {
     borderRadius: 12,

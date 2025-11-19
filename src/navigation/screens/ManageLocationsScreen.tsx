@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, FlatList } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -9,6 +9,7 @@ import { RootState } from "../../redux/store";
 import { removeLocationById, fetchLocations } from "../../redux/slices/locationsSlice";
 import Button from "../../components/Button";
 import Loader from "../../components/Loader";
+import { useAlertModal } from "../../hooks/useAlertModal";
 
 type SavedLocation = {
   id: string;
@@ -23,6 +24,7 @@ const ManageLocationsScreen = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch();
   const { items: saved, loading } = useSelector((state: RootState) => state.locations);
+  const { showAlert, AlertComponent: alertModal } = useAlertModal();
   
   // Fetch locations when screen is focused
   useFocusEffect(
@@ -41,6 +43,41 @@ const ManageLocationsScreen = () => {
     }));
   }, [saved]);
 
+  const handleDeleteLocation = (item: SavedLocation) => {
+    showAlert({
+      title: "Delete Location",
+      message: `Are you sure you want to delete "${item.label}"?`,
+      type: "warning",
+      buttons: [
+        {
+          label: "Cancel",
+          variant: "secondary",
+        },
+        {
+          label: "Delete",
+          onPress: async () => {
+            try {
+              const result = await dispatch(removeLocationById(item.id) as any);
+              if (result.type === "locations/removeLocationById/rejected") {
+                showAlert({
+                  title: "Error",
+                  message: (result.payload as string) || "Failed to delete location",
+                  type: "error",
+                });
+              }
+            } catch (err: any) {
+              showAlert({
+                title: "Error",
+                message: err.message || "Failed to delete location",
+                type: "error",
+              });
+            }
+          },
+        },
+      ],
+    });
+  };
+
   const renderLocationItem = ({ item }: { item: SavedLocation }) => {
     return (
       <View style={styles.cardContainer}>
@@ -55,32 +92,7 @@ const ManageLocationsScreen = () => {
           </View>
           <TouchableOpacity
             style={styles.cardActionButton}
-            onPress={async () => {
-              Alert.alert(
-                "Delete Location",
-                `Are you sure you want to delete "${item.label}"?`,
-                [
-                  {
-                    text: "Cancel",
-                    style: "cancel"
-                  },
-                  {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: async () => {
-                      try {
-                        const result = await dispatch(removeLocationById(item.id) as any);
-                        if (result.type === 'locations/removeLocationById/rejected') {
-                          Alert.alert("Error", result.payload as string);
-                        }
-                      } catch (err: any) {
-                        Alert.alert("Error", err.message || "Failed to delete location");
-                      }
-                    }
-                  }
-                ]
-              );
-            }}
+            onPress={() => handleDeleteLocation(item)}
           >
             <Ionicons name="trash-outline" size={16} color={Colors.primary} />
           </TouchableOpacity>
@@ -145,6 +157,7 @@ const ManageLocationsScreen = () => {
           renderItem={renderLocationItem}
         />
       )}
+      {alertModal}
     </SafeAreaView>
   );
 };

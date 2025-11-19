@@ -1,6 +1,6 @@
 import 'react-native-get-random-values';
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Image, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity, Alert } from "react-native";
+import { View, Text, StyleSheet, Image, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from "../../utils";
 import MyTextInput from "../../components/MyTextInput";
@@ -15,11 +15,13 @@ import { AntDesign, Ionicons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
 import { completeProfile, getCurrentUser } from "../../redux/slices/authSlice";
 import { RootState, AppDispatch } from "../../redux/store";
+import { useAlertModal } from "../../hooks/useAlertModal";
 
 const BasicProfileScreen = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch<AppDispatch>();
   const { loading, error } = useSelector((state: RootState) => state.auth);
+  const { showAlert, AlertComponent: alertModal } = useAlertModal();
   
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -34,6 +36,21 @@ const BasicProfileScreen = () => {
   const [showPicker, setShowPicker] = useState(false);
   const [agree, setAgree] = useState(false);
 
+  const navigateHome = () => (navigation as any).navigate('HomeTabs');
+
+  const showCompletionSuccess = () =>
+    showAlert({
+      title: "Success",
+      message: "Profile completed successfully!",
+      type: "success",
+      buttons: [
+        {
+          label: "OK",
+          onPress: navigateHome,
+        },
+      ],
+    });
+
   const formatDate = (date: Date) => {
     const day = String(date.getDate()).padStart(2, "0");
     const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -43,12 +60,16 @@ const BasicProfileScreen = () => {
 
   const handleCompleteProfile = async () => {
     if (!fullName.trim() || !email.trim()) {
-      Alert.alert('Error', 'Please fill in all required fields.');
+      showAlert({
+        title: "Error",
+        message: "Please fill in all required fields.",
+        type: "error",
+      });
       return;
     }
 
     // if (!agree) {
-    //   Alert.alert('Error', 'Please agree to the terms and conditions.');
+    //   showAlert({ title: 'Error', message: 'Please agree to the terms and conditions.', type: 'error' });
     //   return;
     // }
 
@@ -68,32 +89,21 @@ const BasicProfileScreen = () => {
           const userResult = await dispatch(getCurrentUser()).unwrap();
           
           if (userResult.status === 'success' && userResult.data?.user) {
-            Alert.alert('Success', 'Profile completed successfully!', [
-              {
-                text: 'OK',
-                onPress: () => (navigation as any).navigate('HomeTabs')
-              }
-            ]);
+            showCompletionSuccess();
           } else {
-            Alert.alert('Success', 'Profile completed successfully!', [
-              {
-                text: 'OK',
-                onPress: () => (navigation as any).navigate('HomeTabs')
-              }
-            ]);
+            showCompletionSuccess();
           }
         } catch (userError) {
           // If getCurrentUser fails, still navigate to HomeTabs
-          Alert.alert('Success', 'Profile completed successfully!', [
-            {
-              text: 'OK',
-              onPress: () => (navigation as any).navigate('HomeTabs')
-            }
-          ]);
+          showCompletionSuccess();
         }
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Profile completion failed. Please try again.');
+      showAlert({
+        title: "Error",
+        message: error.message || "Profile completion failed. Please try again.",
+        type: "error",
+      });
     }
   };
 
@@ -170,6 +180,7 @@ const BasicProfileScreen = () => {
         />
       </ScrollView>
       <Loader visible={loading} message="Completing your profile..." />
+      {alertModal}
       </SafeAreaView>
     </KeyboardAvoidingView>
   );

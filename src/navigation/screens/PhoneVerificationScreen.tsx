@@ -1,14 +1,13 @@
 import React, { useState, useRef } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  TextInput, 
-  KeyboardAvoidingView, 
-  Platform, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
-  Alert 
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from "../../utils";
@@ -19,12 +18,14 @@ import { AntDesign } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
 import { sendPhoneVerification, verifyPhone } from "../../redux/slices/authSlice";
 import { RootState, AppDispatch } from "../../redux/store";
+import { useAlertModal } from "../../hooks/useAlertModal";
 
 const PhoneVerificationScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const dispatch = useDispatch<AppDispatch>();
   const { loading, error, phoneNumber } = useSelector((state: RootState) => state.auth);
+  const { showAlert, AlertComponent: alertModal } = useAlertModal();
   
   // Check if this is part of signup flow
   const isSignup = (route.params as any)?.isSignup || false;
@@ -35,6 +36,26 @@ const PhoneVerificationScreen = () => {
   const [countdown, setCountdown] = useState(0);
   
   const codeInputRefs = useRef<(TextInput | null)[]>([null, null, null, null, null, null]);
+
+  const showErrorAlert = (message: string) =>
+    showAlert({
+      title: "Error",
+      message,
+      type: "error",
+    });
+
+  const showSuccessAlert = (message: string, onConfirm: () => void) =>
+    showAlert({
+      title: "Success",
+      message,
+      type: "success",
+      buttons: [
+        {
+          label: "OK",
+          onPress: onConfirm,
+        },
+      ],
+    });
 
   const handleCodeChange = (value: string, index: number) => {
     if (value.length > 1) return; // Prevent multiple characters
@@ -63,7 +84,7 @@ const PhoneVerificationScreen = () => {
   const handleSendCode = async () => {
     const currentPhoneNumber = passedPhoneNumber || phoneNumber;
     if (!currentPhoneNumber) {
-      Alert.alert('Error', 'Phone number not found. Please go back and try again.');
+      showErrorAlert('Phone number not found. Please go back and try again.');
       return;
     }
 
@@ -85,10 +106,14 @@ const PhoneVerificationScreen = () => {
           });
         }, 1000);
         
-        Alert.alert('Code Sent', 'Verification code has been sent to your phone number.');
+        showAlert({
+          title: "Code Sent",
+          message: "Verification code has been sent to your phone number.",
+          type: "info",
+        });
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to send verification code. Please try again.');
+      showErrorAlert(error.message || 'Failed to send verification code. Please try again.');
     }
   };
 
@@ -97,13 +122,13 @@ const PhoneVerificationScreen = () => {
     const codeString = currentCode.join('');
     
     if (codeString.length !== 6) {
-      Alert.alert('Error', 'Please enter the complete 6-digit code.');
+      showErrorAlert('Please enter the complete 6-digit code.');
       return;
     }
 
     const currentPhoneNumber = passedPhoneNumber || phoneNumber;
     if (!currentPhoneNumber) {
-      Alert.alert('Error', 'Phone number not found. Please go back and try again.');
+      showErrorAlert('Phone number not found. Please go back and try again.');
       return;
     }
 
@@ -114,24 +139,12 @@ const PhoneVerificationScreen = () => {
       } as any)).unwrap();
       
       if (result.status === 'success') {
-        if (isSignup) {
-          Alert.alert('Success', 'Phone number verified successfully!', [
-            {
-              text: 'OK',
-              onPress: () => (navigation as any).navigate('CreatePinScreen')
-            }
-          ]);
-        } else {
-          Alert.alert('Success', 'Phone number verified successfully!', [
-            {
-              text: 'OK',
-              onPress: () => (navigation as any).navigate('CreatePinScreen')
-            }
-          ]);
-        }
+        showSuccessAlert('Phone number verified successfully!', () =>
+          (navigation as any).navigate('CreatePinScreen')
+        );
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Phone verification failed. Please try again.');
+      showErrorAlert(error.message || 'Phone verification failed. Please try again.');
       setVerificationCode(['', '', '', '', '', '']);
       codeInputRefs.current[0]?.focus();
     }
@@ -225,6 +238,7 @@ const PhoneVerificationScreen = () => {
           )}
         </ScrollView>
         <Loader visible={loading} message={isCodeSent ? "Verifying code..." : "Sending code..."} />
+        {alertModal}
       </SafeAreaView>
     </KeyboardAvoidingView>
   );

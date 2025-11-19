@@ -1,14 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  TextInput, 
-  KeyboardAvoidingView, 
-  Platform, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
-  Alert 
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from "../../utils";
@@ -16,6 +15,7 @@ import Button from "../../components/Button";
 import ImagePath from "../../assets/images/ImagePath";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { AntDesign } from "@expo/vector-icons";
+import { useAlertModal } from "../../hooks/useAlertModal";
 
 const OTPScreen = () => {
   const navigation = useNavigation();
@@ -24,8 +24,23 @@ const OTPScreen = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [timer, setTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
+  const { showAlert, AlertComponent: alertModal } = useAlertModal();
   
   const inputRefs = useRef<TextInput[]>([]);
+
+  const showErrorAlert = (message: string) =>
+    showAlert({
+      title: "Error",
+      message,
+      type: "error",
+    });
+
+  const showSuccessAlert = (message: string) =>
+    showAlert({
+      title: "Success",
+      message,
+      type: "success",
+    });
   
   // Get route params to determine if this is a new user
   const { isNewUser = false } = (route.params as any) || {};
@@ -67,7 +82,7 @@ const OTPScreen = () => {
   const handleVerifyOtp = async () => {
     const otpString = otp.join('');
     if (otpString.length !== 6) {
-      Alert.alert('Error', 'Please enter all 6 digits');
+      showErrorAlert('Please enter all 6 digits');
       return;
     }
 
@@ -79,14 +94,12 @@ const OTPScreen = () => {
       // For demo purposes, accept any 6-digit OTP
       if (otpString.length === 6) {
         if (isNewUser) {
-          // New user: navigate to CreatePinScreen
           (navigation as any).navigate('CreatePinScreen');
         } else {
-          // Existing user: navigate to BasicProfileScreen (or directly to HomeTabs)
           (navigation as any).navigate('HomeTabs');
         }
       } else {
-        Alert.alert('Error', 'Invalid OTP. Please try again.');
+        showErrorAlert('Invalid OTP. Please try again.');
       }
     }, 2000);
   };
@@ -97,7 +110,7 @@ const OTPScreen = () => {
     setOtp(['', '', '', '', '', '']);
     inputRefs.current[0]?.focus();
     // Here you would typically call your resend OTP API
-    Alert.alert('Success', 'OTP has been resent to your phone number');
+    showSuccessAlert('OTP has been resent to your phone number');
   };
 
   return (
@@ -175,6 +188,7 @@ const OTPScreen = () => {
             </Text>
           </View>
         </ScrollView>
+        {alertModal}
       </SafeAreaView>
     </KeyboardAvoidingView>
   );

@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, KeyboardAvoidingView, Platform, Modal, FlatList } from "react-native";
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, Modal, FlatList } from "react-native";
 import { Colors } from "../../utils";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../components/Header";
@@ -15,12 +15,41 @@ import { createJob } from '../../redux/slices/jobSlice';
 import { AppDispatch, RootState } from '../../redux/store';
 import { SavedLocation } from '../../redux/slices/locationsSlice';
 import { fetchLocations } from '../../redux/slices/locationsSlice';
+import { useAlertModal } from "../../hooks/useAlertModal";
 
 const PostJobScreen = () => {
-    const navigation = useNavigation();
-    const dispatch = useDispatch<AppDispatch>();
-    const { loading } = useSelector((state: RootState) => state.job);
-    const { items: savedLocations, loading: locationsLoading } = useSelector((state: RootState) => state.locations);
+  const navigation = useNavigation();
+  const dispatch = useDispatch<AppDispatch>();
+  const { loading } = useSelector((state: RootState) => state.job);
+  const { items: savedLocations, loading: locationsLoading } = useSelector((state: RootState) => state.locations);
+  const { showAlert, AlertComponent: alertModal } = useAlertModal();
+
+  const showErrorAlert = (message: string) =>
+    showAlert({
+      title: "Error",
+      message,
+      type: "error",
+    });
+
+  const showWarningAlert = (title: string, message: string) =>
+    showAlert({
+      title,
+      message,
+      type: "warning",
+    });
+
+  const showSuccessAlert = (message: string, onConfirm?: () => void) =>
+    showAlert({
+      title: "Success!",
+      message,
+      type: "success",
+      buttons: [
+        {
+          label: "OK",
+          onPress: onConfirm,
+        },
+      ],
+    });
     
   const [formData, setFormData] = useState({
     title: '',
@@ -134,14 +163,18 @@ const PostJobScreen = () => {
   const handlePickImages = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permission required', 'Please allow photo library access to add attachments.');
+      showWarningAlert('Permission required', 'Please allow photo library access to add attachments.');
       return;
     }
     
     // Calculate remaining slots for new images
     const remainingSlots = 5 - attachments.length;
     if (remainingSlots <= 0) {
-      Alert.alert('Limit reached', 'You can only select up to 5 images.');
+      showAlert({
+        title: "Limit reached",
+        message: "You can only select up to 5 images.",
+        type: "info",
+      });
       return;
     }
     
@@ -187,44 +220,44 @@ const PostJobScreen = () => {
   const handleSubmit = async () => {
     // Validate form
     if (!formData.title.trim()) {
-      Alert.alert('Error', 'Please enter a job title');
+      showErrorAlert('Please enter a job title');
       return;
     }
     if (!formData.description.trim()) {
-      Alert.alert('Error', 'Please enter a job description');
+      showErrorAlert('Please enter a job description');
       return;
     }
     if (!formData.cost.trim()) {
-      Alert.alert('Error', 'Please enter the cost/budget');
+      showErrorAlert('Please enter the cost/budget');
       return;
     }
     
     // Validate locations based on job type
     if (jobType === 'OnSite' && !selectedOnSiteLocation) {
-      Alert.alert('Error', 'Please select the job location');
+      showErrorAlert('Please select the job location');
       return;
     }
     if (jobType === 'Pickup') {
       if (!selectedPickupSource) {
-        Alert.alert('Error', 'Please select the pickup source location');
+        showErrorAlert('Please select the pickup source location');
         return;
       }
       if (!selectedPickupDestination) {
-        Alert.alert('Error', 'Please select the pickup destination location');
+        showErrorAlert('Please select the pickup destination location');
         return;
       }
     }
     
     if (!selectedDate) {
-      Alert.alert('Error', 'Please select when you need this job done');
+      showErrorAlert('Please select when you need this job done');
       return;
     }
     if (!selectedTime) {
-      Alert.alert('Error', 'Please select a preferred time');
+      showErrorAlert('Please select a preferred time');
       return;
     }
     if (!urgencyValue) {
-      Alert.alert('Error', 'Please select the urgency level');
+      showErrorAlert('Please select the urgency level');
       return;
     }
 
@@ -252,46 +285,31 @@ console.log(jobData);
       const result = await dispatch(createJob(jobData)).unwrap();
       
       if (result.status === 'success') {
-        Alert.alert(
-          'Success!', 
-          'Your job has been posted successfully!',
-          [
-            {
-              text: 'OK',
-              onPress: () => {
-                // Reset form
-                setFormData({
-                  title: '',
-                  description: '',
-                  cost: '',
-                  location: '',
-                  day: '',
-                  time: '',
-                  urgency: '',
-                });
-                // Reset date/time values
-                setSelectedDate(null);
-                setSelectedTime(null);
-                setUrgencyValue(null);
-                // Reset job type and locations
-                setJobType('OnSite');
-                setSelectedOnSiteLocation(null);
-                setSelectedPickupSource(null);
-                setSelectedPickupDestination(null);
-                // Reset response preference
-                setResponsePreference('direct_contact');
-                // Reset attachments
-                setAttachments([]);
-                // Navigate back
-                navigation.goBack();
-              }
-            }
-          ]
-        );
+        showSuccessAlert('Your job has been posted successfully!', () => {
+          setFormData({
+            title: '',
+            description: '',
+            cost: '',
+            location: '',
+            day: '',
+            time: '',
+            urgency: '',
+          });
+          setSelectedDate(null);
+          setSelectedTime(null);
+          setUrgencyValue(null);
+          setJobType('OnSite');
+          setSelectedOnSiteLocation(null);
+          setSelectedPickupSource(null);
+          setSelectedPickupDestination(null);
+          setResponsePreference('direct_contact');
+          setAttachments([]);
+          navigation.goBack();
+        });
       }
     } catch (error: any) {
       const errorMessage = error?.message || 'Failed to post job. Please try again.';
-      Alert.alert('Error', errorMessage);
+      showErrorAlert(errorMessage);
     }
   };
 
@@ -702,6 +720,7 @@ console.log(jobData);
         {/* Bottom Spacing */}
         <View style={styles.bottomSpacing} />
       </ScrollView>
+      {alertModal}
     </SafeAreaView>
 
       {/* Location Selection Modal */}

@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  ScrollView, 
-  Alert,
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
   ActivityIndicator,
   FlatList,
-  Dimensions
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from "../../utils";
@@ -21,6 +20,7 @@ import { Job, SavedLocationData, InterestedUserEntry } from '../../interface/int
 import { Image } from 'expo-image';
 import { IMAGE_BASE_URL } from '../../api/baseURL';
 import { showInterestOnJobApi } from '../../api/jobApis';
+import { useAlertModal } from "../../hooks/useAlertModal";
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -31,6 +31,7 @@ const JobDetailsScreen = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { currentJob, loading, error } = useSelector((state: RootState) => state.job);
   const { user } = useSelector((state: RootState) => state.auth);
+  const { showAlert, AlertComponent: alertModal } = useAlertModal();
   
   // Get jobId from route params
   const jobId = (route.params as any)?.jobId;
@@ -92,54 +93,82 @@ const JobDetailsScreen = () => {
     const contactInfo = currentJob.contactInfo || currentJob.postedBy?.phoneNumber;
     
     if (contactInfo) {
-      Alert.alert(
-        'Contact Job Poster', 
-        `Would you like to contact ${currentJob.postedBy?.profile?.fullName || 'the job poster'}?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Contact', 
-            onPress: () => {
-              // TODO: Implement actual contact functionality (call, message, etc.)
-              Alert.alert('Contact', `Phone: ${contactInfo}`);
-            }
+      showAlert({
+        title: "Contact Job Poster",
+        message: `Would you like to contact ${
+          currentJob.postedBy?.profile?.fullName || "the job poster"
+        }?`,
+        type: "info",
+        buttons: [
+          {
+            label: "Cancel",
+            variant: "secondary",
           },
-        ]
-      );
+          {
+            label: "Contact",
+            onPress: () => {
+              showAlert({
+                title: "Contact",
+                message: `Phone: ${contactInfo}`,
+                type: "info",
+              });
+            },
+          },
+        ],
+      });
     } else {
-      Alert.alert('Contact', 'Contact information not available');
+      showAlert({
+        title: "Contact",
+        message: "Contact information not available",
+        type: "error",
+      });
     }
   };
 
   const handleShowInterest = () => {
     if (!currentJob) return;
 
-    Alert.alert(
-      'Show Interest',
-      `Show interest in "${currentJob.title}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
+    showAlert({
+      title: "Show Interest",
+      message: `Show interest in "${currentJob.title}"?`,
+      type: "info",
+      buttons: [
         {
-          text: 'Show Interest',
+          label: "Cancel",
+          variant: "secondary",
+        },
+        {
+          label: "Show Interest",
           onPress: async () => {
             try {
               const res = await showInterestOnJobApi(currentJob._id);
-              Alert.alert('Success', res?.message || 'Interest recorded successfully');
-              // Refresh details to reflect any changes (e.g., interestedUsers)
+              showAlert({
+                title: "Success",
+                message: res?.message || "Interest recorded successfully",
+                type: "success",
+              });
               if ((route.params as any)?.jobId) {
                 dispatch(getJobById((route.params as any).jobId));
               }
             } catch (e: any) {
-              Alert.alert('Error', e?.message || 'Failed to record interest');
+              showAlert({
+                title: "Error",
+                message: e?.message || "Failed to record interest",
+                type: "error",
+              });
             }
           },
         },
-      ]
-    );
+      ],
+    });
   };
 
   const handleBookmark = () => {
-    Alert.alert('Bookmark', 'Job bookmarked successfully!');
+    showAlert({
+      title: "Bookmark",
+      message: "Job bookmarked successfully!",
+      type: "success",
+    });
   };
 
   const renderLocationSection = () => {
@@ -438,9 +467,17 @@ const JobDetailsScreen = () => {
                       <Text style={styles.interestNotedAt}>Noted at {new Date(entry.notedAt).toLocaleString()}</Text>
                     </View>
                   </View>
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.contactSmallButton}
-                    onPress={() => Alert.alert('Contact', entry.user.phoneNumber ? `Phone: ${entry.user.phoneNumber}` : 'No phone number available')}
+                    onPress={() =>
+                      showAlert({
+                        title: "Contact",
+                        message: entry.user.phoneNumber
+                          ? `Phone: ${entry.user.phoneNumber}`
+                          : "No phone number available",
+                        type: entry.user.phoneNumber ? "info" : "error",
+                      })
+                    }
                   >
                     <Text style={styles.contactSmallButtonText}>Contact</Text>
                   </TouchableOpacity>
@@ -464,6 +501,7 @@ const JobDetailsScreen = () => {
           </TouchableOpacity>
         </View>
       )}
+      {alertModal}
     </SafeAreaView>
   );
 };

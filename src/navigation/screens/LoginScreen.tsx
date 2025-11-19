@@ -1,14 +1,13 @@
 import React, { useState, useRef } from "react";
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  TouchableOpacity, 
-  TextInput, 
-  KeyboardAvoidingView, 
-  Platform, 
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
-  Alert 
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from "../../utils";
@@ -20,6 +19,7 @@ import { AntDesign } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
 import { loginUser, clearError, getCurrentUser } from "../../redux/slices/authSlice";
 import { RootState, AppDispatch } from "../../redux/store";
+import { useAlertModal } from "../../hooks/useAlertModal";
 
 const LoginScreen = () => {
   const navigation = useNavigation();
@@ -27,6 +27,7 @@ const LoginScreen = () => {
   const authState = useSelector((state: RootState) => state?.auth);
   const loading = authState?.loading || false;
   const error = authState?.error || null;
+  const { showAlert, AlertComponent: alertModal } = useAlertModal();
   
   const [phoneNumber, setPhoneNumber] = useState("");
   const [formattedPhoneNumber, setFormattedPhoneNumber] = useState("");
@@ -64,14 +65,22 @@ const LoginScreen = () => {
 
   const handlePhoneSubmit = () => {
     if (!formattedPhoneNumber.trim()) {
-      Alert.alert('Error', 'Please enter your phone number.');
+      showAlert({
+        title: "Error",
+        message: "Please enter your phone number.",
+        type: "error",
+      });
       return;
     }
 
     // Basic phone number validation for formatted number with country code
     const phoneRegex = /^\+[1-9]\d{1,14}$/;
     if (!phoneRegex.test(formattedPhoneNumber)) {
-      Alert.alert('Error', 'Please enter a valid phone number with country code.');
+      showAlert({
+        title: "Error",
+        message: "Please enter a valid phone number with country code.",
+        type: "error",
+      });
       return;
     }
 
@@ -83,7 +92,11 @@ const LoginScreen = () => {
     const pinString = pin.join('');
     
     if (pinString.length !== 4) {
-      Alert.alert('Error', 'Please enter your 4-digit PIN.');
+      showAlert({
+        title: "Error",
+        message: "Please enter your 4-digit PIN.",
+        type: "error",
+      });
       return;
     }
 
@@ -104,40 +117,64 @@ const LoginScreen = () => {
             
             // Check if profile is complete
             if (userData.profile?.isProfileComplete) {
-              Alert.alert('Success', 'Login successful!', [
-                {
-                  text: 'OK',
-                  onPress: () => (navigation as any).navigate('HomeTabs')
-                }
-              ]);
+              showAlert({
+                title: "Success",
+                message: "Login successful!",
+                type: "success",
+                buttons: [
+                  {
+                    label: "OK",
+                    onPress: () => (navigation as any).navigate("HomeTabs"),
+                  },
+                ],
+              });
             } else {
-              Alert.alert('Success', 'Login successful! Please complete your profile.', [
-                {
-                  text: 'OK',
-                  onPress: () => (navigation as any).navigate('BasicProfileScreen')
-                }
-              ]);
+              showAlert({
+                title: "Success",
+                message: "Login successful! Please complete your profile.",
+                type: "success",
+                buttons: [
+                  {
+                    label: "OK",
+                    onPress: () => (navigation as any).navigate("BasicProfileScreen"),
+                  },
+                ],
+              });
             }
           } else {
-            Alert.alert('Success', 'Login successful!', [
-              {
-                text: 'OK',
-                onPress: () => (navigation as any).navigate('HomeTabs')
-              }
-            ]);
+            showAlert({
+              title: "Success",
+              message: "Login successful!",
+              type: "success",
+              buttons: [
+                {
+                  label: "OK",
+                  onPress: () => (navigation as any).navigate("HomeTabs"),
+                },
+              ],
+            });
           }
         } catch (userError) {
           // If getCurrentUser fails, still navigate to HomeTabs
-          Alert.alert('Success', 'Login successful!', [
-            {
-              text: 'OK',
-              onPress: () => (navigation as any).navigate('HomeTabs')
-            }
-          ]);
+          showAlert({
+            title: "Success",
+            message: "Login successful!",
+            type: "success",
+            buttons: [
+              {
+                label: "OK",
+                onPress: () => (navigation as any).navigate("HomeTabs"),
+              },
+            ],
+          });
         }
       }
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Login failed. Please try again.');
+      showAlert({
+        title: "Error",
+        message: error.message || "Login failed. Please try again.",
+        type: "error",
+      });
       setPin(['', '', '', '']);
       pinInputRefs.current[0]?.focus();
     }
@@ -247,7 +284,7 @@ const LoginScreen = () => {
             </View>
           ) : (
             <View style={styles.pinSection}>
-              <Text style={styles.phoneDisplay}>{formattedPhoneNumber}</Text>
+              {/* <Text style={styles.phoneDisplay}>{formattedPhoneNumber}</Text> */}
               <View style={styles.pinContainer}>
                 {renderPinInputs()}
               </View>
@@ -275,6 +312,7 @@ const LoginScreen = () => {
           </View>
         </ScrollView>
         <Loader visible={loading} message="Logging you in..." />
+        {alertModal}
       </SafeAreaView>
     </KeyboardAvoidingView>
   );
@@ -299,7 +337,7 @@ const styles = StyleSheet.create({
   },
   logoWrap: { 
     alignItems: "center", 
-    marginBottom: 50 
+    marginBottom: 20 
   },
   emoji: {
     fontSize: 60,
@@ -320,14 +358,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20
   },
   phoneSection: {
-    marginTop: 40,
+    marginTop: 0,
   },
   continueButton: {
     borderRadius: 12,
     marginTop: 20,
   },
   pinSection: {
-    marginTop: 40,
+    marginTop: 0,
   },
   phoneDisplay: {
     fontSize: 18,
@@ -339,7 +377,7 @@ const styles = StyleSheet.create({
   pinContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginVertical: 40,
+    marginVertical: 20,
     paddingHorizontal: 20,
   },
   pinInput: {
