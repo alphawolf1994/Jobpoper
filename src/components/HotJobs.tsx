@@ -23,9 +23,7 @@ const HotJobs: React.FC = () => {
   const { hotJobs = [], loading = false, currentLocation } = jobState || {};
   const { user } = useSelector((state: RootState) => state.auth);
 
-  // Debug log
-  console.log('HotJobs state:', { hotJobs, loading, hotJobsLength: hotJobs?.length, jobState });
-
+  
   // Get location from Redux state, user profile, or use default
   const getLocation = () => {
     if (currentLocation) {

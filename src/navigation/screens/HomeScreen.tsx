@@ -9,7 +9,7 @@ import MyTextInput from "../../components/MyTextInput";
 import HotJobs from "../../components/HotJobs";
 import ListedJobs from "../../components/ListedJobs";
 import { useDispatch, useSelector } from 'react-redux';
-import { getHotJobs, getListedJobs } from '../../redux/slices/jobSlice';
+import { getHotJobs, getListedJobs, expireOldJobs } from '../../redux/slices/jobSlice';
 import { AppDispatch, RootState } from '../../redux/store';
 
 const HomeScreen = ({ navigation }: any) => {
@@ -34,6 +34,7 @@ const HomeScreen = ({ navigation }: any) => {
 
   // Refresh hot jobs and listed jobs when location changes
   useEffect(() => {
+    dispatch(expireOldJobs());
     dispatch(getHotJobs({ 
       location: getLocation(),
       page: 1,

@@ -65,7 +65,8 @@ const JobDetailsScreen = () => {
     if (job.status) {
       tags.push(job.status);
     }
-    
+    if (job.cost)
+      tags.push(job.cost);
     return tags;
   };
 
@@ -168,6 +169,15 @@ const JobDetailsScreen = () => {
       title: "Bookmark",
       message: "Job bookmarked successfully!",
       type: "success",
+    });
+  };
+
+  const handleEditJob = () => {
+    if (!currentJob) return;
+    
+    navigation.navigate('PostJobScreen', {
+      isEditMode: true,
+      jobData: currentJob,
     });
   };
 
@@ -285,6 +295,18 @@ const JobDetailsScreen = () => {
             <Text style={styles.detailText}>{currentJob.cost}</Text>
           </View>
         </View>
+
+        {isMyJob && (
+          <View style={styles.section}>
+            <TouchableOpacity 
+              style={styles.editButton} 
+              onPress={handleEditJob}
+            >
+              <AntDesign name="edit" size={16} color={Colors.white} />
+              <Text style={styles.editButtonText}>Edit Job</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </ScrollView>
     );
   };
@@ -383,10 +405,10 @@ const JobDetailsScreen = () => {
           <Text style={styles.jobTitle}>{currentJob.title}</Text>
           <Text style={styles.companyName}>Posted by {currentJob.postedBy?.profile?.fullName || 'Unknown'}</Text>
           
-          <View style={styles.salaryLocationRow}>
+          {/* <View style={styles.salaryLocationRow}>
             <Text style={styles.salary}>{currentJob.cost}</Text>
             <Text style={styles.location} numberOfLines={1}>{locationDisplay}</Text>
-          </View>
+          </View> */}
 
           {/* Tags */}
           <View style={styles.tagsContainer}>
@@ -903,5 +925,26 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontWeight: '600',
     fontSize: 12,
+  },
+  editButton: {
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  editButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: Colors.white,
+    marginLeft: 8,
   },
 });

@@ -5,24 +5,31 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../components/Header";
 import { MyTextInput, MyTextArea, Button } from "../../components";
 import { AntDesign, Ionicons } from "@expo/vector-icons";
-import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useNavigation, useFocusEffect, useRoute } from "@react-navigation/native";
 import DropDownPicker from 'react-native-dropdown-picker';
 import DateTimePicker from "@react-native-community/datetimepicker";
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { useDispatch, useSelector } from 'react-redux';
-import { createJob } from '../../redux/slices/jobSlice';
+import { createJob, updateJob } from '../../redux/slices/jobSlice';
 import { AppDispatch, RootState } from '../../redux/store';
 import { SavedLocation } from '../../redux/slices/locationsSlice';
 import { fetchLocations } from '../../redux/slices/locationsSlice';
 import { useAlertModal } from "../../hooks/useAlertModal";
+import { Job, SavedLocationData } from '../../interface/interfaces';
+import { IMAGE_BASE_URL } from '../../api/baseURL';
 
 const PostJobScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute();
   const dispatch = useDispatch<AppDispatch>();
   const { loading } = useSelector((state: RootState) => state.job);
   const { items: savedLocations, loading: locationsLoading } = useSelector((state: RootState) => state.locations);
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
+
+  // Check if in edit mode
+  const isEditMode = (route.params as any)?.isEditMode ?? false;
+  const jobDataToEdit: Job | null = (route.params as any)?.jobData ?? null;
 
   const showErrorAlert = (message: string) =>
     showAlert({
@@ -84,6 +91,7 @@ const PostJobScreen = () => {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [tempTime, setTempTime] = useState<Date | null>(null);
   const [attachments, setAttachments] = useState<string[]>([]);
+  const [existingAttachments, setExistingAttachments] = useState<string[]>([]);
 
   const getTomorrow = () => {
     const d = new Date();
@@ -104,6 +112,110 @@ const PostJobScreen = () => {
       dispatch(fetchLocations());
     }, [dispatch])
   );
+
+  // Initialize form with job data when in edit mode
+  React.useEffect(() => {
+    if (isEditMode && jobDataToEdit) {
+      // Set form data
+      setFormData({
+        title: jobDataToEdit.title || '',
+        description: jobDataToEdit.description || '',
+        cost: jobDataToEdit.cost || '',
+        location: '',
+        day: jobDataToEdit.formattedScheduledDate || new Date(jobDataToEdit.scheduledDate).toLocaleDateString(),
+        time: jobDataToEdit.scheduledTime || '',
+        urgency: jobDataToEdit.urgency || '',
+      });
+
+      // Set job type
+      if (jobDataToEdit.jobType) {
+        setJobType(jobDataToEdit.jobType);
+      }
+
+      // Set response preference
+      if (jobDataToEdit.responsePreference) {
+        setResponsePreference(jobDataToEdit.responsePreference);
+      }
+
+      // Set urgency
+      if (jobDataToEdit.urgency) {
+        setUrgencyValue(jobDataToEdit.urgency);
+      }
+
+      // Set scheduled date and time
+      const dateString = jobDataToEdit.scheduledDate;
+      if (dateString) {
+        const date = new Date(dateString);
+        setSelectedDate(date);
+        setTempDate(date);
+      }
+
+      if (jobDataToEdit.scheduledTime) {
+        const timeStr = jobDataToEdit.scheduledTime;
+        // Parse time string (format: HH:MM AM/PM)
+        const [time, period] = timeStr.split(' ');
+        let [hours, minutes] = time.split(':').map(Number);
+        
+        if (period === 'PM' && hours !== 12) {
+          hours += 12;
+        } else if (period === 'AM' && hours === 12) {
+          hours = 0;
+        }
+
+        const timeDate = new Date();
+        timeDate.setHours(hours, minutes, 0, 0);
+        setSelectedTime(timeDate);
+        setTempTime(timeDate);
+      }
+
+      // Set locations based on job type
+      if (jobDataToEdit.jobType === 'Pickup' && typeof jobDataToEdit.location === 'object' && 'source' in jobDataToEdit.location) {
+        const pickupLoc = jobDataToEdit.location as { source: SavedLocationData; destination: SavedLocationData };
+        if (pickupLoc.source) {
+          const sourceLocation: SavedLocation = {
+            id: (pickupLoc.source as any)._id || pickupLoc.source.name,
+            name: pickupLoc.source.name,
+            fullAddress: pickupLoc.source.fullAddress,
+            latitude: (pickupLoc.source as any).latitude || 0,
+            longitude: (pickupLoc.source as any).longitude || 0,
+            addressDetails: pickupLoc.source.addressDetails,
+            createdAt: Date.now(),
+          };
+          setSelectedPickupSource(sourceLocation);
+        }
+        if (pickupLoc.destination) {
+          const destLocation: SavedLocation = {
+            id: (pickupLoc.destination as any)._id || pickupLoc.destination.name,
+            name: pickupLoc.destination.name,
+            fullAddress: pickupLoc.destination.fullAddress,
+            latitude: (pickupLoc.destination as any).latitude || 0,
+            longitude: (pickupLoc.destination as any).longitude || 0,
+            addressDetails: pickupLoc.destination.addressDetails,
+            createdAt: Date.now(),
+          };
+          setSelectedPickupDestination(destLocation);
+        }
+      } else if (jobDataToEdit.jobType === 'OnSite' && typeof jobDataToEdit.location === 'object' && !('source' in jobDataToEdit.location)) {
+        const onSiteLoc = jobDataToEdit.location as SavedLocationData;
+        const onSiteLocation: SavedLocation = {
+          id: (onSiteLoc as any)._id || onSiteLoc.name,
+          name: onSiteLoc.name,
+          fullAddress: onSiteLoc.fullAddress,
+          latitude: (onSiteLoc as any).latitude || 0,
+          longitude: (onSiteLoc as any).longitude || 0,
+          addressDetails: onSiteLoc.addressDetails,
+          createdAt: Date.now(),
+        };
+        setSelectedOnSiteLocation(onSiteLocation);
+      }
+
+      // Set attachments if any
+      if (jobDataToEdit.attachments && jobDataToEdit.attachments.length > 0) {
+        setAttachments(jobDataToEdit.attachments);
+        setExistingAttachments(jobDataToEdit.attachments);
+      }
+    }
+  }, [isEditMode, jobDataToEdit]);
 
   const [urgencyOpen, setUrgencyOpen] = useState(false);
   const [urgencyValue, setUrgencyValue] = useState<string | null>(null);
@@ -141,7 +253,7 @@ const PostJobScreen = () => {
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = String(date.getFullYear());
-    return `${day} ${month} ${year}`;
+    return `${day}-${month}-${year}`;
   };
 
   const formatDateForAPI = (date: Date) => {
@@ -195,6 +307,24 @@ const PostJobScreen = () => {
     setAttachments(prev => prev.filter((_, idx) => idx !== index));
   };
 
+  const getAttachmentUri = (uri: string): string => {
+    // If it's a local URI (starts with file:// or is a local path from camera/gallery)
+    if (uri.startsWith('file://') || uri.startsWith('/data/') || uri.startsWith('/var/')) {
+      return uri;
+    }
+    // If it's already a full URL (http or https)
+    if (uri.startsWith('http://') || uri.startsWith('https://')) {
+      return uri;
+    }
+    // If it's a relative path from the API
+    return `${IMAGE_BASE_URL}${uri.startsWith("/") ? uri : `/${uri}`}`;
+  };
+
+  const isNewAttachment = (uri: string): boolean => {
+    // Check if it's a new local file (not in existing attachments)
+    return uri.startsWith('file://') || uri.startsWith('/data/') || uri.startsWith('/var/');
+  };
+
   // Location selection handlers
   const openLocationModal = (type: 'onSite' | 'pickupSource' | 'pickupDestination') => {
     setLocationModalType(type);
@@ -231,7 +361,6 @@ const PostJobScreen = () => {
       showErrorAlert('Please enter the cost/budget');
       return;
     }
-    
     // Validate locations based on job type
     if (jobType === 'OnSite' && !selectedOnSiteLocation) {
       showErrorAlert('Please select the job location');
@@ -243,49 +372,46 @@ const PostJobScreen = () => {
         return;
       }
       if (!selectedPickupDestination) {
-        showErrorAlert('Please select the pickup destination location');
+        showErrorAlert('Please select the destination location');
         return;
       }
     }
-    
-    if (!selectedDate) {
-      showErrorAlert('Please select when you need this job done');
-      return;
-    }
-    if (!selectedTime) {
-      showErrorAlert('Please select a preferred time');
-      return;
-    }
-    if (!urgencyValue) {
-      showErrorAlert('Please select the urgency level');
-      return;
-    }
-
     try {
-      // Prepare job data for API
-      const jobData = {
+      // Separate attachments into existing and new
+      const newAttachments = attachments.filter(uri => isNewAttachment(uri));
+      const keptExistingAttachments = attachments.filter(uri => !isNewAttachment(uri));
+
+      // Prepare jobData for FormData
+      const jobData: any = {
         title: formData.title,
         description: formData.description,
         cost: formData.cost,
-        jobType: jobType,
-        location: jobType === 'OnSite' 
-          ? selectedOnSiteLocation! 
+        jobType,
+        urgency: urgencyValue || 'Normal',
+        scheduledDate: formatDateForAPI(selectedDate!),
+        scheduledTime: formatTime(selectedTime!),
+        responsePreference,
+        location: jobType === 'OnSite'
+          ? selectedOnSiteLocation!
           : {
               source: selectedPickupSource!,
               destination: selectedPickupDestination!,
             },
-        urgency: urgencyValue || 'Normal',
-        scheduledDate: formatDateForAPI(selectedDate!),
-        scheduledTime: formatTime(selectedTime!),
-        responsePreference: responsePreference,
-        attachments: attachments.length > 0 ? attachments : undefined,
+        attachments: newAttachments,
+        existingAttachments: keptExistingAttachments,
       };
-console.log(jobData);
-      // Dispatch the create job action and await the result
-      const result = await dispatch(createJob(jobData)).unwrap();
-      
+
+      let result;
+      if (isEditMode && jobDataToEdit?._id) {
+        // Update job
+        result = await dispatch(updateJob({ jobId: jobDataToEdit._id, jobData })).unwrap();
+      } else {
+        // Create job
+        result = await dispatch(createJob(jobData)).unwrap();
+      }
+
       if (result.status === 'success') {
-        showSuccessAlert('Your job has been posted successfully!', () => {
+        showSuccessAlert(isEditMode ? 'Your job has been updated successfully!' : 'Your job has been posted successfully!', () => {
           setFormData({
             title: '',
             description: '',
@@ -304,11 +430,13 @@ console.log(jobData);
           setSelectedPickupDestination(null);
           setResponsePreference('direct_contact');
           setAttachments([]);
+          setExistingAttachments([]);
           navigation.goBack();
         });
       }
     } catch (error: any) {
-      const errorMessage = error?.message || 'Failed to post job. Please try again.';
+      
+      const errorMessage = error || error?.message || (isEditMode ? 'Failed to update job. Please try again.' : 'Failed to post job. Please try again.');
       showErrorAlert(errorMessage);
     }
   };
@@ -328,7 +456,7 @@ console.log(jobData);
               color={Colors.black}
             />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Post Jobs Super Fast </Text>
+        <Text style={styles.headerTitle}>{isEditMode ? 'Edit Job' : 'Post Jobs Super Fast'}</Text>
         </View>
   
       
@@ -379,6 +507,9 @@ console.log(jobData);
             containerStyle={styles.input}
             leftIcon={<Ionicons name="cash-outline" size={20} color="#9AA0A6" />}
           />
+          <Text style={styles.currencyNote}>
+            Payment as per local currency of your location.
+          </Text>
         </View>
 
         {/* Job Type Selection */}
@@ -693,7 +824,11 @@ console.log(jobData);
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
               {attachments.map((uri, idx) => (
                 <View key={`${uri}-${idx}`} style={styles.thumbWrap}>
-                  <Image source={{ uri }} style={styles.thumb} contentFit="cover" />
+                  <Image 
+                    source={{ uri: getAttachmentUri(uri) }} 
+                    style={styles.thumb} 
+                    contentFit="cover" 
+                  />
                   <TouchableOpacity 
                     style={styles.removeButton}
                     onPress={() => removeAttachment(idx)}
@@ -710,7 +845,7 @@ console.log(jobData);
         {/* Submit Button */}
         <View style={styles.buttonContainer}>
           <Button
-            label={loading ? "Posting..." : "Post Now"}
+            label={loading ? (isEditMode ? "Updating..." : "Posting...") : (isEditMode ? "Save Changes" : "Post Now")}
             onPress={handleSubmit}
             disabled={loading}
             style={styles.submitButton}
@@ -836,6 +971,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.black,
     marginBottom: 8,
+  },
+  currencyNote: {
+    fontSize: 12,
+    color: Colors.gray,
+    marginTop: 6,
+    fontStyle: 'italic',
   },
   input: {
     height: 50,

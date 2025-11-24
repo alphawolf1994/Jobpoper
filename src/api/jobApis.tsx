@@ -84,16 +84,58 @@ export const updateJobApi = async (jobId: string, jobData: {
     title?: string;
     description?: string;
     cost?: string;
-    location?: string;
+    location?: string | object;
+    jobType?: string | object;
     urgency?: string;
     scheduledDate?: string;
     scheduledTime?: string;
+    responsePreference?: 'direct_contact' | 'show_interest';
     attachments?: string[];
+    existingAttachments?: string[];
 }) => {
     try {
-        const res = await axiosInstance.put(`/api/jobs/${jobId}`, jobData);
+        // Build multipart form data
+        const formData = new FormData();
+        if (jobData.title) formData.append("title", jobData.title);
+        if (jobData.description) formData.append("description", jobData.description);
+        if (jobData.cost) formData.append("cost", jobData.cost);
+        if (jobData.jobType !== undefined) {
+            formData.append(
+                "jobType",
+                typeof jobData.jobType === 'string' ? jobData.jobType : JSON.stringify(jobData.jobType)
+            );
+        }
+        if (jobData.location !== undefined) {
+            formData.append(
+                "location",
+                typeof jobData.location === 'string' ? jobData.location : JSON.stringify(jobData.location)
+            );
+        }
+        if (jobData.urgency) formData.append("urgency", jobData.urgency);
+        if (jobData.scheduledDate) formData.append("scheduledDate", jobData.scheduledDate);
+        if (jobData.scheduledTime) formData.append("scheduledTime", jobData.scheduledTime);
+        if (jobData.responsePreference) formData.append("responsePreference", jobData.responsePreference);
+        // Existing attachments as JSON string
+        if (jobData.existingAttachments) {
+            formData.append("existingAttachments", JSON.stringify(jobData.existingAttachments));
+        }
+        // New attachments as files
+        if (jobData.attachments && Array.isArray(jobData.attachments)) {
+            jobData.attachments.slice(0, 5).forEach((uri, index) => {
+                const inferredName = uri.split("/").pop() || `attachment_${index + 1}.jpg`;
+                const ext = inferredName.split(".").pop()?.toLowerCase();
+                const mime = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : ext === "heic" ? "image/heic" : "image/jpeg";
+                formData.append("attachments", { uri, name: inferredName, type: mime } as unknown as Blob);
+            });
+        }
+        console.log("Update Job Data Attachments:", formData);
+        console.log("Update Job jobId:", jobId);
+        const res = await axiosInstance.put(`/jobs/${jobId}`, formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+        });
         return res.data;
     } catch (error: any) {
+        console.log("Error in updateJobApi:", error);
         throw new Error(error.response?.data?.message || "Failed to update job");
     }
 };
@@ -190,5 +232,15 @@ export const updateJobStatusApi = async (jobId: string, status: string) => {
         return res.data;
     } catch (error: any) {
         throw new Error(error.response?.data?.message || "Failed to update job status");
+    }
+};
+
+// Expire old jobs API (cleanup endpoint)
+export const expireOldJobsApi = async () => {
+    try {
+        const res = await axiosInstance.post("/jobs/expire-old");
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Failed to expire old jobs");
     }
 };

@@ -63,7 +63,7 @@ const LocationAutocomplete: React.FC<LocationAutocompleteProps> = ({
 
     try {
       setIsLoading(true);
-      const typesParam = mode === 'cities' ? '&types=(cities)' : '&types=address';
+      const typesParam = mode === 'cities' ? '&types=(cities)' : '';
       const response = await fetch(
         `https://maps.googleapis.com/maps/api/place/autocomplete/json?input=${encodeURIComponent(query)}&key=${API_KEY}${typesParam}&language=en`
       );

@@ -9,7 +9,8 @@ import {
   getHotJobsApi,
   getListedJobsApi,
   getMyInterestedJobsApi,
-  updateJobStatusApi
+  updateJobStatusApi,
+  expireOldJobsApi
 } from "../../api/jobApis";
 import { Job, JobResponse, CreateJobPayload, HotJobsResponse, ListedJobsResponse } from "../../interface/interfaces";
 
@@ -116,7 +117,8 @@ export const updateJob = createAsyncThunk(
       const response = await updateJobApi(jobId, jobData);
       return response;
     } catch (error: any) {
-      return rejectWithValue(error?.message || "Failed to update job");
+      console.log("Error in updateJob thunk:", error);
+      return rejectWithValue(error?.message || error?.Error || "Failed to update job");
     }
   }
 );
@@ -249,6 +251,19 @@ export const updateJobStatus = createAsyncThunk(
       return response;
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to update job status");
+    }
+  }
+);
+
+// Expire Old Jobs (cleanup)
+export const expireOldJobs = createAsyncThunk(
+  "job/expireOldJobs",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await expireOldJobsApi();
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "Failed to expire old jobs");
     }
   }
 );
@@ -553,6 +568,16 @@ const jobSlice = createSlice({
       .addCase(updateJobStatus.rejected, (state, action) => {
         state.error = action.payload as string;
         state.loading = false;
+      })
+      // Expire old jobs
+      .addCase(expireOldJobs.pending, (state) => {
+        state.error = null;
+      })
+      .addCase(expireOldJobs.fulfilled, (state) => {
+        state.error = null;
+      })
+      .addCase(expireOldJobs.rejected, (state, action) => {
+        state.error = action.payload as string;
       });
   },
 });
