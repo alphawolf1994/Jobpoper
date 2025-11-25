@@ -1,12 +1,13 @@
 import { PayloadAction, createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import { 
-  sendPhoneVerificationApi, 
-  verifyPhoneApi, 
-  registerUserApi, 
-  loginUserApi, 
-  completeProfileApi, 
-  getCurrentUserApi, 
-  logoutUserApi 
+import {
+  sendPhoneVerificationApi,
+  verifyPhoneApi,
+  registerUserApi,
+  loginUserApi,
+  completeProfileApi,
+  getCurrentUserApi,
+  logoutUserApi,
+  changePinApi
 } from "../../api/authApis";
 import { setAuthToken } from "../../api/axiosInstance";
 import { JobPoperUser, AuthResponse } from "../../interface/interfaces";
@@ -125,6 +126,19 @@ export const logoutUser = createAsyncThunk(
       return response;
     } catch (error: any) {
       return rejectWithValue(error?.message || "Logout failed");
+    }
+  }
+);
+
+// Change PIN
+export const changePin = createAsyncThunk(
+  "auth/changePin",
+  async ({ oldPin, newPin }: { oldPin: string; newPin: string }, { rejectWithValue }) => {
+    try {
+      const response = await changePinApi(oldPin, newPin);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "Failed to change PIN");
     }
   }
 );
@@ -278,6 +292,19 @@ const authSlice = createSlice({
         state.loading = false;
         state.error = null;
         setAuthToken(null);
+      })
+      // Change PIN
+      .addCase(changePin.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(changePin.rejected, (state, action) => {
+        state.error = action.payload as string;
+        state.loading = false;
+      })
+      .addCase(changePin.fulfilled, (state) => {
+        state.loading = false;
+        state.error = null;
       })
   },
 });

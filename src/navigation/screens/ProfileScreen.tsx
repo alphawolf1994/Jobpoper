@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React from "react";
 import {
   View,
   Text,
@@ -6,143 +6,44 @@ import {
   TouchableOpacity,
   Image,
   ScrollView,
-  KeyboardAvoidingView,
-  Platform,
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as ImagePicker from 'expo-image-picker';
 import { Colors } from "../../utils";
 import Header from "../../components/Header";
 import { IMAGE_BASE_URL } from "../../api/baseURL";
-import MyTextInput from "../../components/MyTextInput";
-import Button from "../../components/Button";
-import Loader from "../../components/Loader";
-import LocationAutocomplete from "../../components/LocationAutocomplete";
 import ImagePath from "../../assets/images/ImagePath";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
-import { getCurrentUser, completeProfile, logoutUser, clearAuth } from "../../redux/slices/authSlice";
+import { logoutUser, clearAuth } from "../../redux/slices/authSlice";
 import { RootState, AppDispatch } from "../../redux/store";
 import { useNavigation } from "@react-navigation/native";
 import { useAlertModal } from "../../hooks/useAlertModal";
+import { setCurrentLocation } from "@/src/redux/slices/jobSlice";
+
+interface MenuItemProps {
+  icon: string;
+  label: string;
+  onPress: () => void;
+  iconColor?: string;
+}
+
+const MenuItem: React.FC<MenuItemProps> = ({ icon, label, onPress, iconColor }) => (
+  <TouchableOpacity style={styles.menuItem} onPress={onPress} activeOpacity={0.7}>
+    <View style={styles.menuItemLeft}>
+      <View style={[styles.iconContainer, iconColor && { backgroundColor: iconColor + '20' }]}>
+        <Ionicons name={icon as any} size={24} color={iconColor || Colors.primary} />
+      </View>
+      <Text style={styles.menuItemText}>{label}</Text>
+    </View>
+    <Ionicons name="chevron-forward" size={20} color={Colors.gray} />
+  </TouchableOpacity>
+);
 
 const ProfileScreen = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch<AppDispatch>();
-  const { user, loading, error } = useSelector((state: RootState) => state.auth);
+  const { user } = useSelector((state: RootState) => state.auth);
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
-  
-  // Profile data state
-  const [fullName, setFullName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [location, setLocation] = useState({
-    city: "",
-    state: "",
-    country: "",
-    fullAddress: ""
-  });
-  const [dob, setDob] = useState<Date | null>(null);
-  const [showPicker, setShowPicker] = useState(false);
-  
-  // Profile image state
-  const [profileImage, setProfileImage] = useState<string | null>(null);
-
-  // Load user data on component mount
-  useEffect(() => {
-    if (user) {
-      setFullName(user.profile?.fullName || "");
-      setEmail(user.profile?.email || "");
-      setPhone(user.phoneNumber || "");
-      
-      // Parse location from user profile
-      if (user.profile?.location) {
-        const locationParts = user.profile.location.split(',');
-        setLocation({
-          city: locationParts[0]?.trim() || "",
-          state: locationParts[1]?.trim() || "",
-          country: locationParts[2]?.trim() || "",
-          fullAddress: user.profile.location
-        });
-      }
-      
-      setDob(user.profile?.dateOfBirth ? new Date(user.profile.dateOfBirth) : null);
-      setProfileImage(user.profile?.profileImage || null);
-    } else {
-      // Fetch current user data if not available
-      dispatch(getCurrentUser());
-    }
-  }, [dispatch, user]);
-
-  // Request permissions for image picker
-  const requestPermissions = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      showAlert({
-        title: "Permission denied",
-        message: "Sorry, we need camera roll permissions to update your profile picture!",
-        type: "warning",
-      });
-      return false;
-    }
-    return true;
-  };
-
-  // Handle image picker
-  const pickImage = async () => {
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    });
-
-    if (!result.canceled) {
-      setProfileImage(result.assets[0].uri);
-    }
-  };
-
-  // Handle profile update
-  const handleUpdateProfile = async () => {
-    if (!fullName.trim() || !email.trim()) {
-      showAlert({
-        title: "Error",
-        message: "Please fill in all required fields.",
-        type: "error",
-      });
-      return;
-    }
-
-    try {
-      const profileData = {
-        fullName: fullName.trim(),
-        email: email.trim(),
-        location: location.fullAddress || `${location.city}, ${location.state}, ${location.country}`.trim(),
-        dateOfBirth: dob ? dob.toISOString().split('T')[0] : undefined,
-        profileImage: profileImage || undefined,
-      };
-
-      const result = await dispatch(completeProfile(profileData)).unwrap();
-      
-      if (result.status === 'success') {
-        showAlert({
-          title: "Success",
-          message: "Profile updated successfully!",
-          type: "success",
-        });
-      }
-    } catch (error: any) {
-      showAlert({
-        title: "Error",
-        message: error.message || "Profile update failed. Please try again.",
-        type: "error",
-      });
-    }
-  };
 
   // Handle logout
   const handleLogout = () => {
@@ -162,6 +63,7 @@ const ProfileScreen = () => {
               await dispatch(logoutUser()).unwrap();
             } finally {
               dispatch(clearAuth());
+              dispatch(setCurrentLocation(''))
               showAlert({
                 title: "Success",
                 message: "Logged out successfully!",
@@ -181,142 +83,67 @@ const ProfileScreen = () => {
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
-      <SafeAreaView edges={['top','bottom','left','right']} style={{flex: 1}}>
-        <Header />
-        
-        {/* Header Section */}
-        <View style={styles.headerSection}>
-          <View style={styles.headerTitleRow}>
-            <View style={styles.headerTextContainer}>
-              <Text style={styles.headerTitle}>Profile Settings</Text>
-              <Text style={styles.headerSubtitle}>Update your personal information</Text>
-            </View>
-            <TouchableOpacity 
-              style={styles.logoutButton} 
-              onPress={handleLogout}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="log-out-outline" size={24} color={Colors.primary} />
-            </TouchableOpacity>
+    <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={styles.container}>
+      <Header />
+
+      {/* Header with Settings Icon */}
+      <View style={styles.headerSection}>
+        <Text style={styles.headerTitle}>Profile</Text>
+        {/* <TouchableOpacity style={styles.settingsButton} activeOpacity={0.7}>
+          <Ionicons name="settings-outline" size={24} color={Colors.black} />
+        </TouchableOpacity> */}
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Profile Header */}
+        <View style={styles.profileHeader}>
+          <View style={styles.avatarContainer}>
+            {user?.profile?.profileImage ? (
+              <Image
+                source={{ uri: resolveImageUri(user.profile.profileImage) || "" }}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <Image source={ImagePath.avatarIcon} style={styles.avatarImage} />
+            )}
           </View>
+          <Text style={styles.userName}>{user?.profile?.fullName || "User Name"}</Text>
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          {/* Avatar Section */}
-          <View style={styles.avatarSection}>
-            <View style={styles.avatarContainer}>
-              {profileImage ? (
-                <Image source={{ uri: resolveImageUri(profileImage) || "" }} style={styles.avatarImage} />
-              ) : (
-                <Image source={ImagePath.avatarIcon} style={styles.avatarImage} />
-              )}
-              
-              <TouchableOpacity 
-                style={styles.cameraButton} 
-                onPress={pickImage}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="camera" size={20} color={Colors.white} />
-              </TouchableOpacity>
-            </View>
-            <Text style={styles.avatarText}>Tap to change photo</Text>
-          </View>
+        {/* Menu Items */}
+        <View style={styles.menuSection}>
+          <MenuItem
+            icon="person-outline"
+            label="User details"
+            onPress={() => (navigation as any).navigate('UserDetailsScreen')}
+            iconColor="#F59E0B"
+          />
 
-          {/* Form Fields */}
-          <View style={styles.formSection}>
-            <MyTextInput 
-              label="Full Name" 
-              placeholder="Enter your full name" 
-              value={fullName} 
-              onChange={setFullName} 
-              firstContainerStyle={{ marginTop: 24 }} 
-            />
-            
-            <MyTextInput 
-              label="Email" 
-              placeholder="Enter your email" 
-              value={email} 
-              onChange={setEmail} 
-              keyboardType="email-address" 
-            />
-            
-            <MyTextInput 
-              label="Phone Number" 
-              placeholder="Your phone number" 
-              value={phone} 
-              onChange={setPhone} 
-              editable={false}
-            />
-            
-            {/* Location input - disabled to show current location */}
-            <LocationAutocomplete 
-              label="Location" 
-              placeholder="Your location" 
-              value={location.fullAddress}
-              onLocationSelect={(locationData) => setLocation(locationData)}
-              firstContainerStyle={{ marginTop: 0 }}
-              // disabled={true}
-            />
+          <MenuItem
+            icon="key-outline"
+            label="Security PIN"
+            onPress={() => (navigation as any).navigate('ChangePinScreen')}
+            iconColor="#3B82F6"
+          />
 
-            {/* Date of Birth Picker */}
-            <TouchableOpacity onPress={() => setShowPicker(true)} activeOpacity={0.8}>
-              <View style={styles.inputWrapperRelative}>
-                <MyTextInput
-                  label="Date of Birth"
-                  placeholder="Select date of birth"
-                  value={dob ? dob.toDateString() : ""}
-                  editable={false}
-                />
-                <Ionicons
-                  name="calendar-outline"
-                  size={20}
-                  color={Colors.primary}
-                  style={styles.trailingIcon}
-                />
-              </View>
-            </TouchableOpacity>
-            
-            {showPicker && (
-              <DateTimePicker
-                mode="date"
-                value={dob ?? new Date(2000, 0, 1)}
-                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                maximumDate={new Date()}
-                minimumDate={new Date(1900, 0, 1)}
-                onChange={(_, date) => {
-                  setShowPicker(false);
-                  if (date) setDob(date);
-                }}
-              />
-            )}
+          <MenuItem
+            icon="location-outline"
+            label="Manage Location"
+            onPress={() => (navigation as any).navigate('ManageLocationsScreen')}
+            iconColor="#10B981"
+          />
 
-            {/* Manage locations */}
-            <Button 
-              label="Manage locations"
-              onPress={() => (navigation as any).navigate('ManageLocationsScreen')}
-              style={{ marginTop: 12, backgroundColor: Colors.white, borderWidth: 1, borderColor: Colors.lightGray }}
-              textStyle={{ color: Colors.primary }}
-            />
+          <MenuItem
+            icon="log-out-outline"
+            label="Logout"
+            onPress={handleLogout}
+            iconColor="#EF4444"
+          />
+        </View>
+      </ScrollView>
 
-            {/* Save Button */}
-            <Button 
-              label={loading ? "Updating Profile..." : "Update Profile"} 
-              onPress={handleUpdateProfile}
-              disabled={loading}
-              style={{ 
-                backgroundColor: loading ? Colors.gray : Colors.primary, 
-                borderRadius: 12, 
-                marginTop: 32,
-                marginBottom: 20
-              }} 
-            />
-          </View>
-        </ScrollView>
-        <Loader visible={loading} message="Updating your profile..." />
-        {alertModal}
-      </SafeAreaView>
-    </KeyboardAvoidingView>
+      {alertModal}
+    </SafeAreaView>
   );
 };
 
@@ -329,86 +156,88 @@ const styles = StyleSheet.create({
   },
   headerSection: {
     paddingHorizontal: 16,
-    paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.lightGray,
-  },
-  headerTitleRow: {
+    paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  headerTextContainer: {
-    flex: 1,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGray,
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
     color: Colors.black,
-    marginBottom: 4,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: Colors.gray,
-  },
-  logoutButton: {
+  settingsButton: {
     padding: 8,
     borderRadius: 8,
     backgroundColor: Colors.lightGray,
-    marginLeft: 16,
   },
   scrollContent: {
-    paddingHorizontal: 16,
     paddingBottom: 20,
   },
-  avatarSection: {
+  profileHeader: {
     alignItems: 'center',
-    paddingVertical: 32,
+    paddingVertical: 40,
+    paddingHorizontal: 16,
   },
   avatarContainer: {
-    position: 'relative',
-    marginBottom: 12,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
   },
   avatarImage: {
     width: 120,
     height: 120,
     borderRadius: 60,
     borderWidth: 4,
-    borderColor: Colors.lightGray,
-  },
-  cameraButton: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    backgroundColor: Colors.primary,
-    borderRadius: 20,
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 3,
     borderColor: Colors.white,
+  },
+  userName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: Colors.black,
+    marginTop: 8,
+  },
+  menuSection: {
+    paddingHorizontal: 16,
+    gap: 12,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: Colors.white,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.lightGray,
     shadowColor: '#000',
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.05,
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
-    elevation: 5,
+    elevation: 2,
   },
-  avatarText: {
-    fontSize: 14,
-    color: Colors.gray,
-    fontWeight: '500',
+  menuItemLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
   },
-  formSection: {
-    paddingTop: 16,
+  iconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.lightGray,
   },
-  inputWrapperRelative: {
-    position: 'relative',
-  },
-  trailingIcon: {
-    position: 'absolute',
-    right: 16,
-    bottom: 16,
+  menuItemText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.black,
   },
 });
-

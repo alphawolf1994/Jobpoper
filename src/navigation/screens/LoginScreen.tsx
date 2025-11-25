@@ -28,22 +28,22 @@ const LoginScreen = () => {
   const loading = authState?.loading || false;
   const error = authState?.error || null;
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
-  
+
   const [phoneNumber, setPhoneNumber] = useState("");
   const [formattedPhoneNumber, setFormattedPhoneNumber] = useState("");
   const [pin, setPin] = useState(['', '', '', '']);
   const [step, setStep] = useState(1); // 1 = phone, 2 = PIN
-  
+
   const pinInputRefs = useRef<(TextInput | null)[]>([null, null, null, null]);
 
   const handlePinChange = (value: string, index: number) => {
     if (value.length > 1) return; // Prevent multiple characters
-    
+
     // Clear error when user starts typing
     if (error) {
       dispatch(clearError());
     }
-    
+
     const newPin = [...pin];
     newPin[index] = value;
     setPin(newPin);
@@ -53,7 +53,7 @@ const LoginScreen = () => {
       pinInputRefs.current[index + 1]?.focus();
     } else if (value && index === 3) {
       // All 4 digits entered, auto-login
-     
+
     }
   };
 
@@ -90,7 +90,7 @@ const LoginScreen = () => {
 
   const handleLogin = async () => {
     const pinString = pin.join('');
-    
+
     if (pinString.length !== 4) {
       showAlert({
         title: "Error",
@@ -102,77 +102,38 @@ const LoginScreen = () => {
 
     try {
       console.log("formattedPhoneNumber =>", formattedPhoneNumber)
-      const result = await dispatch(loginUser({ 
-        phoneNumber: formattedPhoneNumber.trim(), 
-        pin: pinString 
+      const result = await dispatch(loginUser({
+        phoneNumber: formattedPhoneNumber.trim(),
+        pin: pinString
       })).unwrap();
-      
+
       if (result.status === 'success') {
         // After successful login, get user details
         try {
           const userResult = await dispatch(getCurrentUser()).unwrap();
-          
+
           if (userResult.status === 'success' && userResult.data?.user) {
             const userData = userResult.data.user;
-            
-            // Check if profile is complete
+
+            // Check if profile is complete and navigate directly
             if (userData.profile?.isProfileComplete) {
-              showAlert({
-                title: "Success",
-                message: "Login successful!",
-                type: "success",
-                buttons: [
-                  {
-                    label: "OK",
-                    onPress: () => (navigation as any).navigate("HomeTabs"),
-                  },
-                ],
-              });
+              (navigation as any).navigate("HomeTabs");
             } else {
-              showAlert({
-                title: "Success",
-                message: "Login successful! Please complete your profile.",
-                type: "success",
-                buttons: [
-                  {
-                    label: "OK",
-                    onPress: () => (navigation as any).navigate("BasicProfileScreen"),
-                  },
-                ],
-              });
+              (navigation as any).navigate("BasicProfileScreen");
             }
           } else {
-            showAlert({
-              title: "Success",
-              message: "Login successful!",
-              type: "success",
-              buttons: [
-                {
-                  label: "OK",
-                  onPress: () => (navigation as any).navigate("HomeTabs"),
-                },
-              ],
-            });
+            // If no user data, navigate to HomeTabs
+            (navigation as any).navigate("HomeTabs");
           }
         } catch (userError) {
           // If getCurrentUser fails, still navigate to HomeTabs
-          showAlert({
-            title: "Success",
-            message: "Login successful!",
-            type: "success",
-            buttons: [
-              {
-                label: "OK",
-                onPress: () => (navigation as any).navigate("HomeTabs"),
-              },
-            ],
-          });
+          (navigation as any).navigate("HomeTabs");
         }
       }
     } catch (error: any) {
       showAlert({
         title: "Error",
-        message: error.message || "Login failed. Please try again.",
+        message: error || "Login failed. Please try again.",
         type: "error",
       });
       setPin(['', '', '', '']);
@@ -247,7 +208,7 @@ const LoginScreen = () => {
               {step === 1 ? 'Welcome Back!' : 'Enter Your PIN'}
             </Text>
             <Text style={styles.subtitle}>
-              {step === 1 
+              {step === 1
                 ? 'Enter your phone number to continue'
                 : 'Enter your 4-digit PIN to login'
               }
@@ -275,8 +236,8 @@ const LoginScreen = () => {
                 error={error}
                 firstContainerStyle={{ marginTop: 0 }}
               />
-              <Button 
-                label="Continue" 
+              <Button
+                label="Continue"
                 onPress={handlePhoneSubmit}
                 style={styles.continueButton}
                 disabled={!formattedPhoneNumber.trim()}
@@ -291,8 +252,8 @@ const LoginScreen = () => {
               {error && (
                 <Text style={styles.errorText}>{error}</Text>
               )}
-              <Button 
-                label={loading ? "Logging in..." : "Login"} 
+              <Button
+                label={loading ? "Logging in..." : "Login"}
                 onPress={handleLogin}
                 style={{
                   ...styles.loginButton,
@@ -319,40 +280,40 @@ const LoginScreen = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: Colors.white 
+  container: {
+    flex: 1,
+    backgroundColor: Colors.white
   },
-  content: { 
-    padding: 20, 
+  content: {
+    padding: 20,
     paddingTop: 12,
     flex: 1,
     justifyContent: 'center'
   },
-  backBtn: { 
-    position: 'absolute', 
-    left: 16, 
-    top: 12, 
-    zIndex: 1 
+  backBtn: {
+    position: 'absolute',
+    left: 16,
+    top: 12,
+    zIndex: 1
   },
-  logoWrap: { 
-    alignItems: "center", 
-    marginBottom: 20 
+  logoWrap: {
+    alignItems: "center",
+    marginBottom: 20
   },
   emoji: {
     fontSize: 60,
     marginBottom: 20,
   },
-  title: { 
-    fontSize: 28, 
-    fontWeight: "bold", 
-    color: Colors.black, 
+  title: {
+    fontSize: 28,
+    fontWeight: "bold",
+    color: Colors.black,
     marginBottom: 8,
     textAlign: 'center'
   },
-  subtitle: { 
-    fontSize: 16, 
-    color: Colors.gray, 
+  subtitle: {
+    fontSize: 16,
+    color: Colors.gray,
     textAlign: 'center',
     lineHeight: 22,
     paddingHorizontal: 20

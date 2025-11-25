@@ -15,12 +15,14 @@ type LocationsState = {
   items: SavedLocation[];
   loading: boolean;
   error: string | null;
+  lastAddedLocation: SavedLocation | null;
 };
 
 const initialState: LocationsState = {
   items: [],
   loading: false,
   error: null,
+  lastAddedLocation: null,
 };
 
 // Save location async thunk
@@ -82,6 +84,9 @@ const locationsSlice = createSlice({
     clearError: (state) => {
       state.error = null;
     },
+    clearLastAddedLocation: (state) => {
+      state.lastAddedLocation = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -97,6 +102,7 @@ const locationsSlice = createSlice({
           const idx = state.items.findIndex((l) => l.id === location.id);
           if (idx >= 0) state.items[idx] = location;
           else state.items.unshift(location);
+          state.lastAddedLocation = location;
         }
         state.loading = false;
         state.error = null;
@@ -139,6 +145,6 @@ const locationsSlice = createSlice({
   },
 });
 
-export const { addLocation, removeLocation, clearLocations, clearError } = locationsSlice.actions;
+export const { addLocation, removeLocation, clearLocations, clearError, clearLastAddedLocation } = locationsSlice.actions;
 export default locationsSlice.reducer;
 

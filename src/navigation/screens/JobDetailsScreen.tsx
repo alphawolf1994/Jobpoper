@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   FlatList,
   Dimensions,
+  Modal,
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from "../../utils";
@@ -32,9 +33,13 @@ const JobDetailsScreen = () => {
   const { currentJob, loading, error } = useSelector((state: RootState) => state.job);
   const { user } = useSelector((state: RootState) => state.auth);
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
-  
+
   // Get jobId from route params
   const jobId = (route.params as any)?.jobId;
+
+  // Image modal state for attachment preview
+  const [imageModalVisible, setImageModalVisible] = useState(false);
+  const [imageModalUri, setImageModalUri] = useState<string | null>(null);
 
   useEffect(() => {
     if (jobId) {
@@ -48,19 +53,19 @@ const JobDetailsScreen = () => {
 
   const formatJobTags = (job: Job) => {
     const tags = [];
-    
+
     // Add urgency
     if (job.urgency === 'Urgent') {
       tags.push('Urgent');
     } else {
       tags.push('Normal');
     }
-    
+
     // Add scheduled time
     if (job.scheduledTime) {
       tags.push(job.scheduledTime);
     }
-    
+
     // Add status
     if (job.status) {
       tags.push(job.status);
@@ -72,7 +77,7 @@ const JobDetailsScreen = () => {
 
   const getLocationDisplay = (job: Job): string => {
     if (!job.location) return 'Location not specified';
-    
+
     if (job.jobType === 'Pickup') {
       const pickupLocation = job.location as { source: SavedLocationData; destination: SavedLocationData };
       if (pickupLocation.source && pickupLocation.destination) {
@@ -84,21 +89,20 @@ const JobDetailsScreen = () => {
         return onSiteLocation.fullAddress;
       }
     }
-    
+
     return job.displayAddress || 'Location not specified';
   };
 
   const handleContact = () => {
     if (!currentJob) return;
-    
+
     const contactInfo = currentJob.contactInfo || currentJob.postedBy?.phoneNumber;
-    
+
     if (contactInfo) {
       showAlert({
         title: "Contact Job Poster",
-        message: `Would you like to contact ${
-          currentJob.postedBy?.profile?.fullName || "the job poster"
-        }?`,
+        message: `Would you like to contact ${currentJob.postedBy?.profile?.fullName || "the job poster"
+          }?`,
         type: "info",
         buttons: [
           {
@@ -174,7 +178,7 @@ const JobDetailsScreen = () => {
 
   const handleEditJob = () => {
     if (!currentJob) return;
-    
+
     navigation.navigate('PostJobScreen', {
       isEditMode: true,
       jobData: currentJob,
@@ -249,15 +253,23 @@ const JobDetailsScreen = () => {
           horizontal
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item, index) => `${item}-${index}`}
-          renderItem={({ item }) => (
-            <View style={styles.attachmentCard}>
-              <Image
-                source={{ uri: `${IMAGE_BASE_URL}${item.startsWith("/") ? item : `/${item}`}` }}
-                style={styles.attachmentImage}
-                contentFit="cover"
-              />
-            </View>
-          )}
+          renderItem={({ item }) => {
+            const uri = `${IMAGE_BASE_URL}${item.startsWith("/") ? item : `/${item}`}`;
+            return (
+              <TouchableOpacity onPress={() => {
+                setImageModalUri(uri);
+                setImageModalVisible(true);
+              }} activeOpacity={0.9}>
+                <View style={styles.attachmentCard}>
+                  <Image
+                    source={{ uri }}
+                    style={styles.attachmentImage}
+                    contentFit="cover"
+                  />
+                </View>
+              </TouchableOpacity>
+            );
+          }}
           ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
         />
       </View>
@@ -296,7 +308,7 @@ const JobDetailsScreen = () => {
           </View>
         </View>
 
-        {isMyJob && (
+        {/* {isMyJob && (
           <View style={styles.section}>
             <TouchableOpacity 
               style={styles.editButton} 
@@ -306,7 +318,7 @@ const JobDetailsScreen = () => {
               <Text style={styles.editButtonText}>Edit Job</Text>
             </TouchableOpacity>
           </View>
-        )}
+        )} */}
       </ScrollView>
     );
   };
@@ -379,6 +391,34 @@ const JobDetailsScreen = () => {
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
+      {/* Image preview modal */}
+      <Modal
+        visible={imageModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setImageModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <TouchableOpacity style={styles.modalClose} onPress={() => { setImageModalVisible(false); setImageModalUri(null); }}>
+            <Ionicons name="close" size={28} color={Colors.white} />
+          </TouchableOpacity>
+          <ScrollView
+            style={styles.modalScroll}
+            contentContainerStyle={styles.modalContent}
+            maximumZoomScale={3}
+            minimumZoomScale={1}
+            centerContent
+          >
+            {imageModalUri && (
+              <Image
+                source={{ uri: imageModalUri }}
+                style={styles.modalImage}
+                contentFit="contain"
+              />
+            )}
+          </ScrollView>
+        </View>
+      </Modal>
       {/* Header Section with Blue Background */}
       <View style={styles.headerSection}>
         {/* Navigation and Bookmark */}
@@ -386,9 +426,14 @@ const JobDetailsScreen = () => {
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <AntDesign name="arrow-left" size={24} color={Colors.white} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.bookmarkButton} onPress={handleBookmark}>
-            <Ionicons name="flame" size={20} color={Colors.orange} />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            {isMyJob && (<TouchableOpacity style={styles.actionButton} onPress={handleEditJob}>
+              <AntDesign name="edit" size={18} color={Colors.primary} />
+            </TouchableOpacity>)}
+            {currentJob.urgency === 'Urgent' && <View style={styles.bookmarkButton}>
+              <Ionicons name="flame" size={20} color={Colors.orange} />
+            </View>}
+          </View>
         </View>
 
         {/* Poster Avatar */}
@@ -404,7 +449,7 @@ const JobDetailsScreen = () => {
         <View style={styles.jobInfo}>
           <Text style={styles.jobTitle}>{currentJob.title}</Text>
           <Text style={styles.companyName}>Posted by {currentJob.postedBy?.profile?.fullName || 'Unknown'}</Text>
-          
+
           {/* <View style={styles.salaryLocationRow}>
             <Text style={styles.salary}>{currentJob.cost}</Text>
             <Text style={styles.location} numberOfLines={1}>{locationDisplay}</Text>
@@ -412,19 +457,37 @@ const JobDetailsScreen = () => {
 
           {/* Tags */}
           <View style={styles.tagsContainer}>
-            {jobTags.map((tag, index) => (
-              <View key={index} style={styles.tag}>
-                <Text style={styles.tagText}>{tag}</Text>
-              </View>
-            ))}
+            {jobTags && jobTags.length > 0 ? (
+              jobTags.map((tag, index) => {
+                const isLast = index === jobTags.length - 1;
+                return (
+                  <View
+                    key={index}
+                    style={[
+                      styles.tag,
+                      isLast && { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12 },
+                    ]}
+                  >
+                    {isLast ? (
+                      <>
+                        <Ionicons name="cash-outline" size={14} color={Colors.white} style={{ marginRight: 8 }} />
+                        <Text style={styles.tagText}>{tag}</Text>
+                      </>
+                    ) : (
+                      <Text style={styles.tagText}>{tag}</Text>
+                    )}
+                  </View>
+                );
+              })
+            ) : null}
           </View>
         </View>
       </View>
 
       {/* Tab Navigation */}
       <View style={styles.tabContainer}>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'summary' && styles.activeTab]} 
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'summary' && styles.activeTab]}
           onPress={() => setActiveTab('summary')}
         >
           <Text style={[styles.tabText, activeTab === 'summary' && styles.activeTabText]}>
@@ -432,9 +495,9 @@ const JobDetailsScreen = () => {
           </Text>
           {activeTab === 'summary' && <View style={styles.tabIndicator} />}
         </TouchableOpacity>
-        
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'about' && styles.activeTab]} 
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'about' && styles.activeTab]}
           onPress={() => setActiveTab('about')}
         >
           <Text style={[styles.tabText, activeTab === 'about' && styles.activeTabText]}>
@@ -442,9 +505,9 @@ const JobDetailsScreen = () => {
           </Text>
           {activeTab === 'about' && <View style={styles.tabIndicator} />}
         </TouchableOpacity>
-        {isMyJob && (
-          <TouchableOpacity 
-            style={[styles.tab, activeTab === 'interests' && styles.activeTab]} 
+        {isMyJob && !isDirectContact && (
+          <TouchableOpacity
+            style={[styles.tab, activeTab === 'interests' && styles.activeTab]}
             onPress={() => setActiveTab('interests')}
           >
             <Text style={[styles.tabText, activeTab === 'interests' && styles.activeTabText]}>
@@ -472,7 +535,7 @@ const JobDetailsScreen = () => {
                   <View style={styles.interestLeft}>
                     <View style={styles.interestAvatar}>
                       {entry.user.profile.profileImage ? (
-                        <Image 
+                        <Image
                           source={{ uri: `${IMAGE_BASE_URL}${entry.user.profile.profileImage.startsWith('/') ? entry.user.profile.profileImage : `/${entry.user.profile.profileImage}`}` }}
                           style={styles.interestAvatarImage}
                           contentFit="cover"
@@ -513,8 +576,8 @@ const JobDetailsScreen = () => {
       {/* Action Button */}
       {!isMyJob && (
         <View style={styles.contactButtonContainer}>
-          <TouchableOpacity 
-            style={styles.contactButton} 
+          <TouchableOpacity
+            style={styles.contactButton}
             onPress={isDirectContact ? handleContact : handleShowInterest}
           >
             <Text style={styles.contactButtonText}>
@@ -582,6 +645,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 24,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  actionButton: {
+    padding: 8,
+    backgroundColor: Colors.white,
+    borderRadius: 50,
+    marginRight: 8,
   },
   backButton: {
     padding: 8,
@@ -767,6 +841,33 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalClose: {
+    position: 'absolute',
+    top: 60,
+    right: 20,
+    zIndex: 10,
+    padding: 8,
+  },
+  modalScroll: {
+    width: '100%',
+  },
+  modalContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  modalImage: {
+    width: SCREEN_WIDTH - 32,
+    height: (SCREEN_WIDTH - 32) * 1.2,
+    resizeMode: 'contain',
+  },
   detailRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -815,7 +916,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   posterStats: {
-    flexDirection: 'row',
+    // flexDirection: 'row',
     justifyContent: 'space-around',
     backgroundColor: Colors.lightGray,
     borderRadius: 12,
@@ -823,7 +924,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   statItem: {
-    alignItems: 'center',
+    // alignItems: 'center',
+    paddingHorizontal: 16,
+    marginBottom: 12,
   },
   statValue: {
     fontSize: 16,

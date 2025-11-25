@@ -150,9 +150,15 @@ const MyJobsScreen = () => {
       {/* Header Row - Title and Status */}
       <View style={styles.headerRow}>
         <Text style={styles.jobTitle}>{item.title}</Text>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+        <View style={styles.headerRow}>
+         {item.urgency === 'Urgent'&&<View style={styles.bookmarkButton} >
+                      <Ionicons name="flame" size={20} color={Colors.orange} />
+                    </View>}
+                    <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
           <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
         </View>
+        </View>
+        
       </View>
 
       {/* Description */}
@@ -570,5 +576,12 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontSize: 16,
     fontWeight: '600',
+  },
+    bookmarkButton: {
+    padding: 3,
+    borderWidth:1,
+    borderColor:Colors.orange,
+    borderRadius: 50,
+    marginRight: 8,
   },
 });

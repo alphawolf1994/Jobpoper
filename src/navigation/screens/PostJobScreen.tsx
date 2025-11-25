@@ -13,7 +13,7 @@ import { Image } from 'expo-image';
 import { useDispatch, useSelector } from 'react-redux';
 import { createJob, updateJob } from '../../redux/slices/jobSlice';
 import { AppDispatch, RootState } from '../../redux/store';
-import { SavedLocation } from '../../redux/slices/locationsSlice';
+import { SavedLocation, clearLastAddedLocation } from '../../redux/slices/locationsSlice';
 import { fetchLocations } from '../../redux/slices/locationsSlice';
 import { useAlertModal } from "../../hooks/useAlertModal";
 import { Job, SavedLocationData } from '../../interface/interfaces';
@@ -24,7 +24,7 @@ const PostJobScreen = () => {
   const route = useRoute();
   const dispatch = useDispatch<AppDispatch>();
   const { loading } = useSelector((state: RootState) => state.job);
-  const { items: savedLocations, loading: locationsLoading } = useSelector((state: RootState) => state.locations);
+  const { items: savedLocations, loading: locationsLoading, lastAddedLocation } = useSelector((state: RootState) => state.locations);
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
 
   // Check if in edit mode
@@ -57,7 +57,7 @@ const PostJobScreen = () => {
         },
       ],
     });
-    
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -67,18 +67,18 @@ const PostJobScreen = () => {
     time: '',
     urgency: '',
   });
-  
+
   // Job type state
   const [jobType, setJobType] = useState<'OnSite' | 'Pickup'>('OnSite');
-  
+
   // Response preference state
   const [responsePreference, setResponsePreference] = useState<'direct_contact' | 'show_interest'>('direct_contact');
-  
+
   // Selected locations for different types
   const [selectedOnSiteLocation, setSelectedOnSiteLocation] = useState<SavedLocation | null>(null);
   const [selectedPickupSource, setSelectedPickupSource] = useState<SavedLocation | null>(null);
   const [selectedPickupDestination, setSelectedPickupDestination] = useState<SavedLocation | null>(null);
-  
+
   // Location modal state
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [locationModalType, setLocationModalType] = useState<'onSite' | 'pickupSource' | 'pickupDestination'>('onSite');
@@ -105,12 +105,25 @@ const PostJobScreen = () => {
     d.setHours(0, 0, 0, 0);
     return d;
   };
-  
+
   // Fetch locations on mount and when screen is focused (in case user added a new location)
   useFocusEffect(
     React.useCallback(() => {
       dispatch(fetchLocations());
-    }, [dispatch])
+
+      // Check if a new location was added via Redux state
+      if (lastAddedLocation) {
+        if (locationModalType === 'onSite') {
+          setSelectedOnSiteLocation(lastAddedLocation);
+        } else if (locationModalType === 'pickupSource') {
+          setSelectedPickupSource(lastAddedLocation);
+        } else if (locationModalType === 'pickupDestination') {
+          setSelectedPickupDestination(lastAddedLocation);
+        }
+        // Clear the last added location so it doesn't trigger again
+        dispatch(clearLastAddedLocation());
+      }
+    }, [dispatch, lastAddedLocation, locationModalType])
   );
 
   // Initialize form with job data when in edit mode
@@ -155,7 +168,7 @@ const PostJobScreen = () => {
         // Parse time string (format: HH:MM AM/PM)
         const [time, period] = timeStr.split(' ');
         let [hours, minutes] = time.split(':').map(Number);
-        
+
         if (period === 'PM' && hours !== 12) {
           hours += 12;
         } else if (period === 'AM' && hours === 12) {
@@ -220,15 +233,15 @@ const PostJobScreen = () => {
   const [urgencyOpen, setUrgencyOpen] = useState(false);
   const [urgencyValue, setUrgencyValue] = useState<string | null>(null);
   const [urgencyItems, setUrgencyItems] = useState([
-    {label: 'Urgent', value: 'Urgent'},
-    {label: 'Normal', value: 'Normal'},
+    { label: 'Urgent', value: 'Urgent' },
+    { label: 'Normal', value: 'Normal' },
   ]);
 
   // Handle urgency change
   const handleUrgencyChange = (callback: any) => {
     setUrgencyValue(callback);
     const value = typeof callback === 'function' ? callback(urgencyValue) : callback;
-    
+
     if (value === 'Urgent') {
       // Auto-select today's date for urgent jobs
       const today = getToday();
@@ -278,7 +291,7 @@ const PostJobScreen = () => {
       showWarningAlert('Permission required', 'Please allow photo library access to add attachments.');
       return;
     }
-    
+
     // Calculate remaining slots for new images
     const remainingSlots = 5 - attachments.length;
     if (remainingSlots <= 0) {
@@ -289,7 +302,7 @@ const PostJobScreen = () => {
       });
       return;
     }
-    
+
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
@@ -394,9 +407,9 @@ const PostJobScreen = () => {
         location: jobType === 'OnSite'
           ? selectedOnSiteLocation!
           : {
-              source: selectedPickupSource!,
-              destination: selectedPickupDestination!,
-            },
+            source: selectedPickupSource!,
+            destination: selectedPickupDestination!,
+          },
         attachments: newAttachments,
         existingAttachments: keptExistingAttachments,
       };
@@ -435,7 +448,7 @@ const PostJobScreen = () => {
         });
       }
     } catch (error: any) {
-      
+
       const errorMessage = error || error?.message || (isEditMode ? 'Failed to update job. Please try again.' : 'Failed to post job. Please try again.');
       showErrorAlert(errorMessage);
     }
@@ -443,10 +456,10 @@ const PostJobScreen = () => {
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
-    <SafeAreaView edges={['top','bottom','left','right']} style={{flex:1}}>
-    <View style={styles.headerContainer}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => (navigation as any).goBack()}>
-        <AntDesign
+      <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={{ flex: 1 }}>
+        <View style={styles.headerContainer}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => (navigation as any).goBack()}>
+            <AntDesign
               name="arrow-left"
               size={24}
               style={{
@@ -455,194 +468,194 @@ const PostJobScreen = () => {
               }}
               color={Colors.black}
             />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>{isEditMode ? 'Edit Job' : 'Post Jobs Super Fast'}</Text>
-        </View>
-  
-      
-      {/* Header Section */}
-      <View style={styles.headerSection}>
-        {/* <Text style={styles.headerTitle}>Post Jobs Super Fast </Text> */}
-        <Text style={styles.headerSubtitle}>Post it in seconds and let nearby helpers pop in to get it done.</Text>
-      </View>
-
-      {/* Form */}
-      <ScrollView 
-        style={styles.formContainer}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        scrollEnabled={!showDatePicker && !showTimePicker}
-      >
-        {/* Job Title */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Job Title *</Text>
-          <MyTextInput
-            placeholder="e.g., Need House Cleaner"
-            value={formData.title}
-            onChange={(value: string) => handleInputChange('title', value)}
-            containerStyle={styles.input}
-            leftIcon={<Ionicons name="briefcase-outline" size={20} color="#9AA0A6" />}
-          />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>{isEditMode ? 'Edit Job' : 'Post Jobs Super Fast'}</Text>
         </View>
 
-        {/* Job Description */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Job Description *</Text>
-          <MyTextArea
-            placeholder="Describe the job requirements, what you need done, and any specific details..."
-            value={formData.description}
-            onChangeText={(value) => handleInputChange('description', value)}
-            containerStyle={styles.textArea}
-            numberOfLines={6}
-          />
+
+        {/* Header Section */}
+        <View style={styles.headerSection}>
+          {/* <Text style={styles.headerTitle}>Post Jobs Super Fast </Text> */}
+          <Text style={styles.headerSubtitle}>Post it in seconds and let nearby helpers pop in to get it done.</Text>
         </View>
 
-        {/* Cost/Budget */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Cost/Budget *</Text>
-          <MyTextInput
-            placeholder="e.g., $50/day, $25/hour, $200/project"
-            value={formData.cost}
-            onChange={(value: string) => handleInputChange('cost', value)}
-            containerStyle={styles.input}
-            leftIcon={<Ionicons name="cash-outline" size={20} color="#9AA0A6" />}
-          />
-          <Text style={styles.currencyNote}>
-            Payment as per local currency of your location.
-          </Text>
-        </View>
-
-        {/* Job Type Selection */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Job Type *</Text>
-          <View style={styles.radioGroupHorizontal}>
-            <TouchableOpacity 
-              style={[styles.radioOptionHorizontal, jobType === 'OnSite' && styles.radioSelected]}
-              onPress={() => setJobType('OnSite')}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.radioCircle, jobType === 'OnSite' && styles.radioCircleSelected]}>
-                {jobType === 'OnSite' && <View style={styles.radioInner} />}
-              </View>
-              <Text style={[styles.radioLabel, jobType === 'OnSite' && styles.radioLabelSelected]}>OnSite</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.radioOptionHorizontal, jobType === 'Pickup' && styles.radioSelected]}
-              onPress={() => setJobType('Pickup')}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.radioCircle, jobType === 'Pickup' && styles.radioCircleSelected]}>
-                {jobType === 'Pickup' && <View style={styles.radioInner} />}
-              </View>
-              <Text style={[styles.radioLabel, jobType === 'Pickup' && styles.radioLabelSelected]}>Pickup</Text>
-            </TouchableOpacity>
+        {/* Form */}
+        <ScrollView
+          style={styles.formContainer}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+          scrollEnabled={!showDatePicker && !showTimePicker}
+        >
+          {/* Job Title */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Job Title *</Text>
+            <MyTextInput
+              placeholder="e.g., Need House Cleaner"
+              value={formData.title}
+              onChange={(value: string) => handleInputChange('title', value)}
+              containerStyle={styles.input}
+              leftIcon={<Ionicons name="briefcase-outline" size={20} color="#9AA0A6" />}
+            />
           </View>
-        </View>
 
-        {/* Location Input(s) based on job type */}
-        <View style={styles.inputGroup}>
-          {jobType === 'OnSite' ? (
-            <>
-              <Text style={styles.label}>Location *</Text>
-              <TouchableOpacity 
-                onPress={() => openLocationModal('onSite')}
-                activeOpacity={0.8}
+          {/* Job Description */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Job Description *</Text>
+            <MyTextArea
+              placeholder="Describe the job requirements, what you need done, and any specific details..."
+              value={formData.description}
+              onChangeText={(value) => handleInputChange('description', value)}
+              containerStyle={styles.textArea}
+              numberOfLines={6}
+            />
+          </View>
+
+          {/* Cost/Budget */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Cost/Budget *</Text>
+            <MyTextInput
+              placeholder="e.g., $50/day, $25/hour, $200/project"
+              value={formData.cost}
+              onChange={(value: string) => handleInputChange('cost', value)}
+              containerStyle={styles.input}
+              leftIcon={<Ionicons name="cash-outline" size={20} color="#9AA0A6" />}
+            />
+            <Text style={styles.currencyNote}>
+              Payment as per local currency of your location.
+            </Text>
+          </View>
+
+          {/* Job Type Selection */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Job Type *</Text>
+            <View style={styles.radioGroupHorizontal}>
+              <TouchableOpacity
+                style={[styles.radioOptionHorizontal, jobType === 'OnSite' && styles.radioSelected]}
+                onPress={() => setJobType('OnSite')}
+                activeOpacity={0.7}
               >
-                <View style={[styles.dropdown, styles.inputRow, styles.locationSelectable]}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={selectedOnSiteLocation ? styles.dropdownText : styles.placeholder}>
-                      {selectedOnSiteLocation ? `${selectedOnSiteLocation.name} - ${selectedOnSiteLocation.fullAddress}` : 'Select location...'}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-down" size={20} color="#9AA0A6" />
+                <View style={[styles.radioCircle, jobType === 'OnSite' && styles.radioCircleSelected]}>
+                  {jobType === 'OnSite' && <View style={styles.radioInner} />}
                 </View>
+                <Text style={[styles.radioLabel, jobType === 'OnSite' && styles.radioLabelSelected]}>OnSite</Text>
               </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <Text style={styles.label}>Pickup Location *</Text>
-              <TouchableOpacity 
-                onPress={() => openLocationModal('pickupSource')}
-                activeOpacity={0.8}
+
+              <TouchableOpacity
+                style={[styles.radioOptionHorizontal, jobType === 'Pickup' && styles.radioSelected]}
+                onPress={() => setJobType('Pickup')}
+                activeOpacity={0.7}
               >
-                <View style={[styles.dropdown, styles.inputRow, styles.locationSelectable]}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={selectedPickupSource ? styles.dropdownText : styles.placeholder}>
-                      {selectedPickupSource ? `${selectedPickupSource.name} - ${selectedPickupSource.fullAddress}` : 'Select pickup location...'}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-down" size={20} color="#9AA0A6" />
+                <View style={[styles.radioCircle, jobType === 'Pickup' && styles.radioCircleSelected]}>
+                  {jobType === 'Pickup' && <View style={styles.radioInner} />}
                 </View>
+                <Text style={[styles.radioLabel, jobType === 'Pickup' && styles.radioLabelSelected]}>Pickup</Text>
               </TouchableOpacity>
-              
-              <View style={{ marginTop: 16 }}>
-                <Text style={styles.label}>Destination Location *</Text>
-                <TouchableOpacity 
-                  onPress={() => openLocationModal('pickupDestination')}
+            </View>
+          </View>
+
+          {/* Location Input(s) based on job type */}
+          <View style={styles.inputGroup}>
+            {jobType === 'OnSite' ? (
+              <>
+                <Text style={styles.label}>Location *</Text>
+                <TouchableOpacity
+                  onPress={() => openLocationModal('onSite')}
                   activeOpacity={0.8}
                 >
                   <View style={[styles.dropdown, styles.inputRow, styles.locationSelectable]}>
                     <View style={{ flex: 1 }}>
-                      <Text style={selectedPickupDestination ? styles.dropdownText : styles.placeholder}>
-                        {selectedPickupDestination ? `${selectedPickupDestination.name} - ${selectedPickupDestination.fullAddress}` : 'Select destination location...'}
+                      <Text style={selectedOnSiteLocation ? styles.dropdownText : styles.placeholder}>
+                        {selectedOnSiteLocation ? `${selectedOnSiteLocation.name} - ${selectedOnSiteLocation.fullAddress}` : 'Select location...'}
                       </Text>
                     </View>
                     <Ionicons name="chevron-down" size={20} color="#9AA0A6" />
                   </View>
                 </TouchableOpacity>
-              </View>
-            </>
-          )}
-        </View>
+              </>
+            ) : (
+              <>
+                <Text style={styles.label}>Pickup Location *</Text>
+                <TouchableOpacity
+                  onPress={() => openLocationModal('pickupSource')}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.dropdown, styles.inputRow, styles.locationSelectable]}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={selectedPickupSource ? styles.dropdownText : styles.placeholder}>
+                        {selectedPickupSource ? `${selectedPickupSource.name} - ${selectedPickupSource.fullAddress}` : 'Select pickup location...'}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-down" size={20} color="#9AA0A6" />
+                  </View>
+                </TouchableOpacity>
 
-        {/* Response Preference Selection */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>How should users respond to your job? *</Text>
-          <View style={styles.radioGroup}>
-            <TouchableOpacity 
-              style={[styles.radioOption, responsePreference === 'direct_contact' && styles.radioSelected]}
-              onPress={() => setResponsePreference('direct_contact')}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.radioCircle, responsePreference === 'direct_contact' && styles.radioCircleSelected]}>
-                {responsePreference === 'direct_contact' && <View style={styles.radioInner} />}
-              </View>
-              <View style={styles.radioLabelContainer}>
-                <Text style={[styles.radioLabel, responsePreference === 'direct_contact' && styles.radioLabelSelected]}>
-                  Direct Contact
-                </Text>
-                <Text style={styles.radioDescription}>
-                  Users can contact you directly for this job
-                </Text>
-              </View>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.radioOption, responsePreference === 'show_interest' && styles.radioSelected]}
-              onPress={() => setResponsePreference('show_interest')}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.radioCircle, responsePreference === 'show_interest' && styles.radioCircleSelected]}>
-                {responsePreference === 'show_interest' && <View style={styles.radioInner} />}
-              </View>
-              <View style={styles.radioLabelContainer}>
-                <Text style={[styles.radioLabel, responsePreference === 'show_interest' && styles.radioLabelSelected]}>
-                  Show Interest
-                </Text>
-                <Text style={styles.radioDescription}>
-                  Multiple users can show interest, you choose who to contact
-                </Text>
-              </View>
-            </TouchableOpacity>
+                <View style={{ marginTop: 16 }}>
+                  <Text style={styles.label}>Destination Location *</Text>
+                  <TouchableOpacity
+                    onPress={() => openLocationModal('pickupDestination')}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.dropdown, styles.inputRow, styles.locationSelectable]}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={selectedPickupDestination ? styles.dropdownText : styles.placeholder}>
+                          {selectedPickupDestination ? `${selectedPickupDestination.name} - ${selectedPickupDestination.fullAddress}` : 'Select destination location...'}
+                        </Text>
+                      </View>
+                      <Ionicons name="chevron-down" size={20} color="#9AA0A6" />
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
           </View>
-          <Text style={styles.helpText}>
-            💡 Direct Contact: Users can reach out to you immediately • Show Interest: Review interested users and select the best fit
-          </Text>
-        </View>
 
- {/* Urgency Selection */}
- <View style={styles.pickerContainer}>
+          {/* Response Preference Selection */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>How should users respond to your job? *</Text>
+            <View style={styles.radioGroup}>
+              <TouchableOpacity
+                style={[styles.radioOption, responsePreference === 'direct_contact' && styles.radioSelected]}
+                onPress={() => setResponsePreference('direct_contact')}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.radioCircle, responsePreference === 'direct_contact' && styles.radioCircleSelected]}>
+                  {responsePreference === 'direct_contact' && <View style={styles.radioInner} />}
+                </View>
+                <View style={styles.radioLabelContainer}>
+                  <Text style={[styles.radioLabel, responsePreference === 'direct_contact' && styles.radioLabelSelected]}>
+                    Direct Contact
+                  </Text>
+                  <Text style={styles.radioDescription}>
+                    Users can contact you directly for this job
+                  </Text>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.radioOption, responsePreference === 'show_interest' && styles.radioSelected]}
+                onPress={() => setResponsePreference('show_interest')}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.radioCircle, responsePreference === 'show_interest' && styles.radioCircleSelected]}>
+                  {responsePreference === 'show_interest' && <View style={styles.radioInner} />}
+                </View>
+                <View style={styles.radioLabelContainer}>
+                  <Text style={[styles.radioLabel, responsePreference === 'show_interest' && styles.radioLabelSelected]}>
+                    Show Interest
+                  </Text>
+                  <Text style={styles.radioDescription}>
+                    Multiple users can show interest, you choose who to contact
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.helpText}>
+              💡 Direct Contact: Users can reach out to you immediately • Show Interest: Review interested users and select the best fit
+            </Text>
+          </View>
+
+          {/* Urgency Selection */}
+          <View style={styles.pickerContainer}>
             <Text style={styles.pickerLabel}>How urgent is this job?</Text>
             <DropDownPicker
               open={urgencyOpen}
@@ -663,140 +676,140 @@ const PostJobScreen = () => {
               💡 Urgent: Job needed today (date auto-selected) • Normal: Job can be scheduled for later
             </Text>
           </View>
-        {/* Job Timing */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Job Timing *</Text>
-          
-          {/* Day Selection (Date Picker) */}
-          <View style={styles.pickerContainer}>
-            <Text style={styles.pickerLabel}>When do you need this done?</Text>
-            <TouchableOpacity 
-              activeOpacity={urgencyValue === 'Urgent' ? 1 : 0.8} 
-              onPress={() => {
-                if (urgencyValue === 'Urgent') return; // Disabled for urgent jobs
-                const base = selectedDate && selectedDate >= getTomorrow() ? selectedDate : getTomorrow();
-                setTempDate(base);
-                setShowDatePicker(true);
-              }}
-            >
-              <View style={[
-                styles.dropdown, 
-                styles.inputRow,
-                urgencyValue === 'Urgent' && styles.disabledInput
-              ]}>
-                <Text style={selectedDate ? styles.dropdownText : styles.placeholder}>
-                  {selectedDate ? formatDate(selectedDate) : 'Select date...'}
+          {/* Job Timing */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Job Timing *</Text>
+
+            {/* Day Selection (Date Picker) */}
+            <View style={styles.pickerContainer}>
+              <Text style={styles.pickerLabel}>When do you need this done?</Text>
+              <TouchableOpacity
+                activeOpacity={urgencyValue === 'Urgent' ? 1 : 0.8}
+                onPress={() => {
+                  if (urgencyValue === 'Urgent') return; // Disabled for urgent jobs
+                  const base = selectedDate && selectedDate >= getTomorrow() ? selectedDate : getTomorrow();
+                  setTempDate(base);
+                  setShowDatePicker(true);
+                }}
+              >
+                <View style={[
+                  styles.dropdown,
+                  styles.inputRow,
+                  urgencyValue === 'Urgent' && styles.disabledInput
+                ]}>
+                  <Text style={selectedDate ? styles.dropdownText : styles.placeholder}>
+                    {selectedDate ? formatDate(selectedDate) : 'Select date...'}
+                  </Text>
+                  <AntDesign name="calendar" size={18} color={urgencyValue === 'Urgent' ? '#d0d0d0' : "#9AA0A6"} />
+                </View>
+              </TouchableOpacity>
+              {showDatePicker && (
+                <View>
+                  <DateTimePicker
+                    mode="date"
+                    value={tempDate ?? getTomorrow()}
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    minimumDate={getTomorrow()}
+                    onChange={(event, date) => {
+                      if (Platform.OS === 'android') {
+                        setShowDatePicker(false);
+                        setTempDate(null);
+                        // On Android, check event type to see if user confirmed or cancelled
+                        if (event.type === 'set' && date) {
+                          const valid = date >= getTomorrow() ? date : getTomorrow();
+                          setSelectedDate(valid);
+                          handleInputChange('day', formatDate(valid));
+                        }
+                      } else {
+                        // iOS - just update temp date
+                        if (date) setTempDate(date);
+                      }
+                    }}
+                  />
+                  {Platform.OS === 'ios' && (
+                    <View style={styles.pickerActions}>
+                      <TouchableOpacity onPress={() => { setShowDatePicker(false); setTempDate(null); }}>
+                        <Text style={styles.actionText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => {
+                        if (tempDate) {
+                          const valid = tempDate >= getTomorrow() ? tempDate : getTomorrow();
+                          setSelectedDate(valid);
+                          handleInputChange('day', formatDate(valid));
+                        }
+                        setShowDatePicker(false);
+                      }}>
+                        <Text style={[styles.actionText, styles.actionPrimary]}>OK</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              )}
+              {urgencyValue === 'Urgent' && (
+                <Text style={[styles.helpText, { marginTop: 8 }]}>
+                  📍 Date is locked to today for urgent jobs
                 </Text>
-                <AntDesign name="calendar" size={18} color={urgencyValue === 'Urgent' ? '#d0d0d0' : "#9AA0A6"} />
-              </View>
-            </TouchableOpacity>
-            {showDatePicker && (
-              <View>
-                <DateTimePicker
-                  mode="date"
-                  value={tempDate ?? getTomorrow()}
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  minimumDate={getTomorrow()}
-                  onChange={(event, date) => {
-                    if (Platform.OS === 'android') {
-                      setShowDatePicker(false);
-                      setTempDate(null);
-                      // On Android, check event type to see if user confirmed or cancelled
-                      if (event.type === 'set' && date) {
-                        const valid = date >= getTomorrow() ? date : getTomorrow();
-                        setSelectedDate(valid);
-                        handleInputChange('day', formatDate(valid));
+              )}
+            </View>
+
+            {/* Time Selection (Time Picker) */}
+            <View style={styles.pickerContainer}>
+              <Text style={styles.pickerLabel}>Preferred time?</Text>
+              <TouchableOpacity activeOpacity={0.8} onPress={() => { setTempTime(selectedTime ?? new Date()); setShowTimePicker(true); }}>
+                <View style={[styles.dropdown, styles.inputRow]}>
+                  <Text style={selectedTime ? styles.dropdownText : styles.placeholder}>
+                    {selectedTime ? formatTime(selectedTime) : 'Select time...'}
+                  </Text>
+                  <Ionicons name="time-outline" size={18} color="#9AA0A6" />
+                </View>
+              </TouchableOpacity>
+              {showTimePicker && (
+                <View>
+                  <DateTimePicker
+                    mode="time"
+                    value={tempTime ?? new Date()}
+                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    minuteInterval={1}
+                    onChange={(event, date) => {
+                      if (Platform.OS === 'android') {
+                        setShowTimePicker(false);
+                        setTempTime(null);
+                        // On Android, check event type to see if user confirmed or cancelled
+                        if (event.type === 'set' && date) {
+                          setSelectedTime(date);
+                          handleInputChange('time', formatTime(date));
+                        }
+                      } else {
+                        // iOS - just update temp time
+                        if (date) setTempTime(date);
                       }
-                    } else {
-                      // iOS - just update temp date
-                      if (date) setTempDate(date);
-                    }
-                  }}
-                />
-                {Platform.OS === 'ios' && (
-                  <View style={styles.pickerActions}>
-                    <TouchableOpacity onPress={() => { setShowDatePicker(false); setTempDate(null); }}>
-                      <Text style={styles.actionText}>Cancel</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => {
-                      if (tempDate) {
-                        const valid = tempDate >= getTomorrow() ? tempDate : getTomorrow();
-                        setSelectedDate(valid);
-                        handleInputChange('day', formatDate(valid));
-                      }
-                      setShowDatePicker(false);
-                    }}>
-                      <Text style={[styles.actionText, styles.actionPrimary]}>OK</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
-            )}
-            {urgencyValue === 'Urgent' && (
-              <Text style={[styles.helpText, { marginTop: 8 }]}>
-                📍 Date is locked to today for urgent jobs
-              </Text>
-            )}
+                    }}
+                  />
+                  {Platform.OS === 'ios' && (
+                    <View style={styles.pickerActions}>
+                      <TouchableOpacity onPress={() => { setShowTimePicker(false); setTempTime(null); }}>
+                        <Text style={styles.actionText}>Cancel</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => {
+                        if (tempTime) {
+                          setSelectedTime(tempTime);
+                          handleInputChange('time', formatTime(tempTime));
+                        }
+                        setShowTimePicker(false);
+                      }}>
+                        <Text style={[styles.actionText, styles.actionPrimary]}>OK</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
+
+
           </View>
 
-          {/* Time Selection (Time Picker) */}
-          <View style={styles.pickerContainer}>
-            <Text style={styles.pickerLabel}>Preferred time?</Text>
-            <TouchableOpacity activeOpacity={0.8} onPress={() => { setTempTime(selectedTime ?? new Date()); setShowTimePicker(true); }}>
-              <View style={[styles.dropdown, styles.inputRow]}>
-                <Text style={selectedTime ? styles.dropdownText : styles.placeholder}>
-                  {selectedTime ? formatTime(selectedTime) : 'Select time...'}
-                </Text>
-                <Ionicons name="time-outline" size={18} color="#9AA0A6" />
-              </View>
-            </TouchableOpacity>
-            {showTimePicker && (
-              <View>
-                <DateTimePicker
-                  mode="time"
-                  value={tempTime ?? new Date()}
-                  display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                  minuteInterval={1}
-                  onChange={(event, date) => {
-                    if (Platform.OS === 'android') {
-                      setShowTimePicker(false);
-                      setTempTime(null);
-                      // On Android, check event type to see if user confirmed or cancelled
-                      if (event.type === 'set' && date) {
-                        setSelectedTime(date);
-                        handleInputChange('time', formatTime(date));
-                      }
-                    } else {
-                      // iOS - just update temp time
-                      if (date) setTempTime(date);
-                    }
-                  }}
-                />
-                {Platform.OS === 'ios' && (
-                  <View style={styles.pickerActions}>
-                    <TouchableOpacity onPress={() => { setShowTimePicker(false); setTempTime(null); }}>
-                      <Text style={styles.actionText}>Cancel</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => {
-                      if (tempTime) {
-                        setSelectedTime(tempTime);
-                        handleInputChange('time', formatTime(tempTime));
-                      }
-                      setShowTimePicker(false);
-                    }}>
-                      <Text style={[styles.actionText, styles.actionPrimary]}>OK</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-              </View>
-            )}
-          </View>
-
-         
-        </View>
-
-        {/* Additional Info */}
-        {/* <View style={styles.infoCard}>
+          {/* Additional Info */}
+          {/* <View style={styles.infoCard}>
           <View style={styles.infoHeader}>
             <Ionicons name="information-circle-outline" size={20} color={Colors.primary} />
             <Text style={styles.infoTitle}>Important Information</Text>
@@ -809,54 +822,54 @@ const PostJobScreen = () => {
           </Text>
         </View> */}
 
-        {/* Attachments */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Attachments (add any supporting images if needed)</Text>
-          <TouchableOpacity activeOpacity={0.8} onPress={handlePickImages}>
-            <View style={[styles.dropdown, styles.inputRow]}>
-              <Text style={attachments.length ? styles.dropdownText : styles.placeholder}>
-                {attachments.length ? `${attachments.length}/5 selected` : `Select attachments... (0/5)`}
-              </Text>
-              <Ionicons name="image-outline" size={18} color="#9AA0A6" />
-            </View>
-          </TouchableOpacity>
-          {attachments.length > 0 && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
-              {attachments.map((uri, idx) => (
-                <View key={`${uri}-${idx}`} style={styles.thumbWrap}>
-                  <Image 
-                    source={{ uri: getAttachmentUri(uri) }} 
-                    style={styles.thumb} 
-                    contentFit="cover" 
-                  />
-                  <TouchableOpacity 
-                    style={styles.removeButton}
-                    onPress={() => removeAttachment(idx)}
-                    activeOpacity={0.7}
-                  >
-                    <AntDesign name="close" size={12} color="white" />
-                  </TouchableOpacity>
-                </View>
-              ))}
-            </ScrollView>
-          )}
-        </View>
+          {/* Attachments */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Attachments (add any supporting images if needed)</Text>
+            <TouchableOpacity activeOpacity={0.8} onPress={handlePickImages}>
+              <View style={[styles.dropdown, styles.inputRow]}>
+                <Text style={attachments.length ? styles.dropdownText : styles.placeholder}>
+                  {attachments.length ? `${attachments.length}/5 selected` : `Select attachments... (0/5)`}
+                </Text>
+                <Ionicons name="image-outline" size={18} color="#9AA0A6" />
+              </View>
+            </TouchableOpacity>
+            {attachments.length > 0 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+                {attachments.map((uri, idx) => (
+                  <View key={`${uri}-${idx}`} style={styles.thumbWrap}>
+                    <Image
+                      source={{ uri: getAttachmentUri(uri) }}
+                      style={styles.thumb}
+                      contentFit="cover"
+                    />
+                    <TouchableOpacity
+                      style={styles.removeButton}
+                      onPress={() => removeAttachment(idx)}
+                      activeOpacity={0.7}
+                    >
+                      <AntDesign name="close" size={12} color="white" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </ScrollView>
+            )}
+          </View>
 
-        {/* Submit Button */}
-        <View style={styles.buttonContainer}>
-          <Button
-            label={loading ? (isEditMode ? "Updating..." : "Posting...") : (isEditMode ? "Save Changes" : "Post Now")}
-            onPress={handleSubmit}
-            disabled={loading}
-            style={styles.submitButton}
-          />
-        </View>
+          {/* Submit Button */}
+          <View style={styles.buttonContainer}>
+            <Button
+              label={loading ? (isEditMode ? "Updating..." : "Posting...") : (isEditMode ? "Save Changes" : "Post Now")}
+              onPress={handleSubmit}
+              disabled={loading}
+              style={styles.submitButton}
+            />
+          </View>
 
-        {/* Bottom Spacing */}
-        <View style={styles.bottomSpacing} />
-      </ScrollView>
-      {alertModal}
-    </SafeAreaView>
+          {/* Bottom Spacing */}
+          <View style={styles.bottomSpacing} />
+        </ScrollView>
+        {alertModal}
+      </SafeAreaView>
 
       {/* Location Selection Modal */}
       <Modal
@@ -867,7 +880,7 @@ const PostJobScreen = () => {
       >
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <TouchableOpacity 
+            <TouchableOpacity
               onPress={() => setShowLocationModal(false)}
               style={styles.modalCloseButton}
             >
@@ -880,7 +893,7 @@ const PostJobScreen = () => {
             </Text>
             <View style={{ width: 24 }} />
           </View>
-          
+
           <View style={styles.modalContent}>
             {savedLocations.length === 0 ? (
               <View style={styles.emptyLocationsContainer}>
@@ -893,7 +906,7 @@ const PostJobScreen = () => {
                 data={savedLocations}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     style={styles.locationItem}
                     onPress={() => handleLocationSelect(item)}
                     activeOpacity={0.7}
@@ -915,7 +928,7 @@ const PostJobScreen = () => {
                 )}
               />
             )}
-            
+
             <View style={styles.modalFooter}>
               <Button
                 label="Add New Location"
@@ -939,7 +952,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.white,
   },
-  backBtn: { marginLeft:15 },
+  backBtn: { marginLeft: 15 },
   headerSection: {
     paddingHorizontal: 16,
     paddingVertical: 20,

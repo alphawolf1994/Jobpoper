@@ -74,7 +74,7 @@ const AddLocationScreen = () => {
       const data = await r.json();
       const addr = data?.results?.[0]?.formatted_address;
       if (addr) setAddressLabel(addr);
-    } catch {}
+    } catch { }
   };
 
   return (

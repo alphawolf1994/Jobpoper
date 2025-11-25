@@ -1,5 +1,5 @@
-import React, { useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
+import React, { useEffect, useCallback } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, BackHandler, Alert } from "react-native";
 import { Colors } from "../../utils";
 import Header from "../../components/Header";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -11,6 +11,8 @@ import ListedJobs from "../../components/ListedJobs";
 import { useDispatch, useSelector } from 'react-redux';
 import { getHotJobs, getListedJobs, expireOldJobs } from '../../redux/slices/jobSlice';
 import { AppDispatch, RootState } from '../../redux/store';
+
+import { useFocusEffect } from "@react-navigation/native";
 
 const HomeScreen = ({ navigation }: any) => {
   const dispatch = useDispatch<AppDispatch>();
@@ -35,14 +37,14 @@ const HomeScreen = ({ navigation }: any) => {
   // Refresh hot jobs and listed jobs when location changes
   useEffect(() => {
     dispatch(expireOldJobs());
-    dispatch(getHotJobs({ 
+    dispatch(getHotJobs({
       location: getLocation(),
       page: 1,
       limit: 10,
       sortOrder: 'desc'
     }));
-    
-    dispatch(getListedJobs({ 
+
+    dispatch(getListedJobs({
       location: getLocation(),
       page: 1,
       limit: 10,
@@ -50,8 +52,34 @@ const HomeScreen = ({ navigation }: any) => {
     }));
   }, [dispatch, currentLocation, user?.profile?.location]);
 
+  // Handle Android back button
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        Alert.alert(
+          'Exit App',
+          'Are you sure you want to exit?',
+          [
+            {
+              text: 'Cancel',
+              onPress: () => null,
+              style: 'cancel',
+            },
+            { text: 'YES', onPress: () => BackHandler.exitApp() },
+          ],
+          { cancelable: false }
+        );
+        return true;
+      };
+
+      const backHandler = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => backHandler.remove();
+    }, [])
+  );
+
   return (
-    <SafeAreaView edges={['top','bottom','left','right']} style={{flex:1,}}>
+    <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={{ flex: 1, }}>
       <Header />
 
       {/* search row */}
@@ -65,18 +93,18 @@ const HomeScreen = ({ navigation }: any) => {
           />
         </View>
 
-        <TouchableOpacity 
-          style={styles.plusButton} 
+        <TouchableOpacity
+          style={styles.plusButton}
           activeOpacity={0.7}
           onPress={handlePostJob}
         >
-          <Ionicons name="add" size={24} color={Colors.white } />
+          <Ionicons name="add" size={24} color={Colors.white} />
         </TouchableOpacity>
       </View>
 
-        <HotJobs />
-        <ListedJobs />
-     
+      <HotJobs />
+      <ListedJobs />
+
     </SafeAreaView>
   );
 };
@@ -90,7 +118,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     // paddingVertical: 12,
-   
+
   },
   inputWrapper: {
     flex: 1,
@@ -106,7 +134,7 @@ const styles = StyleSheet.create({
   plusButton: {
     width: 48,
     height: 48,
-    marginTop:10,
+    marginTop: 10,
     borderRadius: 12,
     backgroundColor: Colors.primary,
     alignItems: "center",

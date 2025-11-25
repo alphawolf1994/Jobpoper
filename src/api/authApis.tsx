@@ -51,7 +51,7 @@ export const loginUserApi = async (phoneNumber: string, pin: string) => {
             phoneNumber: phoneNumber,
             pin: pin
         };
-console.log("payload =>",payload)
+        console.log("payload =>", payload)
         const res = await axiosInstance.post("/auth/login", payload);
         return res.data;
     } catch (error: any) {
@@ -112,6 +112,21 @@ export const logoutUserApi = async () => {
         return { status: "success", message: "Logged out successfully" };
     } catch (error: any) {
         throw new Error("Logout failed");
+    }
+};
+
+// Change PIN
+export const changePinApi = async (oldPin: string, newPin: string) => {
+    try {
+        const payload = {
+            oldPin: oldPin,
+            newPin: newPin
+        };
+
+        const res = await axiosInstance.put("/auth/change-pin", payload);
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Failed to change PIN");
     }
 };
 

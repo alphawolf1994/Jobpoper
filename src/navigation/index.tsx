@@ -13,6 +13,8 @@ import HotJobsScreen from "./screens/HotJobsScreen";
 import AllListedJobsScreen from "./screens/AllListedJobsScreen";
 import MyJobsScreen from "./screens/MyJobsScreen";
 import ProfileScreen from "./screens/ProfileScreen";
+import UserDetailsScreen from "./screens/UserDetailsScreen";
+import ChangePinScreen from "./screens/ChangePinScreen";
 import PostJobScreen from "./screens/PostJobScreen";
 import JobDetailsScreen from "./screens/JobDetailsScreen";
 import { NotFound } from "./screens/NotFound";
@@ -46,27 +48,27 @@ import AddLocationScreen from "./screens/AddLocationScreen";
 const Tab = createBottomTabNavigator();
 
 const BottomTabNavigator = () => {
-  const notificationCount=5
+  const notificationCount = 5
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-      tabBarIcon: ({ color, size }) => {
-        const map: Record<string, string> = {
-        Home: "home",
-        "Hot Jobs": "fire",
-        "My Jobs": "briefcase",
-        Profile: "user",
-        };
-        const iconName = map[route.name] ?? "circle";
-        if (iconName === "fire") {
-        // Use AntDesign for the "fire" icon without changing top-level imports
-        return <Fontisto name="fire" size={size} color={color} />;
-        }
-        return <Feather name={iconName as any} size={size} color={color} />;
-      },
-      tabBarActiveTintColor: Colors.primary,
-      tabBarInactiveTintColor: Colors.gray,
-      headerShown: false,
+        tabBarIcon: ({ color, size }) => {
+          const map: Record<string, string> = {
+            Home: "home",
+            "Hot Jobs": "fire",
+            "My Jobs": "briefcase",
+            Profile: "user",
+          };
+          const iconName = map[route.name] ?? "circle";
+          if (iconName === "fire") {
+            // Use AntDesign for the "fire" icon without changing top-level imports
+            return <Fontisto name="fire" size={size} color={color} />;
+          }
+          return <Feather name={iconName as any} size={size} color={color} />;
+        },
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.gray,
+        headerShown: false,
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
@@ -91,6 +93,7 @@ const RootStack = createNativeStackNavigator({
       options: {
         title: "Home",
         headerShown: false,
+        gestureEnabled: false,
       },
     },
     // Home: {
@@ -100,8 +103,8 @@ const RootStack = createNativeStackNavigator({
     //     headerShown: false,
     //   },
     // },
-  
-  
+
+
     IntroScreen: {
       screen: IntroScreen,
       options: {
@@ -169,6 +172,20 @@ const RootStack = createNativeStackNavigator({
       },
     },
 
+    // Profile management
+    UserDetailsScreen: {
+      screen: UserDetailsScreen,
+      options: {
+        headerShown: false,
+      },
+    },
+    ChangePinScreen: {
+      screen: ChangePinScreen,
+      options: {
+        headerShown: false,
+      },
+    },
+
     // Location management
     ManageLocationsScreen: {
       screen: ManageLocationsScreen,
@@ -182,8 +199,8 @@ const RootStack = createNativeStackNavigator({
         headerShown: false,
       },
     },
-   
-  
+
+
     NotFound: {
       screen: NotFound,
       options: {
@@ -201,11 +218,11 @@ export const Navigation = createStaticNavigation(RootStack);
 // type RootStackParamList = StaticParamList<typeof RootStack>;
 type RootStackParamList = {
   // ProfileScreen: undefined; // No params expected
-  
+
 };
 declare global {
   namespace ReactNavigation {
-    interface RootParamList extends RootStackParamList {}
+    interface RootParamList extends RootStackParamList { }
   }
 }
 
