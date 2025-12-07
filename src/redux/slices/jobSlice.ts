@@ -10,7 +10,9 @@ import {
   getListedJobsApi,
   getMyInterestedJobsApi,
   updateJobStatusApi,
-  expireOldJobsApi
+  expireOldJobsApi,
+  searchHotJobsApi,
+  searchListedJobsApi
 } from "../../api/jobApis";
 import { Job, JobResponse, CreateJobPayload, HotJobsResponse, ListedJobsResponse } from "../../interface/interfaces";
 
@@ -200,6 +202,64 @@ export const getAllHotJobsPaginated = createAsyncThunk(
       return { ...response, append };
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to fetch hot jobs");
+    }
+  }
+);
+
+// Search Hot Jobs with Pagination
+export const searchHotJobsPaginated = createAsyncThunk(
+  "job/searchHotJobsPaginated",
+  async ({ 
+    location, 
+    search, 
+    page = 1, 
+    limit = 10, 
+    sortBy, 
+    sortOrder = 'desc', 
+    append = false 
+  }: { 
+    location: string; 
+    search: string;
+    page?: number; 
+    limit?: number; 
+    sortBy?: string;
+    sortOrder?: string;
+    append?: boolean;
+  }, { rejectWithValue }) => {
+    try {
+      const response = await searchHotJobsApi(location, search, page, limit, sortBy, sortOrder);
+      return { ...response, append };
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "Failed to search hot jobs");
+    }
+  }
+);
+
+// Search Listed Jobs with Pagination
+export const searchListedJobsPaginated = createAsyncThunk(
+  "job/searchListedJobsPaginated",
+  async ({ 
+    location, 
+    search, 
+    page = 1, 
+    limit = 10, 
+    sortBy, 
+    sortOrder = 'desc', 
+    append = false 
+  }: { 
+    location: string; 
+    search: string;
+    page?: number; 
+    limit?: number; 
+    sortBy?: string;
+    sortOrder?: string;
+    append?: boolean;
+  }, { rejectWithValue }) => {
+    try {
+      const response = await searchListedJobsApi(location, search, page, limit, sortBy, sortOrder);
+      return { ...response, append };
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "Failed to search listed jobs");
     }
   }
 );
@@ -474,6 +534,39 @@ const jobSlice = createSlice({
         state.loading = false;
         state.loadingMore = false;
       })
+      // Search Hot Jobs Paginated
+      .addCase(searchHotJobsPaginated.pending, (state, action) => {
+        if (action.meta.arg.append) {
+          state.loadingMore = true;
+        } else {
+          state.loading = true;
+          state.allHotJobs = [];
+        }
+        state.error = null;
+      })
+      .addCase(searchHotJobsPaginated.fulfilled, (state, action) => {
+        const response = action.payload as HotJobsResponse & { append: boolean };
+        if (response.status === 'success' && response.data?.jobs) {
+          if (response.append) {
+            // Append new jobs to existing list
+            state.allHotJobs = [...state.allHotJobs, ...response.data.jobs];
+          } else {
+            // Replace with new jobs (refresh)
+            state.allHotJobs = response.data.jobs;
+          }
+          if (response.data.pagination) {
+            state.allHotJobsPagination = response.data.pagination;
+          }
+        }
+        state.loading = false;
+        state.loadingMore = false;
+        state.error = null;
+      })
+      .addCase(searchHotJobsPaginated.rejected, (state, action) => {
+        state.error = action.payload as string;
+        state.loading = false;
+        state.loadingMore = false;
+      })
       // Get All Listed Jobs Paginated
       .addCase(getAllListedJobsPaginated.pending, (state, action) => {
         if (action.meta.arg.append) {
@@ -503,6 +596,39 @@ const jobSlice = createSlice({
         state.error = null;
       })
       .addCase(getAllListedJobsPaginated.rejected, (state, action) => {
+        state.error = action.payload as string;
+        state.loading = false;
+        state.loadingMore = false;
+      })
+      // Search Listed Jobs Paginated
+      .addCase(searchListedJobsPaginated.pending, (state, action) => {
+        if (action.meta.arg.append) {
+          state.loadingMore = true;
+        } else {
+          state.loading = true;
+          state.allListedJobs = [];
+        }
+        state.error = null;
+      })
+      .addCase(searchListedJobsPaginated.fulfilled, (state, action) => {
+        const response = action.payload as ListedJobsResponse & { append: boolean };
+        if (response.status === 'success' && response.data?.jobs) {
+          if (response.append) {
+            // Append new jobs to existing list
+            state.allListedJobs = [...state.allListedJobs, ...response.data.jobs];
+          } else {
+            // Replace with new jobs (refresh)
+            state.allListedJobs = response.data.jobs;
+          }
+          if (response.data.pagination) {
+            state.allListedJobsPagination = response.data.pagination;
+          }
+        }
+        state.loading = false;
+        state.loadingMore = false;
+        state.error = null;
+      })
+      .addCase(searchListedJobsPaginated.rejected, (state, action) => {
         state.error = action.payload as string;
         state.loading = false;
         state.loadingMore = false;

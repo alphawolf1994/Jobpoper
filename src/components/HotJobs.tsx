@@ -11,17 +11,24 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../utils';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
-import { getHotJobs } from '../redux/slices/jobSlice';
+import { getHotJobs, searchHotJobsPaginated } from '../redux/slices/jobSlice';
 import { AppDispatch, RootState } from '../redux/store';
 import { Job } from '../interface/interfaces';
 import { IMAGE_BASE_URL } from '../api/baseURL';
 
-const HotJobs: React.FC = () => {
+interface HotJobsProps {
+  searchQuery?: string;
+}
+
+const HotJobs: React.FC<HotJobsProps> = ({ searchQuery = '' }) => {
   const navigation = useNavigation<any>();
   const dispatch = useDispatch<AppDispatch>();
   const jobState = useSelector((state: RootState) => state.job);
-  const { hotJobs = [], loading = false, currentLocation } = jobState || {};
+  const { hotJobs = [], loading = false, currentLocation, allHotJobs = [] } = jobState || {};
   const { user } = useSelector((state: RootState) => state.auth);
+  
+  // Use allHotJobs if searching, otherwise use hotJobs
+  const displayJobs = searchQuery.trim() ? allHotJobs : hotJobs;
 
   
   // Get location from Redux state, user profile, or use default
@@ -36,14 +43,28 @@ const HotJobs: React.FC = () => {
   };
 
   useEffect(() => {
-    // Fetch hot jobs when component mounts
-    dispatch(getHotJobs({ 
-      location: getLocation(),
-      page: 1,
-      limit: 10,
-      sortOrder: 'desc'
-    }));
-  }, [dispatch, currentLocation, user?.profile?.location]);
+    const location = getLocation();
+    
+    if (searchQuery && searchQuery.trim()) {
+      // Use search API when search query exists
+      dispatch(searchHotJobsPaginated({ 
+        location,
+        search: searchQuery.trim(),
+        page: 1,
+        limit: 10,
+        sortOrder: 'desc',
+        append: false
+      }));
+    } else {
+      // Use default API when no search query
+      dispatch(getHotJobs({ 
+        location,
+        page: 1,
+        limit: 10,
+        sortOrder: 'desc'
+      }));
+    }
+  }, [dispatch, currentLocation, user?.profile?.location, searchQuery]);
 
   const formatJobTags = (job: Job) => {
     const tags = [];
@@ -137,7 +158,7 @@ const HotJobs: React.FC = () => {
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading hot jobs...</Text>
         </View>
-      ) : (hotJobs && hotJobs.length > 0) ? (
+      ) : (displayJobs && displayJobs.length > 0) ? (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -146,11 +167,15 @@ const HotJobs: React.FC = () => {
           snapToInterval={300} // Width of card + margin
           snapToAlignment="start"
         >
-          {hotJobs.map(renderJobCard)}
+          {displayJobs.map(renderJobCard)}
         </ScrollView>
       ) : (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No hot jobs available in your area</Text>
+          <Text style={styles.emptyText}>
+            {searchQuery.trim() 
+              ? `No hot jobs found for "${searchQuery}"` 
+              : 'No hot jobs available in your area'}
+          </Text>
         </View>
       )}
     </View>

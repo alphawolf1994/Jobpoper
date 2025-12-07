@@ -187,6 +187,64 @@ export const getHotJobsApi = async (location: string, page: number = 1, limit: n
     }
 };
 
+// Search hot jobs API
+export const searchHotJobsApi = async (
+    location: string, 
+    search: string, 
+    page: number = 1, 
+    limit: number = 10, 
+    sortBy?: string, 
+    sortOrder: string = 'desc'
+) => {
+    try {
+        const params: any = {
+            location,
+            search,
+            page,
+            limit,
+            sortOrder
+        };
+        if (sortBy) {
+            params.sortBy = sortBy;
+        }
+        const res = await axiosInstance.get("/jobs/search/hot", {
+            params
+        });
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Failed to search hot jobs");
+    }
+};
+
+// Search listed jobs API
+export const searchListedJobsApi = async (
+    location: string, 
+    search: string, 
+    page: number = 1, 
+    limit: number = 10, 
+    sortBy?: string, 
+    sortOrder: string = 'desc'
+) => {
+    try {
+        const params: any = {
+            location,
+            search,
+            page,
+            limit,
+            sortOrder
+        };
+        if (sortBy) {
+            params.sortBy = sortBy;
+        }
+        const res = await axiosInstance.get("/jobs/search/normal", {
+            params
+        });
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Failed to search listed jobs");
+    }
+};
+
 // Get listed jobs API
 export const getListedJobsApi = async (location: string, page: number = 1, limit: number = 10, sortOrder: string = 'desc') => {
     try {

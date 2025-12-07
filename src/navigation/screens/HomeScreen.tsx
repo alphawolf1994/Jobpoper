@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from "react";
+import React, { useEffect, useCallback, useState, useRef } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, BackHandler, Alert } from "react-native";
 import { Colors } from "../../utils";
 import Header from "../../components/Header";
@@ -18,6 +18,11 @@ const HomeScreen = ({ navigation }: any) => {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
   const { currentLocation } = useSelector((state: RootState) => state.job);
+  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isInitialMountRef = useRef(true);
 
   const handlePostJob = () => {
     navigation.navigate('PostJobScreen');
@@ -34,7 +39,7 @@ const HomeScreen = ({ navigation }: any) => {
     return "New York, NY, USA";
   };
 
-  // Refresh hot jobs and listed jobs when location changes
+  // Refresh hot jobs and listed jobs when location changes (initial load)
   useEffect(() => {
     dispatch(expireOldJobs());
     dispatch(getHotJobs({
@@ -50,7 +55,39 @@ const HomeScreen = ({ navigation }: any) => {
       limit: 10,
       sortOrder: 'desc'
     }));
+    isInitialMountRef.current = false;
   }, [dispatch, currentLocation, user?.profile?.location]);
+
+  // Debounced search effect - triggers when searchQuery changes
+  useEffect(() => {
+    // Skip on initial mount (we already loaded default jobs)
+    if (isInitialMountRef.current) {
+      return;
+    }
+
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Set new timeout for debounced search
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 500); // 500ms debounce
+
+    // Cleanup function
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchQuery]);
+
+  // Clear search
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery('');
+    setDebouncedSearchQuery('');
+  }, []);
 
   // Handle Android back button
   useFocusEffect(
@@ -87,12 +124,21 @@ const HomeScreen = ({ navigation }: any) => {
         <View style={styles.inputWrapper}>
           <MyTextInput
             placeholder="Find cool gigs around you"
-            // pass containerStyle if your component expects a different prop name adjust accordingly
             containerStyle={styles.searchInput}
+            value={searchQuery}
+            onChange={setSearchQuery}
             leftIcon={<Ionicons name="search-outline" size={20} color="#9AA0A6" />}
           />
         </View>
-
+        {searchQuery.trim().length > 0 && (
+          <TouchableOpacity 
+            style={styles.clearButton} 
+            onPress={handleClearSearch}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="close-circle" size={30} color="#9AA0A6" />
+          </TouchableOpacity>
+        )}
         <TouchableOpacity
           style={styles.plusButton}
           activeOpacity={0.7}
@@ -102,8 +148,8 @@ const HomeScreen = ({ navigation }: any) => {
         </TouchableOpacity>
       </View>
 
-      <HotJobs />
-      <ListedJobs />
+      <HotJobs searchQuery={debouncedSearchQuery} />
+      <ListedJobs searchQuery={debouncedSearchQuery} />
 
     </SafeAreaView>
   );
@@ -118,11 +164,19 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 16,
     // paddingVertical: 12,
-
   },
   inputWrapper: {
     flex: 1,
-    marginRight: 12,
+    marginRight: 8,
+  },
+  clearButton: {
+    height: 48,
+    width: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 4,
+    marginRight: 4,
+    marginTop: 6,
   },
   searchInput: {
     height: 48,

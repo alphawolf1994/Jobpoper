@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,11 +13,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../utils';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
-import { getAllListedJobsPaginated } from '../../redux/slices/jobSlice';
+import { getAllListedJobsPaginated, searchListedJobsPaginated } from '../../redux/slices/jobSlice';
 import { AppDispatch, RootState } from '../../redux/store';
 import { Job } from '../../interface/interfaces';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
+import MyTextInput from '../../components/MyTextInput';
 import { IMAGE_BASE_URL } from '@/src/api/baseURL';
 
 const AllListedJobsScreen: React.FC = () => {
@@ -26,6 +27,10 @@ const AllListedJobsScreen: React.FC = () => {
   const jobState = useSelector((state: RootState) => state.job);
   const { allListedJobs = [], loading = false, loadingMore = false, allListedJobsPagination, currentLocation } = jobState || {};
   const { user } = useSelector((state: RootState) => state.auth);
+  
+  const [searchQuery, setSearchQuery] = useState('');
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isInitialMountRef = useRef(true);
 
   // Get location from Redux state, user profile, or use default
   const getLocation = useCallback(() => {
@@ -38,16 +43,63 @@ const AllListedJobsScreen: React.FC = () => {
     return "New York, NY, USA";
   }, [currentLocation, user?.profile?.location]);
 
-  // Initial load
-  useEffect(() => {
-    dispatch(getAllListedJobsPaginated({ 
-      location: getLocation(),
-      page: 1,
-      limit: 10,
-      sortOrder: 'desc',
-      append: false
-    }));
+  // Load jobs (default or search)
+  const loadJobs = useCallback((page: number = 1, append: boolean = false, searchTerm?: string) => {
+    const location = getLocation();
+    
+    if (searchTerm && searchTerm.trim()) {
+      // Use search API
+      dispatch(searchListedJobsPaginated({ 
+        location,
+        search: searchTerm.trim(),
+        page,
+        limit: 10,
+        sortOrder: 'desc',
+        append
+      }));
+    } else {
+      // Use default API
+      dispatch(getAllListedJobsPaginated({ 
+        location,
+        page,
+        limit: 10,
+        sortOrder: 'desc',
+        append
+      }));
+    }
   }, [dispatch, getLocation]);
+
+  // Initial load (only on mount)
+  useEffect(() => {
+    loadJobs(1, false, '');
+    isInitialMountRef.current = false;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Debounced search effect
+  useEffect(() => {
+    // Skip on initial mount (we already loaded default jobs)
+    if (isInitialMountRef.current) {
+      return;
+    }
+
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Set new timeout for debounced search
+    searchTimeoutRef.current = setTimeout(() => {
+      loadJobs(1, false, searchQuery);
+    }, 500); // 500ms debounce
+
+    // Cleanup function
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchQuery, loadJobs]);
 
   // Load more jobs when reaching end
   const loadMoreJobs = useCallback(() => {
@@ -56,25 +108,19 @@ const AllListedJobsScreen: React.FC = () => {
     }
     
     const nextPage = (allListedJobsPagination?.currentPage || 0) + 1;
-    dispatch(getAllListedJobsPaginated({ 
-      location: getLocation(),
-      page: nextPage,
-      limit: 10,
-      sortOrder: 'desc',
-      append: true
-    }));
-  }, [dispatch, getLocation, loadingMore, loading, allListedJobsPagination]);
+    loadJobs(nextPage, true, searchQuery);
+  }, [loadJobs, loadingMore, loading, allListedJobsPagination, searchQuery]);
 
   // Refresh jobs
   const onRefresh = useCallback(() => {
-    dispatch(getAllListedJobsPaginated({ 
-      location: getLocation(),
-      page: 1,
-      limit: 10,
-      sortOrder: 'desc',
-      append: false
-    }));
-  }, [dispatch, getLocation]);
+    loadJobs(1, false, searchQuery);
+  }, [loadJobs, searchQuery]);
+
+  // Clear search
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery('');
+    loadJobs(1, false, '');
+  }, [loadJobs]);
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -146,7 +192,11 @@ const AllListedJobsScreen: React.FC = () => {
     return (
       <View style={styles.emptyContainer}>
         <Ionicons name="briefcase-outline" size={64} color={Colors.gray} />
-        <Text style={styles.emptyText}>No listed jobs available in your area</Text>
+        <Text style={styles.emptyText}>
+          {searchQuery.trim() 
+            ? `No jobs found for "${searchQuery}"` 
+            : 'No listed jobs available in your area'}
+        </Text>
       </View>
     );
   };
@@ -164,6 +214,28 @@ const AllListedJobsScreen: React.FC = () => {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>All Listed Jobs</Text>
         <View style={styles.backButton} />
+      </View>
+
+      {/* search row */}
+      <View style={styles.searchRow}>
+        <View style={styles.inputWrapper}>
+          <MyTextInput
+            placeholder="Search a job"
+            containerStyle={styles.searchInput}
+            value={searchQuery}
+            onChange={setSearchQuery}
+            leftIcon={<Ionicons name="search-outline" size={20} color="#9AA0A6" />}
+          />
+        </View>
+        {searchQuery.trim().length > 0 && (
+          <TouchableOpacity 
+            style={styles.clearButton} 
+            onPress={handleClearSearch}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="close-circle" size={30} color="#9AA0A6" />
+          </TouchableOpacity>
+        )}
       </View>
 
       {loading && allListedJobs.length === 0 ? (
@@ -221,6 +293,31 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: Colors.black,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  inputWrapper: {
+    flex: 1,
+    marginRight: 8,
+  },
+  searchInput: {
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: '#e9e9eaff',
+    paddingHorizontal: 14,
+    borderWidth: 0,
+  },
+  clearButton: {
+    height: 48,
+    width: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 4,
+    marginTop: 6,
   },
   listContent: {
     padding: 16,

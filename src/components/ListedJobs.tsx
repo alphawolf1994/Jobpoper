@@ -11,17 +11,24 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../utils';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
-import { getListedJobs } from '../redux/slices/jobSlice';
+import { getListedJobs, searchListedJobsPaginated } from '../redux/slices/jobSlice';
 import { AppDispatch, RootState } from '../redux/store';
 import { Job } from '../interface/interfaces';
 import { IMAGE_BASE_URL } from '../api/baseURL';
 
-const ListedJobs: React.FC = () => {
+interface ListedJobsProps {
+  searchQuery?: string;
+}
+
+const ListedJobs: React.FC<ListedJobsProps> = ({ searchQuery = '' }) => {
   const navigation = useNavigation<any>();
   const dispatch = useDispatch<AppDispatch>();
   const jobState = useSelector((state: RootState) => state.job);
-  const { listedJobs = [], loading = false, currentLocation } = jobState || {};
+  const { listedJobs = [], loading = false, currentLocation, allListedJobs = [] } = jobState || {};
   const { user } = useSelector((state: RootState) => state.auth);
+  
+  // Use allListedJobs if searching, otherwise use listedJobs
+  const displayJobs = searchQuery.trim() ? allListedJobs : listedJobs;
 
   // Get location from Redux state, user profile, or use default
   const getLocation = () => {
@@ -35,14 +42,28 @@ const ListedJobs: React.FC = () => {
   };
 
   useEffect(() => {
-    // Fetch listed jobs when component mounts
-    dispatch(getListedJobs({ 
-      location: getLocation(),
-      page: 1,
-      limit: 10,
-      sortOrder: 'desc'
-    }));
-  }, [dispatch, currentLocation, user?.profile?.location]);
+    const location = getLocation();
+    
+    if (searchQuery && searchQuery.trim()) {
+      // Use search API when search query exists
+      dispatch(searchListedJobsPaginated({ 
+        location,
+        search: searchQuery.trim(),
+        page: 1,
+        limit: 10,
+        sortOrder: 'desc',
+        append: false
+      }));
+    } else {
+      // Use default API when no search query
+      dispatch(getListedJobs({ 
+        location,
+        page: 1,
+        limit: 10,
+        sortOrder: 'desc'
+      }));
+    }
+  }, [dispatch, currentLocation, user?.profile?.location, searchQuery]);
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
@@ -119,9 +140,9 @@ const ListedJobs: React.FC = () => {
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading listed jobs...</Text>
         </View>
-      ) : (listedJobs && listedJobs.length > 0) ? (
+      ) : (displayJobs && displayJobs.length > 0) ? (
         <FlatList
-          data={listedJobs}
+          data={displayJobs}
           renderItem={renderJobCard}
           keyExtractor={(item) => item._id}
           showsVerticalScrollIndicator={false}
@@ -130,7 +151,11 @@ const ListedJobs: React.FC = () => {
         />
       ) : (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No listed jobs available in your area</Text>
+          <Text style={styles.emptyText}>
+            {searchQuery.trim() 
+              ? `No listed jobs found for "${searchQuery}"` 
+              : 'No listed jobs available in your area'}
+          </Text>
         </View>
       )}
     </View>
