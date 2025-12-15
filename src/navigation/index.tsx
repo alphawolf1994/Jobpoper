@@ -41,6 +41,10 @@ import { Colors } from "../utils";
 import ManageLocationsScreen from "./screens/ManageLocationsScreen";
 import AddLocationScreen from "./screens/AddLocationScreen";
 
+// Legal screens
+import PrivacyPolicyScreen from "./screens/PrivacyPolicyScreen";
+import TermsAndConditionsScreen from "./screens/TermsAndConditionsScreen";
+
 
 
 
@@ -195,6 +199,20 @@ const RootStack = createNativeStackNavigator({
     },
     AddLocationScreen: {
       screen: AddLocationScreen,
+      options: {
+        headerShown: false,
+      },
+    },
+
+    // Legal screens
+    PrivacyPolicyScreen: {
+      screen: PrivacyPolicyScreen,
+      options: {
+        headerShown: false,
+      },
+    },
+    TermsAndConditionsScreen: {
+      screen: TermsAndConditionsScreen,
       options: {
         headerShown: false,
       },

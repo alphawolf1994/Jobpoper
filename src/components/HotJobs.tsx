@@ -97,7 +97,7 @@ const HotJobs: React.FC<HotJobsProps> = ({ searchQuery = '' }) => {
     <TouchableOpacity key={job._id} style={styles.jobCard} activeOpacity={0.8} onPress={()=>{navigation.navigate('JobDetailsScreen', { jobId: job._id })}}>
       {/* Hot/Fire Label */}
       <View style={styles.hotLabel}>
-        <Ionicons name="flame" size={16} color={Colors.orange} />
+        <Ionicons name="flame" size={16} color={Colors.red} />
         {/* <Text style={styles.hotLabelText}>HOT</Text> */}
       </View>
 

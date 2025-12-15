@@ -1,13 +1,15 @@
 import { PayloadAction, createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import {
   sendPhoneVerificationApi,
+  resendVerificationApi,
   verifyPhoneApi,
   registerUserApi,
   loginUserApi,
   completeProfileApi,
   getCurrentUserApi,
   logoutUserApi,
-  changePinApi
+  changePinApi,
+  checkPhoneApi
 } from "../../api/authApis";
 import { setAuthToken } from "../../api/axiosInstance";
 import { JobPoperUser, AuthResponse } from "../../interface/interfaces";
@@ -42,6 +44,32 @@ export const sendPhoneVerification = createAsyncThunk(
       return response;
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to send verification code");
+    }
+  }
+);
+
+// Resend phone verification code
+export const resendVerification = createAsyncThunk(
+  "auth/resendVerification",
+  async (phoneNumber: string, { rejectWithValue }) => {
+    try {
+      const response = await resendVerificationApi(phoneNumber);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "Failed to resend verification code");
+    }
+  }
+);
+
+// Check phone number
+export const checkPhone = createAsyncThunk(
+  "auth/checkPhone",
+  async (phoneNumber: string, { rejectWithValue }) => {
+    try {
+      const response = await checkPhoneApi(phoneNumber);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "Failed to check phone number");
     }
   }
 );
@@ -133,9 +161,9 @@ export const logoutUser = createAsyncThunk(
 // Change PIN
 export const changePin = createAsyncThunk(
   "auth/changePin",
-  async ({ oldPin, newPin }: { oldPin: string; newPin: string }, { rejectWithValue }) => {
+  async (newPin: string, { rejectWithValue }) => {
     try {
-      const response = await changePinApi(oldPin, newPin);
+      const response = await changePinApi(newPin);
       return response;
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to change PIN");
@@ -180,6 +208,32 @@ const authSlice = createSlice({
         state.loading = false;
       })
       .addCase(sendPhoneVerification.fulfilled, (state, action) => {
+        state.loading = false;
+        state.error = null;
+      })
+      // Resend Phone Verification
+      .addCase(resendVerification.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(resendVerification.rejected, (state, action) => {
+        state.error = action.payload as string;
+        state.loading = false;
+      })
+      .addCase(resendVerification.fulfilled, (state, action) => {
+        state.loading = false;
+        state.error = null;
+      })
+      // Check Phone
+      .addCase(checkPhone.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(checkPhone.rejected, (state, action) => {
+        state.error = action.payload as string;
+        state.loading = false;
+      })
+      .addCase(checkPhone.fulfilled, (state, action) => {
         state.loading = false;
         state.error = null;
       })

@@ -44,6 +44,14 @@ export interface DeleteLocationResponse {
   };
 }
 
+export interface UpdateLocationResponse {
+  status: string;
+  message: string;
+  data: {
+    location: Location;
+  };
+}
+
 // Save a new location
 export const saveLocationApi = async (locationData: LocationPayload) => {
   try {
@@ -70,6 +78,25 @@ export const getLocationsApi = async () => {
     return res.data;
   } catch (error: any) {
     throw new Error(error.response?.data?.message || "Failed to fetch locations");
+  }
+};
+
+// Update a location by ID
+export const updateLocationApi = async (locationId: string, locationData: LocationPayload) => {
+  try {
+    const payload = {
+      name: locationData.name,
+      fullAddress: locationData.fullAddress,
+      latitude: locationData.latitude,
+      longitude: locationData.longitude,
+      addressDetails: locationData.addressDetails || "",
+      createdAt: locationData.createdAt || Date.now(),
+    };
+
+    const res = await axiosInstance.put<UpdateLocationResponse>(`/locations/${locationId}`, payload);
+    return res.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to update location");
   }
 };
 

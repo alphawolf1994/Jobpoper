@@ -16,6 +16,7 @@ import { AppDispatch, RootState } from '../../redux/store';
 import { SavedLocation, clearLastAddedLocation } from '../../redux/slices/locationsSlice';
 import { fetchLocations } from '../../redux/slices/locationsSlice';
 import { useAlertModal } from "../../hooks/useAlertModal";
+import { formatDateDDMMYYYY } from "../../utils";
 import { Job, SavedLocationData } from '../../interface/interfaces';
 import { IMAGE_BASE_URL } from '../../api/baseURL';
 
@@ -135,7 +136,7 @@ const PostJobScreen = () => {
         description: jobDataToEdit.description || '',
         cost: jobDataToEdit.cost || '',
         location: '',
-        day: jobDataToEdit.formattedScheduledDate || new Date(jobDataToEdit.scheduledDate).toLocaleDateString(),
+        day: formatDateDDMMYYYY(jobDataToEdit.formattedScheduledDate || jobDataToEdit.scheduledDate),
         time: jobDataToEdit.scheduledTime || '',
         urgency: jobDataToEdit.urgency || '',
       });

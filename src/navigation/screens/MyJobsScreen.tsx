@@ -10,6 +10,7 @@ import { AppDispatch, RootState } from '../../redux/store';
 import { getUserJobs, getMyInterestedJobs, deleteJob, updateJobStatus } from '../../redux/slices/jobSlice';
 import { Job } from '../../interface/interfaces';
 import { useAlertModal } from "../../hooks/useAlertModal";
+import { formatDateDDMMYYYY } from "../../utils";
 
 const MyJobsScreen = () => {
   const navigation = useNavigation<any>();
@@ -152,7 +153,7 @@ const MyJobsScreen = () => {
         <Text style={styles.jobTitle}>{item.title}</Text>
         <View style={styles.headerRow}>
          {item.urgency === 'Urgent'&&<View style={styles.bookmarkButton} >
-                      <Ionicons name="flame" size={20} color={Colors.orange} />
+                      <Ionicons name="flame" size={20} color={Colors.red} />
                     </View>}
                     <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
           <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
@@ -174,11 +175,11 @@ const MyJobsScreen = () => {
         </View>
         <View style={styles.infoItem}>
           <Ionicons name="calendar-outline" size={16} color={Colors.primary} />
-          <Text style={styles.infoText} numberOfLines={1}>{item.formattedScheduledDate || new Date(item.scheduledDate).toLocaleDateString()}</Text>
+          <Text style={styles.infoText} numberOfLines={1}>{formatDateDDMMYYYY(item.formattedScheduledDate || item.scheduledDate)}</Text>
         </View>
         <View style={styles.infoItem}>
           <Ionicons name="time-outline" size={16} color={Colors.primary} />
-          <Text style={styles.infoText}>{formatDate(item.createdAt)}</Text>
+          <Text style={styles.infoText}>{item.scheduledTime}</Text>
         </View>
       </View>
 
@@ -232,11 +233,11 @@ const MyJobsScreen = () => {
         </View>
         <View style={styles.infoItem}>
           <Ionicons name="calendar-outline" size={16} color={Colors.primary} />
-          <Text style={styles.infoText} numberOfLines={1}>{item.formattedScheduledDate || new Date(item.scheduledDate).toLocaleDateString()}</Text>
+          <Text style={styles.infoText} numberOfLines={1}>{formatDateDDMMYYYY(item.formattedScheduledDate || item.scheduledDate)}</Text>
         </View>
         <View style={styles.infoItem}>
           <Ionicons name="time-outline" size={16} color={Colors.primary} />
-          <Text style={styles.infoText}>{formatDate(item.createdAt)}</Text>
+          <Text style={styles.infoText}>{item.scheduledTime}</Text>
         </View>
       </View>
 
@@ -580,7 +581,7 @@ const styles = StyleSheet.create({
     bookmarkButton: {
     padding: 3,
     borderWidth:1,
-    borderColor:Colors.orange,
+    borderColor:Colors.red,
     borderRadius: 50,
     marginRight: 8,
   },

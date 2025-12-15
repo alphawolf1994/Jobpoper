@@ -78,6 +78,25 @@ const ManageLocationsScreen = () => {
     });
   };
 
+  const handleEditLocation = (item: SavedLocation) => {
+    // Find the full location data from saved locations
+    const fullLocation = saved?.find(l => l.id === item.id);
+    if (fullLocation) {
+      (navigation as any).navigate('AddLocationScreen', {
+        isEditMode: true,
+        locationData: {
+          id: fullLocation.id,
+          name: fullLocation.name,
+          fullAddress: fullLocation.fullAddress,
+          latitude: fullLocation.latitude,
+          longitude: fullLocation.longitude,
+          addressDetails: fullLocation.addressDetails,
+          createdAt: fullLocation.createdAt,
+        },
+      });
+    }
+  };
+
   const renderLocationItem = ({ item }: { item: SavedLocation }) => {
     return (
       <View style={styles.cardContainer}>
@@ -90,12 +109,20 @@ const ManageLocationsScreen = () => {
               {item.label}
             </Text>
           </View>
-          <TouchableOpacity
-            style={styles.cardActionButton}
-            onPress={() => handleDeleteLocation(item)}
-          >
-            <Ionicons name="trash-outline" size={16} color={Colors.primary} />
-          </TouchableOpacity>
+          <View style={styles.cardActionsRow}>
+            <TouchableOpacity
+              style={styles.cardActionButton}
+              onPress={() => handleEditLocation(item)}
+            >
+              <Ionicons name="create-outline" size={16} color={Colors.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.cardActionButton}
+              onPress={() => handleDeleteLocation(item)}
+            >
+              <Ionicons name="trash-outline" size={16} color={Colors.primary} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <Text style={styles.cardAddress} numberOfLines={2}>
@@ -248,8 +275,7 @@ const styles = StyleSheet.create({
   cardActionsRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 10,
-    gap: 10 as any,
+    gap: 8 as any,
   },
   cardActionButton: {
     width: 34,

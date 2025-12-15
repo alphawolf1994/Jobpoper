@@ -28,12 +28,10 @@ const ChangePinScreen = () => {
     const error = authState?.error || null;
     const { showAlert, AlertComponent: alertModal } = useAlertModal();
 
-    const [oldPin, setOldPin] = useState(['', '', '', '']);
     const [newPin, setNewPin] = useState(['', '', '', '']);
     const [confirmPin, setConfirmPin] = useState(['', '', '', '']);
-    const [step, setStep] = useState(1); // 1 = old PIN, 2 = new PIN, 3 = confirm new PIN
+    const [step, setStep] = useState(1); // 1 = new PIN, 2 = confirm new PIN
 
-    const oldPinInputRefs = useRef<(TextInput | null)[]>([null, null, null, null]);
     const newPinInputRefs = useRef<(TextInput | null)[]>([null, null, null, null]);
     const confirmPinInputRefs = useRef<(TextInput | null)[]>([null, null, null, null]);
 
@@ -57,7 +55,7 @@ const ChangePinScreen = () => {
             ],
         });
 
-    const handlePinChange = (value: string, index: number, pinType: 'old' | 'new' | 'confirm') => {
+    const handlePinChange = (value: string, index: number, pinType: 'new' | 'confirm') => {
         if (value.length > 1) return; // Prevent multiple characters
 
         // Clear error when user starts typing
@@ -69,11 +67,7 @@ const ChangePinScreen = () => {
         let setPinArray: React.Dispatch<React.SetStateAction<string[]>>;
         let refs: React.MutableRefObject<(TextInput | null)[]>;
 
-        if (pinType === 'old') {
-            pinArray = [...oldPin];
-            setPinArray = setOldPin;
-            refs = oldPinInputRefs;
-        } else if (pinType === 'new') {
+        if (pinType === 'new') {
             pinArray = [...newPin];
             setPinArray = setNewPin;
             refs = newPinInputRefs;
@@ -92,11 +86,8 @@ const ChangePinScreen = () => {
         } else if (value && index === 3) {
             // All 4 digits entered, auto-advance or submit
             setTimeout(() => {
-                if (pinType === 'old' && pinArray.join('').length === 4) {
+                if (pinType === 'new' && pinArray.join('').length === 4) {
                     setStep(2);
-                    newPinInputRefs.current[0]?.focus();
-                } else if (pinType === 'new' && pinArray.join('').length === 4) {
-                    setStep(3);
                     confirmPinInputRefs.current[0]?.focus();
                 } else if (pinType === 'confirm' && pinArray.join('').length === 4) {
                     handleSubmit(pinArray);
@@ -105,9 +96,9 @@ const ChangePinScreen = () => {
         }
     };
 
-    const handleKeyPress = (key: string, index: number, pinType: 'old' | 'new' | 'confirm') => {
-        const refs = pinType === 'old' ? oldPinInputRefs : pinType === 'new' ? newPinInputRefs : confirmPinInputRefs;
-        const pinArray = pinType === 'old' ? oldPin : pinType === 'new' ? newPin : confirmPin;
+    const handleKeyPress = (key: string, index: number, pinType: 'new' | 'confirm') => {
+        const refs = pinType === 'new' ? newPinInputRefs : confirmPinInputRefs;
+        const pinArray = pinType === 'new' ? newPin : confirmPin;
 
         if (key === 'Backspace' && !pinArray[index] && index > 0) {
             refs.current[index - 1]?.focus();
@@ -116,16 +107,10 @@ const ChangePinScreen = () => {
 
     const handleSubmit = async (updatedConfirmPin?: string[]) => {
         const currentConfirmPin = updatedConfirmPin || confirmPin;
-        const oldPinString = oldPin.join('');
         const newPinString = newPin.join('');
         const confirmPinString = currentConfirmPin.join('');
 
         // Validation
-        if (oldPinString.length !== 4) {
-            showErrorAlert('Please enter your current 4-digit PIN.');
-            return;
-        }
-
         if (newPinString.length !== 4) {
             showErrorAlert('Please enter your new 4-digit PIN.');
             return;
@@ -137,26 +122,14 @@ const ChangePinScreen = () => {
         }
 
         if (newPinString !== confirmPinString) {
-            showErrorAlert('New PINs do not match. Please try again.');
+            showErrorAlert('PINs do not match. Please try again.');
             setConfirmPin(['', '', '', '']);
             confirmPinInputRefs.current[0]?.focus();
             return;
         }
 
-        if (oldPinString === newPinString) {
-            showErrorAlert('New PIN must be different from your current PIN.');
-            setNewPin(['', '', '', '']);
-            setConfirmPin(['', '', '', '']);
-            setStep(2);
-            newPinInputRefs.current[0]?.focus();
-            return;
-        }
-
         try {
-            const result = await dispatch(changePin({
-                oldPin: oldPinString,
-                newPin: newPinString
-            })).unwrap();
+            const result = await dispatch(changePin(newPinString)).unwrap();
 
             if (result.status === 'success') {
                 showSuccessAlert(
@@ -166,12 +139,11 @@ const ChangePinScreen = () => {
             }
         } catch (error: any) {
             showErrorAlert(error || 'Failed to change PIN. Please try again.');
-            // Reset to old PIN step on error
-            setOldPin(['', '', '', '']);
+            // Reset to new PIN step on error
             setNewPin(['', '', '', '']);
             setConfirmPin(['', '', '', '']);
             setStep(1);
-            oldPinInputRefs.current[0]?.focus();
+            newPinInputRefs.current[0]?.focus();
         }
     };
 
@@ -180,9 +152,6 @@ const ChangePinScreen = () => {
             navigation.goBack();
         } else if (step === 2) {
             setStep(1);
-            setNewPin(['', '', '', '']);
-        } else if (step === 3) {
-            setStep(2);
             setConfirmPin(['', '', '', '']);
         }
     };
@@ -190,7 +159,7 @@ const ChangePinScreen = () => {
     const renderPinInputs = (
         pinArray: string[],
         refs: React.MutableRefObject<(TextInput | null)[]>,
-        pinType: 'old' | 'new' | 'confirm'
+        pinType: 'new' | 'confirm'
     ) => {
         return pinArray.map((digit, index) => (
             <TextInput
@@ -220,17 +189,11 @@ const ChangePinScreen = () => {
         switch (step) {
             case 1:
                 return {
-                    emoji: '🔒',
-                    title: 'Enter Current PIN',
-                    subtitle: 'Please enter your current 4-digit PIN'
-                };
-            case 2:
-                return {
                     emoji: '🔐',
                     title: 'Enter New PIN',
                     subtitle: 'Create a new 4-digit PIN for your account'
                 };
-            case 3:
+            case 2:
                 return {
                     emoji: '✅',
                     title: 'Confirm New PIN',
@@ -238,17 +201,17 @@ const ChangePinScreen = () => {
                 };
             default:
                 return {
-                    emoji: '🔒',
-                    title: 'Enter Current PIN',
-                    subtitle: 'Please enter your current 4-digit PIN'
+                    emoji: '🔐',
+                    title: 'Enter New PIN',
+                    subtitle: 'Create a new 4-digit PIN for your account'
                 };
         }
     };
 
     const stepInfo = getStepInfo();
-    const currentPin = step === 1 ? oldPin : step === 2 ? newPin : confirmPin;
-    const currentRefs = step === 1 ? oldPinInputRefs : step === 2 ? newPinInputRefs : confirmPinInputRefs;
-    const currentPinType = step === 1 ? 'old' : step === 2 ? 'new' : 'confirm';
+    const currentPin = step === 1 ? newPin : confirmPin;
+    const currentRefs = step === 1 ? newPinInputRefs : confirmPinInputRefs;
+    const currentPinType = step === 1 ? 'new' : 'confirm';
 
     return (
         <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
@@ -277,18 +240,13 @@ const ChangePinScreen = () => {
                             {renderPinInputs(currentPin, currentRefs, currentPinType)}
                         </View>
 
-                        {step < 3 && (
+                        {step === 1 && (
                             <Button
                                 label="Continue"
                                 onPress={() => {
                                     if (currentPin.join('').length === 4) {
-                                        if (step === 1) {
-                                            setStep(2);
-                                            newPinInputRefs.current[0]?.focus();
-                                        } else if (step === 2) {
-                                            setStep(3);
-                                            confirmPinInputRefs.current[0]?.focus();
-                                        }
+                                        setStep(2);
+                                        confirmPinInputRefs.current[0]?.focus();
                                     }
                                 }}
                                 style={{
@@ -300,7 +258,7 @@ const ChangePinScreen = () => {
                             />
                         )}
 
-                        {step === 3 && (
+                        {step === 2 && (
                             <Button
                                 label={loading ? "Changing PIN..." : "Change PIN"}
                                 onPress={() => handleSubmit()}

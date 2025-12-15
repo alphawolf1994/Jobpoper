@@ -25,7 +25,7 @@
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = jobpoper/SplashScreen.storyboard; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
-		ED77342389CD389F2226C065 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = jobpoper/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		ED77342389CD389F2226C065 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = jobpoper/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		EFB55D7AA4A1B2A4D50D5000 /* Pods-jobpoper.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-jobpoper.release.xcconfig"; path = "Target Support Files/Pods-jobpoper/Pods-jobpoper.release.xcconfig"; sourceTree = "<group>"; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = jobpoper/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* jobpoper-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "jobpoper-Bridging-Header.h"; path = "jobpoper/jobpoper-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -73,7 +73,6 @@
 				61080EC4009942DB6C911D82 /* Pods-jobpoper.debug.xcconfig */,
 				EFB55D7AA4A1B2A4D50D5000 /* Pods-jobpoper.release.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
@@ -345,6 +344,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = jobpoper/jobpoper.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = RG3W7PC39V;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
@@ -363,7 +363,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
-				PRODUCT_BUNDLE_IDENTIFIER = com.anonymous.jobpoper;
+				PRODUCT_BUNDLE_IDENTIFIER = com.appcrafters.jobpoper;
 				PRODUCT_NAME = jobpoper;
 				SWIFT_OBJC_BRIDGING_HEADER = "jobpoper/jobpoper-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -381,6 +381,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = jobpoper/jobpoper.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = RG3W7PC39V;
 				INFOPLIST_FILE = jobpoper/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -394,7 +395,7 @@
 					"-lc++",
 				);
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = com.anonymous.jobpoper;
+				PRODUCT_BUNDLE_IDENTIFIER = com.appcrafters.jobpoper;
 				PRODUCT_NAME = jobpoper;
 				SWIFT_OBJC_BRIDGING_HEADER = "jobpoper/jobpoper-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;

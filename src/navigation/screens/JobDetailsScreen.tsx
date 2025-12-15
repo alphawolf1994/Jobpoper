@@ -9,7 +9,10 @@ import {
   FlatList,
   Dimensions,
   Modal,
+  Linking,
+  Platform,
 } from "react-native";
+import * as Location from 'expo-location';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from "../../utils";
 import { Ionicons, AntDesign } from "@expo/vector-icons";
@@ -22,6 +25,7 @@ import { Image } from 'expo-image';
 import { IMAGE_BASE_URL } from '../../api/baseURL';
 import { showInterestOnJobApi } from '../../api/jobApis';
 import { useAlertModal } from "../../hooks/useAlertModal";
+import { formatDateDDMMYYYY } from "../../utils";
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -40,6 +44,7 @@ const JobDetailsScreen = () => {
   // Image modal state for attachment preview
   const [imageModalVisible, setImageModalVisible] = useState(false);
   const [imageModalUri, setImageModalUri] = useState<string | null>(null);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   useEffect(() => {
     if (jobId) {
@@ -185,36 +190,171 @@ const JobDetailsScreen = () => {
     });
   };
 
+  // Open Google Maps with single location
+  const openLocationInMaps = (location: SavedLocationData) => {
+    const { latitude, longitude, fullAddress } = location;
+    
+    if (!latitude || !longitude) {
+      showAlert({
+        title: "Error",
+        message: "Location coordinates not available",
+        type: "error",
+      });
+      return;
+    }
+
+    // Use Google Maps URL that works on both iOS and Android
+    const url = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`;
+    
+    Linking.openURL(url).catch((err) => {
+      showAlert({
+        title: "Error",
+        message: "Could not open Google Maps. Please make sure Google Maps is installed.",
+        type: "error",
+      });
+    });
+  };
+
+  // Open Google Maps with directions (source to destination)
+  const openDirectionsInMaps = (source: SavedLocationData, destination: SavedLocationData) => {
+    const { latitude: sourceLat, longitude: sourceLng } = source;
+    const { latitude: destLat, longitude: destLng } = destination;
+    
+    if (!sourceLat || !sourceLng || !destLat || !destLng) {
+      showAlert({
+        title: "Error",
+        message: "Location coordinates not available",
+        type: "error",
+      });
+      return;
+    }
+
+    // Use Google Maps URL for directions that works on both iOS and Android
+    const url = `https://www.google.com/maps/dir/?api=1&origin=${sourceLat},${sourceLng}&destination=${destLat},${destLng}`;
+    
+    Linking.openURL(url).catch((err) => {
+      showAlert({
+        title: "Error",
+        message: "Could not open Google Maps. Please make sure Google Maps is installed.",
+        type: "error",
+      });
+    });
+  };
+
+  // Get current location and open directions to pickup
+  const openDirectionsToPickup = async (pickup: SavedLocationData) => {
+    try {
+      // Request location permissions
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        showAlert({
+          title: "Permission Denied",
+          message: "Location permission is required to get directions from your current location.",
+          type: "error",
+        });
+        return;
+      }
+
+      // Get current location
+      const location = await Location.getCurrentPositionAsync({});
+      const { latitude: currentLat, longitude: currentLng } = location.coords;
+      const { latitude: pickupLat, longitude: pickupLng } = pickup;
+
+      if (!pickupLat || !pickupLng) {
+        showAlert({
+          title: "Error",
+          message: "Pickup location coordinates not available",
+          type: "error",
+        });
+        return;
+      }
+
+      // Open Google Maps with directions from current location to pickup
+      const url = `https://www.google.com/maps/dir/?api=1&origin=${currentLat},${currentLng}&destination=${pickupLat},${pickupLng}`;
+      
+      Linking.openURL(url).catch((err) => {
+        showAlert({
+          title: "Error",
+          message: "Could not open Google Maps. Please make sure Google Maps is installed.",
+          type: "error",
+        });
+      });
+    } catch (error: any) {
+      showAlert({
+        title: "Error",
+        message: error.message || "Failed to get your current location",
+        type: "error",
+      });
+    }
+  };
+
   const renderLocationSection = () => {
     if (!currentJob || !currentJob.location) return null;
 
     if (currentJob.jobType === 'Pickup') {
       const pickupLocation = currentJob.location as { source: SavedLocationData; destination: SavedLocationData };
+      const hasPickupCoordinates = pickupLocation.source?.latitude && pickupLocation.source?.longitude;
+      const hasDestinationCoordinates = pickupLocation.destination?.latitude && pickupLocation.destination?.longitude;
+      
       return (
         <View style={styles.locationSection}>
           <Text style={styles.sectionTitle}>Pickup Details</Text>
+          
           <View style={styles.locationCard}>
             <View style={styles.locationRow}>
-              <Ionicons name="location-outline" size={20} color={Colors.primary} />
+              <Ionicons name="navigate" size={24} color={Colors.primary} />
               <View style={styles.locationInfo}>
-                <Text style={styles.locationLabel}>Pickup Location</Text>
-                <Text style={styles.locationText}>{pickupLocation.source?.fullAddress}</Text>
-                {pickupLocation.source?.addressDetails && (
-                  <Text style={styles.locationDetails}>{pickupLocation.source.addressDetails}</Text>
-                )}
+                <View style={styles.pickupLocationRow}>
+                  <Ionicons name="location-outline" size={16} color={Colors.primary} />
+                  <View style={styles.pickupLocationInfo}>
+                    <Text style={styles.locationLabel}>Pickup Location</Text>
+                    <Text style={styles.locationText}>{pickupLocation.source?.fullAddress}</Text>
+                    {pickupLocation.source?.addressDetails && (
+                      <Text style={styles.locationDetails}>{pickupLocation.source.addressDetails}</Text>
+                    )}
+                  </View>
+                </View>
+                
+                <View style={styles.arrowDivider}>
+                  <Ionicons name="arrow-down" size={20} color={Colors.primary} />
+                </View>
+                
+                <View style={styles.pickupLocationRow}>
+                  <Ionicons name="location" size={16} color={Colors.primary} />
+                  <View style={styles.pickupLocationInfo}>
+                    <Text style={styles.locationLabel}>Destination</Text>
+                    <Text style={styles.locationText}>{pickupLocation.destination?.fullAddress}</Text>
+                    {pickupLocation.destination?.addressDetails && (
+                      <Text style={styles.locationDetails}>{pickupLocation.destination.addressDetails}</Text>
+                    )}
+                  </View>
+                </View>
               </View>
             </View>
-          </View>
-          <View style={styles.locationCard}>
-            <View style={styles.locationRow}>
-              <Ionicons name="location" size={20} color={Colors.primary} />
-              <View style={styles.locationInfo}>
-                <Text style={styles.locationLabel}>Destination</Text>
-                <Text style={styles.locationText}>{pickupLocation.destination?.fullAddress}</Text>
-                {pickupLocation.destination?.addressDetails && (
-                  <Text style={styles.locationDetails}>{pickupLocation.destination.addressDetails}</Text>
-                )}
-              </View>
+
+            {/* Two direction buttons */}
+            <View style={styles.directionsButtonsContainer}>
+              {hasPickupCoordinates && (
+                <TouchableOpacity
+                  style={styles.directionButton}
+                  onPress={() => openDirectionsToPickup(pickupLocation.source!)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="navigate-outline" size={18} color={Colors.white} />
+                  <Text style={styles.directionButtonText}>To Pickup</Text>
+                </TouchableOpacity>
+              )}
+              
+              {hasPickupCoordinates && hasDestinationCoordinates && (
+                <TouchableOpacity
+                  style={styles.directionButton}
+                  onPress={() => openDirectionsInMaps(pickupLocation.source!, pickupLocation.destination!)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name="navigate" size={18} color={Colors.white} />
+                  <Text style={styles.directionButtonText}>Pickup to Destination</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         </View>
@@ -224,7 +364,11 @@ const JobDetailsScreen = () => {
       return (
         <View style={styles.locationSection}>
           <Text style={styles.sectionTitle}>Location</Text>
-          <View style={styles.locationCard}>
+          <TouchableOpacity
+            style={styles.locationCard}
+            onPress={() => openLocationInMaps(onSiteLocation)}
+            activeOpacity={0.7}
+          >
             <View style={styles.locationRow}>
               <Ionicons name="location-outline" size={20} color={Colors.primary} />
               <View style={styles.locationInfo}>
@@ -233,8 +377,9 @@ const JobDetailsScreen = () => {
                   <Text style={styles.locationDetails}>{onSiteLocation.addressDetails}</Text>
                 )}
               </View>
+              <Ionicons name="chevron-forward" size={20} color={Colors.gray} />
             </View>
-          </View>
+          </TouchableOpacity>
         </View>
       );
     }
@@ -253,10 +398,11 @@ const JobDetailsScreen = () => {
           horizontal
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item, index) => `${item}-${index}`}
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) => {
             const uri = `${IMAGE_BASE_URL}${item.startsWith("/") ? item : `/${item}`}`;
             return (
               <TouchableOpacity onPress={() => {
+                setCurrentImageIndex(index);
                 setImageModalUri(uri);
                 setImageModalVisible(true);
               }} activeOpacity={0.9}>
@@ -285,17 +431,12 @@ const JobDetailsScreen = () => {
           <Text style={styles.sectionTitle}>Job Description</Text>
           <Text style={styles.descriptionText}>{currentJob.description}</Text>
         </View>
-
-        {renderLocationSection()}
-
-        {renderAttachments()}
-
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Job Details</Text>
           <View style={styles.detailRow}>
             <Ionicons name="calendar-outline" size={20} color={Colors.primary} />
             <Text style={styles.detailText}>
-              {currentJob.formattedScheduledDate || new Date(currentJob.scheduledDate).toLocaleDateString()}
+              {formatDateDDMMYYYY(currentJob.formattedScheduledDate || currentJob.scheduledDate)}
             </Text>
           </View>
           <View style={styles.detailRow}>
@@ -307,6 +448,11 @@ const JobDetailsScreen = () => {
             <Text style={styles.detailText}>{currentJob.cost}</Text>
           </View>
         </View>
+        {renderLocationSection()}
+
+        {renderAttachments()}
+
+       
 
         {/* {isMyJob && (
           <View style={styles.section}>
@@ -396,27 +542,92 @@ const JobDetailsScreen = () => {
         visible={imageModalVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => setImageModalVisible(false)}
+        onRequestClose={() => {
+          setImageModalVisible(false);
+          setImageModalUri(null);
+          setCurrentImageIndex(0);
+        }}
       >
         <View style={styles.modalOverlay}>
-          <TouchableOpacity style={styles.modalClose} onPress={() => { setImageModalVisible(false); setImageModalUri(null); }}>
+          <TouchableOpacity 
+            style={styles.modalClose} 
+            onPress={() => {
+              setImageModalVisible(false);
+              setImageModalUri(null);
+              setCurrentImageIndex(0);
+            }}
+          >
             <Ionicons name="close" size={28} color={Colors.white} />
           </TouchableOpacity>
-          <ScrollView
-            style={styles.modalScroll}
-            contentContainerStyle={styles.modalContent}
-            maximumZoomScale={3}
-            minimumZoomScale={1}
-            centerContent
-          >
-            {imageModalUri && (
-              <Image
-                source={{ uri: imageModalUri }}
-                style={styles.modalImage}
-                contentFit="contain"
-              />
-            )}
-          </ScrollView>
+          
+          {/* Image counter */}
+          {currentJob?.attachments && currentJob.attachments.length > 1 && (
+            <View style={styles.imageCounter}>
+              <Text style={styles.imageCounterText}>
+                {currentImageIndex + 1} / {currentJob.attachments.length}
+              </Text>
+            </View>
+          )}
+          
+          {currentJob?.attachments && currentJob.attachments.length > 1 ? (
+            <FlatList
+              data={currentJob.attachments}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              keyExtractor={(item, index) => `modal-${item}-${index}`}
+              initialScrollIndex={currentImageIndex}
+              getItemLayout={(data, index) => ({
+                length: SCREEN_WIDTH,
+                offset: SCREEN_WIDTH * index,
+                index,
+              })}
+              onMomentumScrollEnd={(event) => {
+                if (!currentJob?.attachments) return;
+                const index = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
+                setCurrentImageIndex(index);
+                const attachment = currentJob.attachments[index];
+                if (attachment) {
+                  const uri = `${IMAGE_BASE_URL}${attachment.startsWith("/") ? attachment : `/${attachment}`}`;
+                  setImageModalUri(uri);
+                }
+              }}
+              renderItem={({ item }) => {
+                const uri = `${IMAGE_BASE_URL}${item.startsWith("/") ? item : `/${item}`}`;
+                return (
+                  <ScrollView
+                    style={styles.modalScroll}
+                    contentContainerStyle={styles.modalContent}
+                    maximumZoomScale={3}
+                    minimumZoomScale={1}
+                    centerContent
+                  >
+                    <Image
+                      source={{ uri }}
+                      style={styles.modalImage}
+                      contentFit="contain"
+                    />
+                  </ScrollView>
+                );
+              }}
+            />
+          ) : (
+            <ScrollView
+              style={styles.modalScroll}
+              contentContainerStyle={styles.modalContent}
+              maximumZoomScale={3}
+              minimumZoomScale={1}
+              centerContent
+            >
+              {imageModalUri && (
+                <Image
+                  source={{ uri: imageModalUri }}
+                  style={styles.modalImage}
+                  contentFit="contain"
+                />
+              )}
+            </ScrollView>
+          )}
         </View>
       </Modal>
       {/* Header Section with Blue Background */}
@@ -431,7 +642,7 @@ const JobDetailsScreen = () => {
               <AntDesign name="edit" size={18} color={Colors.primary} />
             </TouchableOpacity>)}
             {currentJob.urgency === 'Urgent' && <View style={styles.bookmarkButton}>
-              <Ionicons name="flame" size={20} color={Colors.orange} />
+              <Ionicons name="flame" size={20} color={Colors.red} />
             </View>}
           </View>
         </View>
@@ -794,7 +1005,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   locationSection: {
-    marginBottom: 24,
+    marginBottom: 30,
   },
   locationCard: {
     backgroundColor: Colors.lightGray,
@@ -802,12 +1013,47 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
   },
+  directionsButtonsContainer: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 16,
+  },
+  directionButton: {
+    flex: 1,
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  directionButtonText: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
   locationRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
   },
   locationInfo: {
     flex: 1,
+    marginLeft: 12,
+  },
+  pickupLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  pickupLocationInfo: {
+    flex: 1,
+    marginLeft: 8,
+  },
+  arrowDivider: {
+    alignItems: 'center',
+    marginVertical: 8,
     marginLeft: 12,
   },
   locationLabel: {
@@ -828,7 +1074,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   attachmentsSection: {
-    marginBottom: 24,
+    marginBottom: 60,
   },
   attachmentCard: {
     width: SCREEN_WIDTH * 0.7,
@@ -854,8 +1100,23 @@ const styles = StyleSheet.create({
     zIndex: 10,
     padding: 8,
   },
+  imageCounter: {
+    position: 'absolute',
+    top: 60,
+    left: 20,
+    zIndex: 10,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  imageCounterText: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: '600',
+  },
   modalScroll: {
-    width: '100%',
+    width: SCREEN_WIDTH,
   },
   modalContent: {
     flexGrow: 1,

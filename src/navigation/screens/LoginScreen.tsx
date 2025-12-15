@@ -17,7 +17,7 @@ import PhoneNumberInput from "../../components/PhoneNumberInput";
 import { useNavigation } from "@react-navigation/native";
 import { AntDesign } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
-import { loginUser, clearError, getCurrentUser } from "../../redux/slices/authSlice";
+import { loginUser, clearError, getCurrentUser, checkPhone } from "../../redux/slices/authSlice";
 import { RootState, AppDispatch } from "../../redux/store";
 import { useAlertModal } from "../../hooks/useAlertModal";
 
@@ -63,7 +63,7 @@ const LoginScreen = () => {
     }
   };
 
-  const handlePhoneSubmit = () => {
+  const handlePhoneSubmit = async () => {
     if (!formattedPhoneNumber.trim()) {
       showAlert({
         title: "Error",
@@ -84,8 +84,42 @@ const LoginScreen = () => {
       return;
     }
 
-    setStep(2);
-    pinInputRefs.current[0]?.focus();
+    try {
+      // Check if phone number exists
+      const result = await dispatch(checkPhone(formattedPhoneNumber.trim())).unwrap();
+
+      if (result.status === 'success' && result.data) {
+        const { exists, isActive } = result.data;
+
+        if (!exists) {
+          showAlert({
+            title: "Account Not Found",
+            message: "No account found with this phone number. Please sign up to create an account.",
+            type: "error",
+          });
+          return;
+        }
+
+        if (!isActive) {
+          showAlert({
+            title: "Account Deactivated",
+            message: "This account is deactivated. Please contact support for assistance.",
+            type: "error",
+          });
+          return;
+        }
+
+        // Phone exists and is active, proceed to PIN screen
+        setStep(2);
+        pinInputRefs.current[0]?.focus();
+      }
+    } catch (error: any) {
+      showAlert({
+        title: "Error",
+        message: error || "Failed to check phone number. Please try again.",
+        type: "error",
+      });
+    }
   };
 
   const handleLogin = async () => {

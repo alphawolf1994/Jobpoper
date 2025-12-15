@@ -14,6 +14,20 @@ export const sendPhoneVerificationApi = async (phoneNumber: string) => {
     }
 };
 
+// Resend Phone Verification Code
+export const resendVerificationApi = async (phoneNumber: string) => {
+    try {
+        const payload = {
+            phoneNumber: phoneNumber
+        };
+
+        const res = await axiosInstance.post("/auth/resend-verification", payload);
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Failed to resend verification code");
+    }
+};
+
 // Verify Phone Number
 export const verifyPhoneApi = async (phoneNumber: string, verificationCode: string) => {
     try {
@@ -115,11 +129,24 @@ export const logoutUserApi = async () => {
     }
 };
 
-// Change PIN
-export const changePinApi = async (oldPin: string, newPin: string) => {
+// Check Phone Number
+export const checkPhoneApi = async (phoneNumber: string) => {
     try {
         const payload = {
-            oldPin: oldPin,
+            phoneNumber: phoneNumber
+        };
+
+        const res = await axiosInstance.post("/auth/check-phone", payload);
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Failed to check phone number");
+    }
+};
+
+// Change PIN
+export const changePinApi = async (newPin: string) => {
+    try {
+        const payload = {
             newPin: newPin
         };
 

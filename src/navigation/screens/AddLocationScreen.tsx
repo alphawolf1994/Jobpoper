@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../../utils";
 import Button from "../../components/Button";
@@ -10,20 +10,37 @@ import LocationAutocomplete from "../../components/LocationAutocomplete";
 import MapView, { Region } from "react-native-maps";
 import * as ExpoLocation from "expo-location";
 import { useDispatch, useSelector } from "react-redux";
-import { saveLocation } from "../../redux/slices/locationsSlice";
+import { saveLocation, updateLocation } from "../../redux/slices/locationsSlice";
 import { RootState } from "../../redux/store";
 import Loader from "../../components/Loader";
 import { useAlertModal } from "../../hooks/useAlertModal";
+import { SavedLocation } from "../../redux/slices/locationsSlice";
 
 const AddLocationScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute();
   const dispatch = useDispatch();
   const { loading } = useSelector((state: RootState) => state.locations);
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
-  const [addressLabel, setAddressLabel] = useState("KPR St");
-  const [addressLine, setAddressLine] = useState("");
-  const [locationName, setLocationName] = useState("");
-  const [region, setRegion] = useState<Region | null>(null);
+  
+  // Get route params for edit mode
+  const routeParams = route.params as any;
+  const isEditMode = routeParams?.isEditMode || false;
+  const locationData = routeParams?.locationData as SavedLocation | undefined;
+  
+  const [addressLabel, setAddressLabel] = useState(locationData?.fullAddress || "");
+  const [addressLine, setAddressLine] = useState(locationData?.addressDetails || "");
+  const [locationName, setLocationName] = useState(locationData?.name || "");
+  const [region, setRegion] = useState<Region | null>(
+    locationData?.latitude && locationData?.longitude
+      ? {
+          latitude: locationData.latitude,
+          longitude: locationData.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        }
+      : null
+  );
 
   const GOOGLE_API_KEY = "AIzaSyDx-5zOU35lqenxx6TCR-OkQRj6cHpi5-U"; // keep consistent with LocationAutocomplete
 
@@ -42,8 +59,11 @@ const AddLocationScreen = () => {
   }, []);
 
   useEffect(() => {
-    requestAndSetCurrentLocation();
-  }, [requestAndSetCurrentLocation]);
+    // Only request current location if not in edit mode or if no location data provided
+    if (!isEditMode || !locationData) {
+      requestAndSetCurrentLocation();
+    }
+  }, [requestAndSetCurrentLocation, isEditMode, locationData]);
 
   const geocodeAddress = async (fullAddress: string) => {
     try {
@@ -84,7 +104,7 @@ const AddLocationScreen = () => {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
       >
-        <Loader visible={loading} message="Saving location..." />
+        <Loader visible={loading} message={isEditMode ? "Updating location..." : "Saving location..."} />
         <ScrollView
           contentContainerStyle={{ paddingBottom: 24 }}
           keyboardShouldPersistTaps="handled"
@@ -92,7 +112,7 @@ const AddLocationScreen = () => {
           <View style={styles.headerSection}>
             <TouchableOpacity style={styles.backRow} onPress={() => (navigation as any).goBack()}>
               <Ionicons name="chevron-back" size={24} color={Colors.black} />
-              <Text style={styles.headerTitle}>Select location</Text>
+              <Text style={styles.headerTitle}>{isEditMode ? 'Edit location' : 'Select location'}</Text>
             </TouchableOpacity>
 
             <View style={{ marginTop: 12 }}>
@@ -160,7 +180,7 @@ const AddLocationScreen = () => {
             />
 
             <Button
-              label="Save address"
+              label={isEditMode ? "Update address" : "Save address"}
               onPress={async () => {
                 if (!region) {
                   showAlert({
@@ -170,30 +190,67 @@ const AddLocationScreen = () => {
                   });
                   return;
                 }
+                
+                if (!locationName.trim()) {
+                  showAlert({
+                    title: "Error",
+                    message: "Please enter a location name",
+                    type: "error",
+                  });
+                  return;
+                }
+                
                 try {
-                  const result = await dispatch(
-                    saveLocation({
-                      name: locationName || 'Saved place',
-                      fullAddress: addressLabel,
-                      latitude: region.latitude,
-                      longitude: region.longitude,
-                      addressDetails: addressLine,
-                      createdAt: Date.now(),
-                    }) as any
-                  );
-                  if (result.type === 'locations/saveLocation/fulfilled') {
-                    (navigation as any).goBack();
-                  } else if (result.type === 'locations/saveLocation/rejected') {
-                    showAlert({
-                      title: "Error",
-                      message: (result.payload as string) || "Failed to save location",
-                      type: "error",
-                    });
+                  if (isEditMode && locationData?.id) {
+                    // Update existing location
+                    const result = await dispatch(
+                      updateLocation({
+                        locationId: locationData.id,
+                        locationData: {
+                          name: locationName.trim(),
+                          fullAddress: addressLabel,
+                          latitude: region.latitude,
+                          longitude: region.longitude,
+                          addressDetails: addressLine,
+                          createdAt: locationData.createdAt || Date.now(),
+                        },
+                      }) as any
+                    );
+                    if (result.type === 'locations/updateLocation/fulfilled') {
+                      (navigation as any).goBack();
+                    } else if (result.type === 'locations/updateLocation/rejected') {
+                      showAlert({
+                        title: "Error",
+                        message: (result.payload as string) || "Failed to update location",
+                        type: "error",
+                      });
+                    }
+                  } else {
+                    // Save new location
+                    const result = await dispatch(
+                      saveLocation({
+                        name: locationName.trim() || 'Saved place',
+                        fullAddress: addressLabel,
+                        latitude: region.latitude,
+                        longitude: region.longitude,
+                        addressDetails: addressLine,
+                        createdAt: Date.now(),
+                      }) as any
+                    );
+                    if (result.type === 'locations/saveLocation/fulfilled') {
+                      (navigation as any).goBack();
+                    } else if (result.type === 'locations/saveLocation/rejected') {
+                      showAlert({
+                        title: "Error",
+                        message: (result.payload as string) || "Failed to save location",
+                        type: "error",
+                      });
+                    }
                   }
                 } catch (err: any) {
                   showAlert({
                     title: "Error",
-                    message: err.message || "Failed to save location",
+                    message: err.message || (isEditMode ? "Failed to update location" : "Failed to save location"),
                     type: "error",
                   });
                 }

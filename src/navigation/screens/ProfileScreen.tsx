@@ -134,6 +134,20 @@ const ProfileScreen = () => {
           />
 
           <MenuItem
+            icon="shield-checkmark-outline"
+            label="Privacy Policy"
+            onPress={() => (navigation as any).navigate('PrivacyPolicyScreen')}
+            iconColor="#8B5CF6"
+          />
+
+          <MenuItem
+            icon="document-text-outline"
+            label="Terms & Conditions"
+            onPress={() => (navigation as any).navigate('TermsAndConditionsScreen')}
+            iconColor="#6366F1"
+          />
+
+          <MenuItem
             icon="log-out-outline"
             label="Logout"
             onPress={handleLogout}

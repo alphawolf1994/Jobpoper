@@ -1,5 +1,5 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
-import { saveLocationApi, getLocationsApi, deleteLocationApi, LocationPayload } from '../../api/locationApis';
+import { saveLocationApi, getLocationsApi, deleteLocationApi, updateLocationApi, LocationPayload } from '../../api/locationApis';
 
 export type SavedLocation = {
   id: string;
@@ -47,6 +47,19 @@ export const fetchLocations = createAsyncThunk(
       return response;
     } catch (error: any) {
       return rejectWithValue(error?.message || 'Failed to fetch locations');
+    }
+  }
+);
+
+// Update location async thunk
+export const updateLocation = createAsyncThunk(
+  'locations/updateLocation',
+  async ({ locationId, locationData }: { locationId: string; locationData: LocationPayload }, { rejectWithValue }) => {
+    try {
+      const response = await updateLocationApi(locationId, locationData);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error?.message || 'Failed to update location');
     }
   }
 );
@@ -139,6 +152,27 @@ const locationsSlice = createSlice({
         state.error = null;
       })
       .addCase(removeLocationById.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      // Update location
+      .addCase(updateLocation.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateLocation.fulfilled, (state, action) => {
+        const response = action.payload;
+        if (response.status === 'success' && response.data.location) {
+          const location = response.data.location;
+          const idx = state.items.findIndex((l) => l.id === location.id);
+          if (idx >= 0) {
+            state.items[idx] = location;
+          }
+        }
+        state.loading = false;
+        state.error = null;
+      })
+      .addCase(updateLocation.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       });

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import Loader from "../../components/Loader";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { AntDesign } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
-import { sendPhoneVerification, verifyPhone } from "../../redux/slices/authSlice";
+import { sendPhoneVerification, resendVerification, verifyPhone } from "../../redux/slices/authSlice";
 import { RootState, AppDispatch } from "../../redux/store";
 import { useAlertModal } from "../../hooks/useAlertModal";
 
@@ -32,10 +32,11 @@ const PhoneVerificationScreen = () => {
   const passedPhoneNumber = (route.params as any)?.phoneNumber || phoneNumber;
   
   const [verificationCode, setVerificationCode] = useState(['', '', '', '', '', '']);
-  const [isCodeSent, setIsCodeSent] = useState(false);
+  const [isCodeSent, setIsCodeSent] = useState(isSignup); // If coming from signup, code is already sent
   const [countdown, setCountdown] = useState(0);
   
   const codeInputRefs = useRef<(TextInput | null)[]>([null, null, null, null, null, null]);
+  const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const showErrorAlert = (message: string) =>
     showAlert({
@@ -81,6 +82,46 @@ const PhoneVerificationScreen = () => {
     }
   };
 
+  const startCountdown = () => {
+    // Clear existing timer if any
+    if (countdownTimerRef.current) {
+      clearInterval(countdownTimerRef.current);
+    }
+    
+    setCountdown(60); // 60 seconds countdown (1 minute)
+    
+    // Start countdown
+    countdownTimerRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          if (countdownTimerRef.current) {
+            clearInterval(countdownTimerRef.current);
+            countdownTimerRef.current = null;
+          }
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
+
+  // Initialize countdown if coming from signup (code already sent)
+  useEffect(() => {
+    if (isSignup) {
+      // Code was already sent in SignupPhoneScreen, so start countdown immediately
+      startCountdown();
+    }
+  }, []);
+
+  // Clear countdown timer on unmount
+  useEffect(() => {
+    return () => {
+      if (countdownTimerRef.current) {
+        clearInterval(countdownTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleSendCode = async () => {
     const currentPhoneNumber = passedPhoneNumber || phoneNumber;
     if (!currentPhoneNumber) {
@@ -93,18 +134,7 @@ const PhoneVerificationScreen = () => {
       
       if (result.status === 'success') {
         setIsCodeSent(true);
-        setCountdown(60); // 60 seconds countdown
-        
-        // Start countdown
-        const timer = setInterval(() => {
-          setCountdown((prev) => {
-            if (prev <= 1) {
-              clearInterval(timer);
-              return 0;
-            }
-            return prev - 1;
-          });
-        }, 1000);
+        startCountdown();
         
         showAlert({
           title: "Code Sent",
@@ -114,6 +144,33 @@ const PhoneVerificationScreen = () => {
       }
     } catch (error: any) {
       showErrorAlert(error.message || 'Failed to send verification code. Please try again.');
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (countdown > 0) return; // Prevent resend if countdown is active
+
+    const currentPhoneNumber = passedPhoneNumber || phoneNumber;
+    if (!currentPhoneNumber) {
+      showErrorAlert('Phone number not found. Please go back and try again.');
+      return;
+    }
+
+    try {
+      const result = await dispatch(resendVerification(currentPhoneNumber) as any).unwrap();
+      
+      if (result.status === 'success') {
+        // Reset countdown to 60 seconds
+        startCountdown();
+        
+        showAlert({
+          title: "Code Resent",
+          message: "Verification code has been resent to your phone number.",
+          type: "info",
+        });
+      }
+    } catch (error: any) {
+      showErrorAlert(error.message || 'Failed to resend verification code. Please try again.');
     }
   };
 
@@ -224,7 +281,7 @@ const PhoneVerificationScreen = () => {
               
               <TouchableOpacity 
                 style={styles.resendButton}
-                onPress={handleSendCode}
+                onPress={handleResendCode}
                 disabled={countdown > 0}
               >
                 <Text style={[

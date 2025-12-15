@@ -157,7 +157,7 @@ const HotJobsScreen = () => {
     >
       {/* Hot/Fire Label */}
       <View style={styles.hotLabel}>
-        <Ionicons name="flame" size={16} color={Colors.orange} />
+        <Ionicons name="flame" size={16} color={Colors.red} />
       </View>
 
       {/* Avatar and Title Row */}
