@@ -59,10 +59,29 @@ const BasicProfileScreen = () => {
   };
 
   const handleCompleteProfile = async () => {
-    if (!fullName.trim() || !email.trim()) {
+    // Validate required fields
+    if (!fullName.trim()) {
       showAlert({
         title: "Error",
-        message: "Please fill in all required fields.",
+        message: "Please enter your full name.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (!email.trim()) {
+      showAlert({
+        title: "Error",
+        message: "Please enter your email address.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (!location.fullAddress && !(location.city || location.state || location.country)) {
+      showAlert({
+        title: "Error",
+        message: "Please select your city.",
         type: "error",
       });
       return;
@@ -72,39 +91,39 @@ const BasicProfileScreen = () => {
     //   showAlert({ title: 'Error', message: 'Please agree to the terms and conditions.', type: 'error' });
     //   return;
     // }
+console.log("location", location);
+    // try {
+    //   const profileData = {
+    //     fullName: fullName.trim(),
+    //     email: email.trim(),
+    //     location: location.fullAddress || `${location.city}, ${location.state}, ${location.country}`,
+    //     dateOfBirth: dob ? dob.toISOString().split('T')[0] : undefined,
+    //   };
 
-    try {
-      const profileData = {
-        fullName: fullName.trim(),
-        email: email.trim(),
-        location: location.fullAddress || `${location.city}, ${location.state}, ${location.country}`,
-        dateOfBirth: dob ? dob.toISOString().split('T')[0] : undefined,
-      };
-
-      const result = await dispatch(completeProfile(profileData)).unwrap();
+    //   const result = await dispatch(completeProfile(profileData)).unwrap();
       
-      if (result.status === 'success') {
-        // After successful profile completion, get updated user details
-        try {
-          const userResult = await dispatch(getCurrentUser()).unwrap();
+    //   if (result.status === 'success') {
+    //     // After successful profile completion, get updated user details
+    //     try {
+    //       const userResult = await dispatch(getCurrentUser()).unwrap();
           
-          if (userResult.status === 'success' && userResult.data?.user) {
-            showCompletionSuccess();
-          } else {
-            showCompletionSuccess();
-          }
-        } catch (userError) {
-          // If getCurrentUser fails, still navigate to HomeTabs
-          showCompletionSuccess();
-        }
-      }
-    } catch (error: any) {
-      showAlert({
-        title: "Error",
-        message: error.message || "Profile completion failed. Please try again.",
-        type: "error",
-      });
-    }
+    //       if (userResult.status === 'success' && userResult.data?.user) {
+    //         showCompletionSuccess();
+    //       } else {
+    //         showCompletionSuccess();
+    //       }
+    //     } catch (userError) {
+    //       // If getCurrentUser fails, still navigate to HomeTabs
+    //       showCompletionSuccess();
+    //     }
+    //   }
+    // } catch (error: any) {
+    //   showAlert({
+    //     title: "Error",
+    //     message: error.message || "Profile completion failed. Please try again.",
+    //     type: "error",
+    //   });
+    // }
   };
 
   return (
@@ -127,12 +146,12 @@ const BasicProfileScreen = () => {
         </View>
 <Text style={styles.subtitle}>Finish setting up your profile to start applying!</Text>
 
-        <MyTextInput label="Full Name" placeholder="Enter your full name" value={fullName} onChange={setFullName} firstContainerStyle={{ marginTop: 24 }} />
-        <MyTextInput label="Email" placeholder="Enter your email" value={email} onChange={setEmail} keyboardType="email-address" />
+        <MyTextInput label="Full Name *" placeholder="Enter your full name" value={fullName} onChange={setFullName} firstContainerStyle={{ marginTop: 24 }} />
+        <MyTextInput label="Email *" placeholder="Enter your email" value={email} onChange={setEmail} keyboardType="email-address" />
         {/* <MyTextInput label="Phone Number" placeholder="Your phone number" value={phone} onChange={setPhone} editable={false} /> */}
         <LocationAutocomplete 
-          label="Location" 
-          placeholder="Search for your city, state, country" 
+          label="City *" 
+          placeholder="Search for your city" 
           onLocationSelect={(locationData) => setLocation(locationData)}
         />
 

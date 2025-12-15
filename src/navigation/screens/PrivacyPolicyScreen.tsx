@@ -31,7 +31,7 @@ const PrivacyPolicyScreen = () => {
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Privacy Policy</Text>
-            <Text style={styles.headerSubtitle}>Last updated: January 2024</Text>
+            <Text style={styles.headerSubtitle}>Last updated: December 2025</Text>
           </View>
         </View>
       </View>

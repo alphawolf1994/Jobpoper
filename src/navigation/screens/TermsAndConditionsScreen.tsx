@@ -31,7 +31,7 @@ const TermsAndConditionsScreen = () => {
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Terms & Conditions</Text>
-            <Text style={styles.headerSubtitle}>Last updated: January 2024</Text>
+            <Text style={styles.headerSubtitle}>Last updated: December 2025</Text>
           </View>
         </View>
       </View>

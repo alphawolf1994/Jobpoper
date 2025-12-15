@@ -44,6 +44,17 @@ const AddLocationScreen = () => {
 
   const GOOGLE_API_KEY = "AIzaSyDx-5zOU35lqenxx6TCR-OkQRj6cHpi5-U"; // keep consistent with LocationAutocomplete
 
+  const reverseGeocode = useCallback(async (latitude: number, longitude: number) => {
+    try {
+      const r = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_API_KEY}`
+      );
+      const data = await r.json();
+      const addr = data?.results?.[0]?.formatted_address;
+      if (addr) setAddressLabel(addr);
+    } catch { }
+  }, []);
+
   const requestAndSetCurrentLocation = useCallback(async () => {
     const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
     if (status !== "granted") return;
@@ -56,11 +67,13 @@ const AddLocationScreen = () => {
       longitudeDelta: 0.01,
     };
     setRegion(nextRegion);
-  }, []);
+    // Reverse geocode to populate the address label
+    await reverseGeocode(latitude, longitude);
+  }, [reverseGeocode]);
 
   useEffect(() => {
     // Only request current location if not in edit mode or if no location data provided
-    if (!isEditMode || !locationData) {
+    if (!isEditMode && !locationData) {
       requestAndSetCurrentLocation();
     }
   }, [requestAndSetCurrentLocation, isEditMode, locationData]);
@@ -84,17 +97,6 @@ const AddLocationScreen = () => {
     } catch (e) {
       // ignore silently, map will keep previous region
     }
-  };
-
-  const reverseGeocode = async (latitude: number, longitude: number) => {
-    try {
-      const r = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_API_KEY}`
-      );
-      const data = await r.json();
-      const addr = data?.results?.[0]?.formatted_address;
-      if (addr) setAddressLabel(addr);
-    } catch { }
   };
 
   return (
@@ -156,7 +158,12 @@ const AddLocationScreen = () => {
             <View pointerEvents="none" style={styles.centerPinContainer}>
               <Ionicons name="location-sharp" size={44} color={Colors.primary} />
             </View>
-            <TouchableOpacity style={styles.useCurrentButton} onPress={requestAndSetCurrentLocation}>
+            <TouchableOpacity 
+              style={styles.useCurrentButton} 
+              onPress={async () => {
+                await requestAndSetCurrentLocation();
+              }}
+            >
               <Ionicons name="locate-outline" size={16} color={Colors.primary} />
               <Text style={styles.useCurrentButtonText}>Use current location</Text>
             </TouchableOpacity>

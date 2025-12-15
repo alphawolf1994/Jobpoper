@@ -55,16 +55,24 @@ const MyTextInput = ({
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <View style={[styles.container, containerStyle]}>
         {leftIcon ? <View style={styles.leftIconWrapper}>{leftIcon}</View> : null}
-        <TextInput
-          style={styles.input}
-          secureTextEntry={show}
-          placeholder={placeholder}
-          placeholderTextColor="gray"
-          onChangeText={onChange}
-          value={value}
-          editable={editable}
-          keyboardType={keyboardType}
-        />
+        <View style={styles.inputWrapper}>
+          <TextInput
+            style={styles.input}
+            secureTextEntry={show}
+            placeholder={placeholder}
+            placeholderTextColor="gray"
+            onChangeText={onChange}
+            value={value}
+            editable={editable}
+            keyboardType={keyboardType}
+            scrollEnabled={true}
+            showsHorizontalScrollIndicator={false}
+            {...(Platform.OS === 'ios' && {
+              clearButtonMode: 'never',
+              textContentType: 'none',
+            })}
+          />
+        </View>
         {searchIcon ? (
           <TouchableOpacity onPress={onSearchPress}>
             <Entypo name="menu" size={20} color="black" />
@@ -99,26 +107,42 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: Platform.OS === 'ios' ? 0 : 8,
     marginTop: 10,
     minHeight: 50,
     justifyContent: 'center',
+    ...(Platform.OS === 'ios' && {
+      paddingTop: 0,
+      paddingBottom: 0,
+    }),
   },
   leftIconWrapper: {
     marginRight: 10,
     alignItems: "center",
     justifyContent: "center",
   },
+  inputWrapper: {
+    flex: 1,
+    minWidth: 0,
+    height: Platform.OS === 'ios' ? 50 : 'auto',
+    justifyContent: 'center',
+  },
   input: {
     flex: 1,
     fontSize: 16,
     color: Colors.black,
-    paddingVertical: Platform.OS === 'android' ? 0 : 8,
+    paddingVertical: Platform.OS === 'android' ? 0 : 0,
     paddingHorizontal: 0,
     textAlignVertical: 'center',
     ...(Platform.OS === 'android' && { includeFontPadding: false }),
-    lineHeight: Platform.OS === 'android' ? 20 : 22,
-    height: Platform.OS === 'android' ? 34 : 'auto',
+    lineHeight: Platform.OS === 'android' ? 20 : 20,
+    height: Platform.OS === 'android' ? 34 : 50,
+    ...(Platform.OS === 'ios' && {
+      paddingTop: 0,
+      paddingBottom: 0,
+      marginTop: 0,
+      marginBottom: 0,
+    }),
   },
   label: {
     fontSize: 14,

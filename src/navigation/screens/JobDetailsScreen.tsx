@@ -105,9 +105,8 @@ const JobDetailsScreen = () => {
 
     if (contactInfo) {
       showAlert({
-        title: "Contact Job Poster",
-        message: `Would you like to contact ${currentJob.postedBy?.profile?.fullName || "the job poster"
-          }?`,
+        title: "Contact",
+        message: `Phone: ${contactInfo}`,
         type: "info",
         buttons: [
           {
@@ -115,12 +114,18 @@ const JobDetailsScreen = () => {
             variant: "secondary",
           },
           {
-            label: "Contact",
+            label: "Call",
             onPress: () => {
-              showAlert({
-                title: "Contact",
-                message: `Phone: ${contactInfo}`,
-                type: "info",
+              // Format phone number for tel: URL (remove spaces, dashes, etc.)
+              const phoneNumber = contactInfo.replace(/[\s\-\(\)]/g, '');
+              const telUrl = `tel:${phoneNumber}`;
+              
+              Linking.openURL(telUrl).catch((err) => {
+                showAlert({
+                  title: "Error",
+                  message: "Could not open phone dialer. Please check if the phone number is valid.",
+                  type: "error",
+                });
               });
             },
           },
@@ -765,15 +770,44 @@ const JobDetailsScreen = () => {
                   </View>
                   <TouchableOpacity
                     style={styles.contactSmallButton}
-                    onPress={() =>
-                      showAlert({
-                        title: "Contact",
-                        message: entry.user.phoneNumber
-                          ? `Phone: ${entry.user.phoneNumber}`
-                          : "No phone number available",
-                        type: entry.user.phoneNumber ? "info" : "error",
-                      })
-                    }
+                    onPress={() => {
+                      if (entry.user.phoneNumber) {
+                        showAlert({
+                          title: "Contact",
+                          message: `Phone: ${entry.user.phoneNumber}`,
+                          type: "info",
+                          buttons: [
+                            {
+                              label: "Cancel",
+                              variant: "secondary",
+                            },
+                            {
+                              label: "Call",
+                              onPress: () => {
+                                if (!entry.user.phoneNumber) return;
+                                // Format phone number for tel: URL (remove spaces, dashes, etc.)
+                                const phoneNumber = entry.user.phoneNumber.replace(/[\s\-\(\)]/g, '');
+                                const telUrl = `tel:${phoneNumber}`;
+                                
+                                Linking.openURL(telUrl).catch((err) => {
+                                  showAlert({
+                                    title: "Error",
+                                    message: "Could not open phone dialer. Please check if the phone number is valid.",
+                                    type: "error",
+                                  });
+                                });
+                              },
+                            },
+                          ],
+                        });
+                      } else {
+                        showAlert({
+                          title: "Contact",
+                          message: "No phone number available",
+                          type: "error",
+                        });
+                      }
+                    }}
                   >
                     <Text style={styles.contactSmallButtonText}>Contact</Text>
                   </TouchableOpacity>
