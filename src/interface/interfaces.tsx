@@ -852,6 +852,67 @@ export interface ListedJobsResponse {
     };
   };
 }
+
+// Notification interfaces
+export interface Notification {
+  _id: string;
+  recipient: string;
+  type: 'job_created' | 'job_interest';
+  title: string;
+  message: string;
+  relatedEntityType: string;
+  relatedEntityId: string;
+  navigationIdentifier: string;
+  isRead: boolean;
+  readAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  __v?: number;
+}
+
+export interface NotificationsResponse {
+  status: 'success' | 'error';
+  message?: string;
+  data?: {
+    notifications: Notification[];
+    unreadCount: number;
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalNotifications: number;
+      hasNextPage: boolean;
+      hasPrevPage: boolean;
+    };
+  };
+}
+
+export interface UnreadCountResponse {
+  status: 'success' | 'error';
+  message?: string;
+  data?: {
+    unreadCount: number;
+  };
+}
+
+export interface MarkAsReadResponse {
+  status: 'success' | 'error';
+  message: string;
+  data?: {
+    notification: {
+      _id: string;
+      isRead: boolean;
+      readAt: string;
+    };
+  };
+}
+
+export interface MarkAllAsReadResponse {
+  status: 'success' | 'error';
+  message: string;
+  data?: {
+    updatedCount: number;
+  };
+}
   
 
   

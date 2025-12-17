@@ -44,6 +44,7 @@ import AddLocationScreen from "./screens/AddLocationScreen";
 // Legal screens
 import PrivacyPolicyScreen from "./screens/PrivacyPolicyScreen";
 import TermsAndConditionsScreen from "./screens/TermsAndConditionsScreen";
+import NotificationScreen from "./screens/NotificationScreen";
 
 
 
@@ -213,6 +214,14 @@ const RootStack = createNativeStackNavigator({
     },
     TermsAndConditionsScreen: {
       screen: TermsAndConditionsScreen,
+      options: {
+        headerShown: false,
+      },
+    },
+
+    // Notification screen
+    NotificationScreen: {
+      screen: NotificationScreen,
       options: {
         headerShown: false,
       },

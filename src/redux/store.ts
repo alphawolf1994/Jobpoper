@@ -4,6 +4,7 @@ import { persistStore, persistReducer } from 'redux-persist';
 import authSlice from './slices/authSlice';
 import jobSlice from './slices/jobSlice';
 import locationsSlice from './slices/locationsSlice';
+import notificationSlice from './slices/notificationSlice';
 import { authMiddleware } from './middleware/authMiddleware';
 
 // Configuration for redux-persist
@@ -18,6 +19,7 @@ const rootReducer = combineReducers({
   auth: authSlice,
   job: jobSlice,
   locations: locationsSlice,
+  notification: notificationSlice,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
