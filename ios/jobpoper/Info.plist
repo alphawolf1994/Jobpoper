@@ -19,7 +19,7 @@
 	<key>CFBundlePackageType</key>
 	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.0</string>
+	<string>1.0.1</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleURLTypes</key>
@@ -42,45 +42,21 @@
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
 		<false/>
-		<key>NSExceptionDomains</key>
-		<dict>
-			<key>127.0.0.1</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-				<key>NSIncludesSubdomains</key>
-				<true/>
-			</dict>
-			<key>138.68.254.13</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-				<key>NSIncludesSubdomains</key>
-				<true/>
-			</dict>
-			<key>localhost</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-				<key>NSIncludesSubdomains</key>
-				<true/>
-			</dict>
-		</dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>This app needs access to camera to take photos for your profile picture.</string>
+	<string>Allow $(PRODUCT_NAME) to access your camera</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>We use your location to place the pin and find your address.</string>
+	<string>We use your location to place the delivery pin and find your address.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Allow $(PRODUCT_NAME) to access your location</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>We use your location to place the pin and find your address.</string>
+	<string>We use your location to place the delivery pin and find your address.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>This app needs access to microphone for video recording.</string>
+	<string>Allow $(PRODUCT_NAME) to access your microphone</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>This app needs access to photo library to select photos for your profile picture.</string>
-	<key>NSUserActivityTypes</key>
-	<array>
-		<string>$(PRODUCT_BUNDLE_IDENTIFIER).expo.index_route</string>
-	</array>
+	<string>Allow $(PRODUCT_NAME) to access your photos</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

@@ -1,4 +1,4 @@
-package com.anonymous.Jobpoper
+package com.anonymous.jobpoper
 
 import android.app.Application
 import android.content.res.Configuration
