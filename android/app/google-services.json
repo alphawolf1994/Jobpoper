@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "807364358664",
+    "project_id": "jobpoper",
+    "storage_bucket": "jobpoper.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:807364358664:android:ce87f57347060b426097bd",
+        "android_client_info": {
+          "package_name": "com.anonymous.jobpoper"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBMyhnfx-HTfTrNdy4UaP54Lc5ryctQXUM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

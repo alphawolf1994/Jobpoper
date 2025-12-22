@@ -38,13 +38,30 @@
 	<string>12.0</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>NSAppTransportSecurity</key>
-	<dict>
-		<key>NSAllowsArbitraryLoads</key>
-		<false/>
-		<key>NSAllowsLocalNetworking</key>
-		<true/>
-	</dict>
+	 <key>NSAppTransportSecurity</key>
+    <dict>
+      <key>NSAllowsArbitraryLoads</key>
+      <false/>
+      <key>NSAllowsLocalNetworking</key>
+      <true/>
+       <key>NSExceptionDomains</key>
+ <dict>
+    <key>138.68.254.13</key>
+    <dict>
+      <key>NSExceptionAllowsInsecureHTTPLoads</key>
+      <true/>
+      <key>NSIncludesSubdomains</key>
+      <true/>
+    </dict>
+    <key>13.201.161.9</key>
+    <dict>
+      <key>NSExceptionAllowsInsecureHTTPLoads</key>
+      <true/>
+      <key>NSIncludesSubdomains</key>
+      <true/>
+    </dict>
+  </dict>
+    </dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Allow $(PRODUCT_NAME) to access your camera</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>

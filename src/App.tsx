@@ -9,6 +9,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Provider } from 'react-redux';
 import { persistor, store } from "./redux/store";
 import * as Font from "expo-font";
+import { analyticsService } from "./services/analytics";
 
 import "react-native-gesture-handler";
 import "react-native-reanimated";
@@ -24,7 +25,15 @@ Asset.loadAsync([
 SplashScreen.preventAutoHideAsync();
 
 export function App() {
- 
+  // Initialize Firebase Analytics
+  React.useEffect(() => {
+    const initAnalytics = async () => {
+      await analyticsService.initialize();
+      await analyticsService.logAppOpen();
+    };
+    
+    initAnalytics();
+  }, []);
 
   return (
   
