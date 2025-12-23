@@ -9,7 +9,10 @@ import {
   getCurrentUserApi,
   logoutUserApi,
   changePinApi,
-  checkPhoneApi
+  checkPhoneApi,
+  sendForgotPasswordOtpApi,
+  verifyForgotPasswordOtpApi,
+  resetPinApi
 } from "../../api/authApis";
 import { setAuthToken } from "../../api/axiosInstance";
 import { JobPoperUser, AuthResponse } from "../../interface/interfaces";
@@ -23,6 +26,8 @@ interface AuthState {
   phoneNumber: string | null;
   isPhoneVerified: boolean;
   verificationCode: string | null;
+  resetToken: string | null;
+  resetPhoneNumber: string | null;
 }
 
 const initialState: AuthState = {
@@ -34,6 +39,8 @@ const initialState: AuthState = {
   phoneNumber: null,
   isPhoneVerified: false,
   verificationCode: null,
+  resetToken: null,
+  resetPhoneNumber: null,
 };
 // Send phone verification code
 export const sendPhoneVerification = createAsyncThunk(
@@ -171,6 +178,45 @@ export const changePin = createAsyncThunk(
   }
 );
 
+// Forgot Password - Send OTP
+export const sendForgotPasswordOtp = createAsyncThunk(
+  "auth/sendForgotPasswordOtp",
+  async (phoneNumber: string, { rejectWithValue }) => {
+    try {
+      const response = await sendForgotPasswordOtpApi(phoneNumber);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "Failed to send OTP");
+    }
+  }
+);
+
+// Forgot Password - Verify OTP
+export const verifyForgotPasswordOtp = createAsyncThunk(
+  "auth/verifyForgotPasswordOtp",
+  async ({ phoneNumber, verificationCode }: { phoneNumber: string; verificationCode: string }, { rejectWithValue }) => {
+    try {
+      const response = await verifyForgotPasswordOtpApi(phoneNumber, verificationCode);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "OTP verification failed");
+    }
+  }
+);
+
+// Forgot Password - Reset PIN
+export const resetPinWithToken = createAsyncThunk(
+  "auth/resetPinWithToken",
+  async ({ newPin, resetToken }: { newPin: string; resetToken: string }, { rejectWithValue }) => {
+    try {
+      const response = await resetPinApi(newPin, resetToken);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "Failed to reset PIN");
+    }
+  }
+);
+
 
 const authSlice = createSlice({
   name: "auth",
@@ -182,6 +228,9 @@ const authSlice = createSlice({
     setVerificationCode: (state, action: PayloadAction<string>) => {
       state.verificationCode = action.payload;
     },
+    setResetPhoneNumber: (state, action: PayloadAction<string>) => {
+      state.resetPhoneNumber = action.payload;
+    },
     clearAuth: (state) => {
       state.user = null;
       state.isAuthenticated = false;
@@ -190,10 +239,16 @@ const authSlice = createSlice({
       state.isPhoneVerified = false;
       state.verificationCode = null;
       state.error = null;
+      state.resetToken = null;
+      state.resetPhoneNumber = null;
       setAuthToken(null);
     },
     clearError: (state) => {
       state.error = null;
+    },
+    clearResetToken: (state) => {
+      state.resetToken = null;
+      state.resetPhoneNumber = null;
     },
   },
   extraReducers: (builder) => {
@@ -360,8 +415,53 @@ const authSlice = createSlice({
         state.loading = false;
         state.error = null;
       })
+      // Forgot Password - Send OTP
+      .addCase(sendForgotPasswordOtp.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(sendForgotPasswordOtp.rejected, (state, action) => {
+        state.error = action.payload as string;
+        state.loading = false;
+      })
+      .addCase(sendForgotPasswordOtp.fulfilled, (state, action) => {
+        state.loading = false;
+        state.error = null;
+      })
+      // Forgot Password - Verify OTP
+      .addCase(verifyForgotPasswordOtp.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(verifyForgotPasswordOtp.rejected, (state, action) => {
+        state.error = action.payload as string;
+        state.loading = false;
+      })
+      .addCase(verifyForgotPasswordOtp.fulfilled, (state, action) => {
+        const response = action.payload;
+        if (response.status === 'success' && response.data) {
+          state.resetToken = response.data.resetToken;
+        }
+        state.loading = false;
+        state.error = null;
+      })
+      // Forgot Password - Reset PIN
+      .addCase(resetPinWithToken.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(resetPinWithToken.rejected, (state, action) => {
+        state.error = action.payload as string;
+        state.loading = false;
+      })
+      .addCase(resetPinWithToken.fulfilled, (state) => {
+        state.loading = false;
+        state.error = null;
+        state.resetToken = null;
+        state.resetPhoneNumber = null;
+      })
   },
 });
 // Export the actions
-export const { setPhoneNumber, setVerificationCode, clearAuth, clearError } = authSlice.actions;
+export const { setPhoneNumber, setVerificationCode, setResetPhoneNumber, clearAuth, clearError, clearResetToken } = authSlice.actions;
 export default authSlice.reducer;

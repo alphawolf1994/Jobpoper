@@ -157,3 +157,50 @@ export const changePinApi = async (newPin: string) => {
     }
 };
 
+// Forgot Password - Send OTP
+export const sendForgotPasswordOtpApi = async (phoneNumber: string) => {
+    try {
+        const payload = {
+            phoneNumber: phoneNumber
+        };
+
+        const res = await axiosInstance.post("/auth/forgot-password/send-otp", payload);
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Failed to send OTP");
+    }
+};
+
+// Forgot Password - Verify OTP
+export const verifyForgotPasswordOtpApi = async (phoneNumber: string, verificationCode: string) => {
+    try {
+        const payload = {
+            phoneNumber: phoneNumber,
+            verificationCode: verificationCode
+        };
+
+        const res = await axiosInstance.post("/auth/forgot-password/verify-otp", payload);
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "OTP verification failed");
+    }
+};
+
+// Forgot Password - Reset PIN
+export const resetPinApi = async (newPin: string, resetToken: string) => {
+    try {
+        const payload = {
+            newPin: newPin
+        };
+
+        const res = await axiosInstance.post("/auth/forgot-password/reset-pin", payload, {
+            headers: {
+                Authorization: `Bearer ${resetToken}`
+            }
+        });
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Failed to reset PIN");
+    }
+};
+

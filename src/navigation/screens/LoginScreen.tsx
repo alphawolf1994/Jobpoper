@@ -296,9 +296,16 @@ const LoginScreen = () => {
                 }}
                 disabled={loading || pin.join('').length !== 4}
               />
+              
+              
             </View>
           )}
-
+<TouchableOpacity 
+                style={styles.forgotPasswordButton}
+                onPress={() => (navigation as any).navigate('ForgotPasswordPhoneScreen')}
+              >
+                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+              </TouchableOpacity>
           <View style={styles.footer}>
             <Text style={styles.footerText}>Don't have an account?</Text>
             <TouchableOpacity onPress={() => (navigation as any).navigate('SignupPhoneScreen')}>
@@ -419,6 +426,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 10,
     marginBottom: 10,
+  },
+  forgotPasswordButton: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginTop: 16,
+  },
+  forgotPasswordText: {
+    fontSize: 16,
+    color: Colors.primary,
+    fontWeight: '600',
   },
 });
 

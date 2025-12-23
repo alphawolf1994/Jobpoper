@@ -46,6 +46,11 @@ import PrivacyPolicyScreen from "./screens/PrivacyPolicyScreen";
 import TermsAndConditionsScreen from "./screens/TermsAndConditionsScreen";
 import NotificationScreen from "./screens/NotificationScreen";
 
+// Forget Password screens
+import ForgotPasswordPhoneScreen from "./screens/ForgotPasswordPhoneScreen";
+import ForgotPasswordOTPScreen from "./screens/ForgotPasswordOTPScreen";
+import ResetPinScreen from "./screens/ResetPinScreen";
+
 
 
 
@@ -222,6 +227,26 @@ const RootStack = createNativeStackNavigator({
     // Notification screen
     NotificationScreen: {
       screen: NotificationScreen,
+      options: {
+        headerShown: false,
+      },
+    },
+
+    // Forget Password screens
+    ForgotPasswordPhoneScreen: {
+      screen: ForgotPasswordPhoneScreen,
+      options: {
+        headerShown: false,
+      },
+    },
+    ForgotPasswordOTPScreen: {
+      screen: ForgotPasswordOTPScreen,
+      options: {
+        headerShown: false,
+      },
+    },
+    ResetPinScreen: {
+      screen: ResetPinScreen,
       options: {
         headerShown: false,
       },
