@@ -63,7 +63,7 @@
   </dict>
     </dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Allow $(PRODUCT_NAME) to access your camera</string>
+	<string>jobpoper uses the camera to take profile photos and capture images for job posts, allowing helpers to better understand the task.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>We use your location to place the delivery pin and find your address.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
@@ -71,9 +71,9 @@
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>We use your location to place the delivery pin and find your address.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Allow $(PRODUCT_NAME) to access your microphone</string>
+	<string>jobpoper needs microphone access for any video attachments or features that require audio recording during job completion or communication.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Allow $(PRODUCT_NAME) to access your photos</string>
+	<string>jobpoper uses your photo library to let you select and upload profile pictures and add existing photos to your job postings.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
