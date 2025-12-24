@@ -12,7 +12,8 @@ import {
   checkPhoneApi,
   sendForgotPasswordOtpApi,
   verifyForgotPasswordOtpApi,
-  resetPinApi
+  resetPinApi,
+  deleteAccountApi
 } from "../../api/authApis";
 import { setAuthToken } from "../../api/axiosInstance";
 import { JobPoperUser, AuthResponse } from "../../interface/interfaces";
@@ -213,6 +214,19 @@ export const resetPinWithToken = createAsyncThunk(
       return response;
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to reset PIN");
+    }
+  }
+);
+
+// Delete account
+export const deleteAccount = createAsyncThunk(
+  "auth/deleteAccount",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await deleteAccountApi();
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "Failed to delete account");
     }
   }
 );
@@ -459,6 +473,26 @@ const authSlice = createSlice({
         state.error = null;
         state.resetToken = null;
         state.resetPhoneNumber = null;
+      })
+      // Delete Account
+      .addCase(deleteAccount.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deleteAccount.rejected, (state, action) => {
+        state.error = action.payload as string;
+        state.loading = false;
+      })
+      .addCase(deleteAccount.fulfilled, (state) => {
+        state.user = null;
+        state.isAuthenticated = false;
+        state.accessToken = null;
+        state.phoneNumber = null;
+        state.isPhoneVerified = false;
+        state.verificationCode = null;
+        state.loading = false;
+        state.error = null;
+        setAuthToken(null);
       })
   },
 });

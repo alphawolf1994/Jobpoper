@@ -14,7 +14,7 @@ import { IMAGE_BASE_URL } from "../../api/baseURL";
 import ImagePath from "../../assets/images/ImagePath";
 import { Ionicons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
-import { logoutUser, clearAuth } from "../../redux/slices/authSlice";
+import { logoutUser, clearAuth, deleteAccount } from "../../redux/slices/authSlice";
 import { RootState, AppDispatch } from "../../redux/store";
 import { useNavigation } from "@react-navigation/native";
 import { useAlertModal } from "../../hooks/useAlertModal";
@@ -68,6 +68,48 @@ const ProfileScreen = () => {
                 title: "Success",
                 message: "Logged out successfully!",
                 type: "success",
+              });
+            }
+          },
+        },
+      ],
+    });
+  };
+
+  // Handle delete account
+  const handleDeleteAccount = () => {
+    showAlert({
+      title: "Delete Account",
+      message: "Are you sure you want to delete your account? This action is irreversible and all your data will be permanently removed.",
+      type: "warning",
+      buttons: [
+        {
+          label: "Cancel",
+          variant: "secondary",
+        },
+        {
+          label: "Delete",
+          onPress: async () => {
+            try {
+              await dispatch(deleteAccount()).unwrap();
+              dispatch(setCurrentLocation(''))
+              showAlert({
+                title: "Success",
+                message: "Account deleted successfully!",
+                type: "success",
+              });
+              // The navigation will be handled by the auth state change usually, 
+              // but we can also manually navigate if needed.
+              // In this app, RootStack likely handles authentication state and switches between App and Auth stacks.
+              navigation.reset({
+                index: 0,
+                routes: [{ name: 'LoginScreen' as never }],
+              });
+            } catch (error: any) {
+              showAlert({
+                title: "Error",
+                message: error || "Failed to delete account. Please try again.",
+                type: "error",
               });
             }
           },
@@ -145,6 +187,13 @@ const ProfileScreen = () => {
             label="Terms & Conditions"
             onPress={() => (navigation as any).navigate('TermsAndConditionsScreen')}
             iconColor="#6366F1"
+          />
+
+          <MenuItem
+            icon="trash-outline"
+            label="Delete Account"
+            onPress={handleDeleteAccount}
+            iconColor="#EF4444"
           />
 
           <MenuItem
