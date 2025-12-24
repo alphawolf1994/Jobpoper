@@ -304,7 +304,7 @@ const LoginScreen = () => {
                 style={styles.forgotPasswordButton}
                 onPress={() => (navigation as any).navigate('ForgotPasswordPhoneScreen')}
               >
-                <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                <Text style={styles.forgotPasswordText}>Forgot Pin?</Text>
               </TouchableOpacity>
           <View style={styles.footer}>
             <Text style={styles.footerText}>Don't have an account?</Text>

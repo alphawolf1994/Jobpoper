@@ -153,21 +153,24 @@ const CreatePinScreen = () => {
             if (userData.profile?.isProfileComplete) {
               showSuccessAlert('Account created successfully!', () => (navigation as any).navigate('HomeTabs'));
             } else {
-              showSuccessAlert('Account created successfully! Please complete your profile.', () =>
-                (navigation as any).navigate('BasicProfileScreen')
-              );
+              // showSuccessAlert('Account created successfully! Please complete your profile.', () =>
+              //   (navigation as any).navigate('BasicProfileScreen')
+              // );
+              navigation.navigate('BasicProfileScreen')
             }
           } else {
             // If getCurrentUser fails, navigate to BasicProfileScreen
-            showSuccessAlert('Account created successfully!', () =>
-              (navigation as any).navigate('BasicProfileScreen')
-            );
+            // showSuccessAlert('Account created successfully!', () =>
+            //   (navigation as any).navigate('BasicProfileScreen')
+            // );
+            navigation.navigate('BasicProfileScreen')
           }
         } catch (userError) {
           // If getCurrentUser fails, navigate to BasicProfileScreen
-          showSuccessAlert('Account created successfully!', () =>
-            (navigation as any).navigate('BasicProfileScreen')
-          );
+          // showSuccessAlert('Account created successfully!', () =>
+          //   (navigation as any).navigate('BasicProfileScreen')
+          // );
+           navigation.navigate('BasicProfileScreen')
         }
       }
     } catch (error: any) {

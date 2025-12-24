@@ -102,7 +102,7 @@ const ForgotPasswordPhoneScreen = () => {
 
           <View style={styles.logoWrap}>
             <Text style={styles.emoji}>🔑</Text>
-            <Text style={styles.title}>Forgot Password?</Text>
+            <Text style={styles.title}>Forgot Pin?</Text>
             <Text style={styles.subtitle}>
               Enter your phone number to receive a verification code
             </Text>

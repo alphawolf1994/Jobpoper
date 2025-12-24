@@ -92,38 +92,37 @@ const BasicProfileScreen = () => {
     //   return;
     // }
 console.log("location", location);
-    // try {
-    //   const profileData = {
-    //     fullName: fullName.trim(),
-    //     email: email.trim(),
-    //     location: location.fullAddress || `${location.city}, ${location.state}, ${location.country}`,
-    //     dateOfBirth: dob ? dob.toISOString().split('T')[0] : undefined,
-    //   };
+    try {
+      const profileData = {
+        fullName: fullName.trim(),
+        email: email.trim(),
+        location: location.fullAddress || `${location.city}, ${location.state}, ${location.country}`,
+        dateOfBirth: dob ? dob.toISOString().split('T')[0] : undefined,
+      };
 
-    //   const result = await dispatch(completeProfile(profileData)).unwrap();
+      const result = await dispatch(completeProfile(profileData)).unwrap();
+      console.log("result", result);
       
-    //   if (result.status === 'success') {
-    //     // After successful profile completion, get updated user details
-    //     try {
-    //       const userResult = await dispatch(getCurrentUser()).unwrap();
-          
-    //       if (userResult.status === 'success' && userResult.data?.user) {
-    //         showCompletionSuccess();
-    //       } else {
-    //         showCompletionSuccess();
-    //       }
-    //     } catch (userError) {
-    //       // If getCurrentUser fails, still navigate to HomeTabs
-    //       showCompletionSuccess();
-    //     }
-    //   }
-    // } catch (error: any) {
-    //   showAlert({
-    //     title: "Error",
-    //     message: error.message || "Profile completion failed. Please try again.",
-    //     type: "error",
-    //   });
-    // }
+      if (result.status === 'success') {
+        // Fetch updated user data after successful profile completion
+        try {
+          await dispatch(getCurrentUser()).unwrap();
+        } catch (userError) {
+          console.error("Failed to fetch updated user:", userError);
+        }
+
+        // Add a small delay for the Loader modal to dismiss before showing success alert
+        setTimeout(() => {
+          showCompletionSuccess();
+        }, 500);
+      }
+    } catch (error: any) {
+      showAlert({
+        title: "Error",
+        message: error.message || "Profile completion failed. Please try again.",
+        type: "error",
+      });
+    }
   };
 
   return (
