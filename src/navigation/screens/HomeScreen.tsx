@@ -11,12 +11,15 @@ import ListedJobs from "../../components/ListedJobs";
 import { useDispatch, useSelector } from 'react-redux';
 import { getHotJobs, getListedJobs, expireOldJobs } from '../../redux/slices/jobSlice';
 import { AppDispatch, RootState } from '../../redux/store';
+import { LocationService } from '../../services/LocationService';
 
 import { useFocusEffect } from "@react-navigation/native";
 
 const HomeScreen = ({ navigation }: any) => {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
+  // Get location from locations slice properly
+  const { currentLocation: locationCoords } = useSelector((state: RootState) => state.locations);
   const { currentLocation } = useSelector((state: RootState) => state.job);
   
   const [searchQuery, setSearchQuery] = useState('');
@@ -28,35 +31,41 @@ const HomeScreen = ({ navigation }: any) => {
     navigation.navigate('PostJobScreen');
   };
 
-  // Get location from Redux state, user profile, or use default
-  const getLocation = () => {
-    if (currentLocation) {
-      return currentLocation;
-    }
-    if (user?.profile?.location) {
-      return user.profile.location;
-    }
-    return "New York, NY, USA";
-  };
 
-  // Refresh hot jobs and listed jobs when location changes (initial load)
-  useEffect(() => {
-    dispatch(expireOldJobs());
-    dispatch(getHotJobs({
-      location: getLocation(),
-      page: 1,
-      limit: 10,
-      sortOrder: 'desc'
-    }));
 
-    dispatch(getListedJobs({
-      location: getLocation(),
-      page: 1,
-      limit: 10,
-      sortOrder: 'desc'
-    }));
+  // Fetch user location and refresh jobs
+ useFocusEffect(
+  useCallback(() => {
+    const fetchLocationAndJobs = async () => {
+      const coords = await LocationService.getCurrentLocation();
+
+      dispatch(expireOldJobs());
+
+      dispatch(getHotJobs({
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
+        page: 1,
+        limit: 10,
+        sortOrder: 'desc'
+      }));
+
+      dispatch(getListedJobs({
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
+        page: 1,
+        limit: 10,
+        sortOrder: 'desc'
+      }));
+    };
+
+    fetchLocationAndJobs();
+
     isInitialMountRef.current = false;
-  }, [dispatch, currentLocation, user?.profile?.location]);
+
+    // optional cleanup if needed
+    return () => {};
+  }, [dispatch])
+);
 
   // Debounced search effect - triggers when searchQuery changes
   useEffect(() => {

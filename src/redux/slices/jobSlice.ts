@@ -154,14 +154,15 @@ export const getUserJobs = createAsyncThunk(
 // Get Hot Jobs Async Thunk
 export const getHotJobs = createAsyncThunk(
   "job/getHotJobs",
-  async ({ location, page = 1, limit = 10, sortOrder = 'desc' }: { 
-    location: string; 
+  async ({ latitude, longitude, page = 1, limit = 10, sortOrder = 'desc' }: { 
+    latitude?: number;
+    longitude?: number;
     page?: number; 
     limit?: number; 
     sortOrder?: string; 
   }, { rejectWithValue }) => {
     try {
-      const response = await getHotJobsApi(location, page, limit, sortOrder);
+      const response = await getHotJobsApi(latitude, longitude, page, limit, sortOrder);
       return response;
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to fetch hot jobs");
@@ -172,14 +173,15 @@ export const getHotJobs = createAsyncThunk(
 // Get Listed Jobs Async Thunk
 export const getListedJobs = createAsyncThunk(
   "job/getListedJobs",
-  async ({ location, page = 1, limit = 10, sortOrder = 'desc' }: { 
-    location: string; 
+  async ({ latitude, longitude, page = 1, limit = 10, sortOrder = 'desc' }: { 
+    latitude?: number;
+    longitude?: number;
     page?: number; 
     limit?: number; 
     sortOrder?: string; 
   }, { rejectWithValue }) => {
     try {
-      const response = await getListedJobsApi(location, page, limit, sortOrder);
+      const response = await getListedJobsApi(latitude, longitude, page, limit, sortOrder);
       return response;
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to fetch listed jobs");
@@ -190,15 +192,16 @@ export const getListedJobs = createAsyncThunk(
 // Get All Hot Jobs with Pagination (for AllHotJobsScreen)
 export const getAllHotJobsPaginated = createAsyncThunk(
   "job/getAllHotJobsPaginated",
-  async ({ location, page = 1, limit = 10, sortOrder = 'desc', append = false }: { 
-    location: string; 
+  async ({ latitude, longitude, page = 1, limit = 10, sortOrder = 'desc', append = false }: { 
+    latitude?: number;
+    longitude?: number;
     page?: number; 
     limit?: number; 
     sortOrder?: string;
     append?: boolean;
   }, { rejectWithValue }) => {
     try {
-      const response = await getHotJobsApi(location, page, limit, sortOrder);
+      const response = await getHotJobsApi(latitude, longitude, page, limit, sortOrder);
       return { ...response, append };
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to fetch hot jobs");
@@ -210,16 +213,18 @@ export const getAllHotJobsPaginated = createAsyncThunk(
 export const searchHotJobsPaginated = createAsyncThunk(
   "job/searchHotJobsPaginated",
   async ({ 
-    location, 
     search, 
+    latitude,
+    longitude,
     page = 1, 
     limit = 10, 
     sortBy, 
     sortOrder = 'desc', 
     append = false 
   }: { 
-    location: string; 
     search: string;
+    latitude?: number;
+    longitude?: number;
     page?: number; 
     limit?: number; 
     sortBy?: string;
@@ -227,7 +232,7 @@ export const searchHotJobsPaginated = createAsyncThunk(
     append?: boolean;
   }, { rejectWithValue }) => {
     try {
-      const response = await searchHotJobsApi(location, search, page, limit, sortBy, sortOrder);
+      const response = await searchHotJobsApi(search, latitude, longitude, page, limit, sortBy, sortOrder);
       return { ...response, append };
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to search hot jobs");
@@ -239,16 +244,18 @@ export const searchHotJobsPaginated = createAsyncThunk(
 export const searchListedJobsPaginated = createAsyncThunk(
   "job/searchListedJobsPaginated",
   async ({ 
-    location, 
     search, 
+    latitude,
+    longitude,
     page = 1, 
     limit = 10, 
     sortBy, 
     sortOrder = 'desc', 
     append = false 
   }: { 
-    location: string; 
     search: string;
+    latitude?: number;
+    longitude?: number;
     page?: number; 
     limit?: number; 
     sortBy?: string;
@@ -256,7 +263,7 @@ export const searchListedJobsPaginated = createAsyncThunk(
     append?: boolean;
   }, { rejectWithValue }) => {
     try {
-      const response = await searchListedJobsApi(location, search, page, limit, sortBy, sortOrder);
+      const response = await searchListedJobsApi(search, latitude, longitude, page, limit, sortBy, sortOrder);
       return { ...response, append };
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to search listed jobs");
@@ -267,15 +274,16 @@ export const searchListedJobsPaginated = createAsyncThunk(
 // Get All Listed Jobs with Pagination (for AllListedJobsScreen)
 export const getAllListedJobsPaginated = createAsyncThunk(
   "job/getAllListedJobsPaginated",
-  async ({ location, page = 1, limit = 10, sortOrder = 'desc', append = false }: { 
-    location: string; 
+  async ({ latitude, longitude, page = 1, limit = 10, sortOrder = 'desc', append = false }: { 
+    latitude?: number;
+    longitude?: number;
     page?: number; 
     limit?: number; 
     sortOrder?: string;
     append?: boolean;
   }, { rejectWithValue }) => {
     try {
-      const response = await getListedJobsApi(location, page, limit, sortOrder);
+      const response = await getListedJobsApi(latitude, longitude, page, limit, sortOrder);
       return { ...response, append };
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to fetch listed jobs");
@@ -467,9 +475,10 @@ const jobSlice = createSlice({
         state.error = action.payload as string;
         state.loading = false;
       })
-      // Get Hot Jobs
       .addCase(getHotJobs.pending, (state) => {
-        state.loading = true;
+        if (state.hotJobs.length === 0) {
+          state.loading = true;
+        }
         state.error = null;
       })
       .addCase(getHotJobs.fulfilled, (state, action) => {
@@ -486,7 +495,9 @@ const jobSlice = createSlice({
       })
       // Get Listed Jobs
       .addCase(getListedJobs.pending, (state) => {
-        state.loading = true;
+        if (state.listedJobs.length === 0) {
+          state.loading = true;
+        }
         state.error = null;
       })
       .addCase(getListedJobs.fulfilled, (state, action) => {
@@ -505,9 +516,8 @@ const jobSlice = createSlice({
       .addCase(getAllHotJobsPaginated.pending, (state, action) => {
         if (action.meta.arg.append) {
           state.loadingMore = true;
-        } else {
+        } else if (state.allHotJobs.length === 0) {
           state.loading = true;
-          state.allHotJobs = [];
         }
         state.error = null;
       })
@@ -538,7 +548,7 @@ const jobSlice = createSlice({
       .addCase(searchHotJobsPaginated.pending, (state, action) => {
         if (action.meta.arg.append) {
           state.loadingMore = true;
-        } else {
+        } else if (state.allHotJobs.length === 0 || action.meta.arg.search) {
           state.loading = true;
           state.allHotJobs = [];
         }
@@ -571,9 +581,8 @@ const jobSlice = createSlice({
       .addCase(getAllListedJobsPaginated.pending, (state, action) => {
         if (action.meta.arg.append) {
           state.loadingMore = true;
-        } else {
+        } else if (state.allListedJobs.length === 0) {
           state.loading = true;
-          state.allListedJobs = [];
         }
         state.error = null;
       })
@@ -604,7 +613,7 @@ const jobSlice = createSlice({
       .addCase(searchListedJobsPaginated.pending, (state, action) => {
         if (action.meta.arg.append) {
           state.loadingMore = true;
-        } else {
+        } else if (state.allListedJobs.length === 0 || action.meta.arg.search) {
           state.loading = true;
           state.allListedJobs = [];
         }
@@ -704,7 +713,12 @@ const jobSlice = createSlice({
       })
       .addCase(expireOldJobs.rejected, (state, action) => {
         state.error = action.payload as string;
-      });
+      })
+      // Clear all job data on logout
+      .addMatcher(
+        (action) => action.type === 'auth/logoutUser/fulfilled' || action.type === 'auth/clearAuth',
+        () => initialState
+      );
   },
 });
 

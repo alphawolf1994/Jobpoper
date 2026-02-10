@@ -32,26 +32,21 @@ const AllListedJobsScreen: React.FC = () => {
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isInitialMountRef = useRef(true);
 
-  // Get location from Redux state, user profile, or use default
-  const getLocation = useCallback(() => {
-    if (currentLocation) {
-      return currentLocation;
-    }
-    if (user?.profile?.location) {
-      return user.profile.location;
-    }
-    return "New York, NY, USA";
-  }, [currentLocation, user?.profile?.location]);
+
+
+  // Get coordinates from locations slice
+  const { currentLocation: locationCoords } = useSelector((state: RootState) => state.locations);
 
   // Load jobs (default or search)
   const loadJobs = useCallback((page: number = 1, append: boolean = false, searchTerm?: string) => {
-    const location = getLocation();
+
     
     if (searchTerm && searchTerm.trim()) {
       // Use search API
       dispatch(searchListedJobsPaginated({ 
-        location,
         search: searchTerm.trim(),
+        latitude: locationCoords?.latitude,
+        longitude: locationCoords?.longitude,
         page,
         limit: 10,
         sortOrder: 'desc',
@@ -60,14 +55,15 @@ const AllListedJobsScreen: React.FC = () => {
     } else {
       // Use default API
       dispatch(getAllListedJobsPaginated({ 
-        location,
+        latitude: locationCoords?.latitude,
+        longitude: locationCoords?.longitude,
         page,
         limit: 10,
         sortOrder: 'desc',
         append
       }));
     }
-  }, [dispatch, getLocation]);
+  }, [dispatch, locationCoords]);
 
   // Initial load (only on mount)
   useEffect(() => {

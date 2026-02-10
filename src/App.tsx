@@ -26,14 +26,14 @@ SplashScreen.preventAutoHideAsync();
 
 export function App() {
   // Initialize Firebase Analytics
-  React.useEffect(() => {
-    const initAnalytics = async () => {
-      await analyticsService.initialize();
-      await analyticsService.logAppOpen();
-    };
+  // React.useEffect(() => {
+  //   const initAnalytics = async () => {
+  //     await analyticsService.initialize();
+  //     await analyticsService.logAppOpen();
+  //   };
     
-    initAnalytics();
-  }, []);
+  //   initAnalytics();
+  // }, []);
 
   return (
   

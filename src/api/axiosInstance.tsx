@@ -17,6 +17,19 @@ export const setAuthToken = (token: string | null) => {
   }
 };
 
+// Request interceptor to log API calls
+axiosInstance.interceptors.request.use(
+  (config) => {
+    // Log the full URL
+    const fullUrl = `${config.baseURL || ''}${config.url || ''}`;
+    console.log(`[API Request] ${config.method?.toUpperCase()} ${fullUrl}`, config.params || '');
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+
 // Response interceptor to handle token expiration
 axiosInstance.interceptors.response.use(
   (response) => response,

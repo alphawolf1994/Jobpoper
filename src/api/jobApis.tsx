@@ -171,15 +171,18 @@ export const getUserJobsApi = async () => {
 };
 
 // Get hot jobs API
-export const getHotJobsApi = async (location: string, page: number = 1, limit: number = 10, sortOrder: string = 'desc') => {
+export const getHotJobsApi = async (latitude?: number, longitude?: number, page: number = 1, limit: number = 10, sortOrder: string = 'desc') => {
     try {
+        const params: any = {
+            page,
+            limit,
+            sortOrder
+        };
+        if (latitude) params.latitude = latitude;
+        if (longitude) params.longitude = longitude;
+
         const res = await axiosInstance.get("/jobs/hot", {
-            params: {
-                location,
-                page,
-                limit,
-                sortOrder
-            }
+            params
         });
         return res.data;
     } catch (error: any) {
@@ -189,8 +192,9 @@ export const getHotJobsApi = async (location: string, page: number = 1, limit: n
 
 // Search hot jobs API
 export const searchHotJobsApi = async (
-    location: string, 
     search: string, 
+    latitude?: number,
+    longitude?: number,
     page: number = 1, 
     limit: number = 10, 
     sortBy?: string, 
@@ -198,12 +202,13 @@ export const searchHotJobsApi = async (
 ) => {
     try {
         const params: any = {
-            location,
             search,
             page,
             limit,
             sortOrder
         };
+        if (latitude) params.latitude = latitude;
+        if (longitude) params.longitude = longitude;
         if (sortBy) {
             params.sortBy = sortBy;
         }
@@ -218,8 +223,9 @@ export const searchHotJobsApi = async (
 
 // Search listed jobs API
 export const searchListedJobsApi = async (
-    location: string, 
     search: string, 
+    latitude?: number,
+    longitude?: number,
     page: number = 1, 
     limit: number = 10, 
     sortBy?: string, 
@@ -227,12 +233,13 @@ export const searchListedJobsApi = async (
 ) => {
     try {
         const params: any = {
-            location,
             search,
             page,
             limit,
             sortOrder
         };
+        if (latitude) params.latitude = latitude;
+        if (longitude) params.longitude = longitude;
         if (sortBy) {
             params.sortBy = sortBy;
         }
@@ -246,15 +253,18 @@ export const searchListedJobsApi = async (
 };
 
 // Get listed jobs API
-export const getListedJobsApi = async (location: string, page: number = 1, limit: number = 10, sortOrder: string = 'desc') => {
+export const getListedJobsApi = async (latitude?: number, longitude?: number, page: number = 1, limit: number = 10, sortOrder: string = 'desc') => {
     try {
+        const params: any = {
+            page,
+            limit,
+            sortOrder
+        };
+        if (latitude) params.latitude = latitude;
+        if (longitude) params.longitude = longitude;
+
         const res = await axiosInstance.get("/jobs/normal", {
-            params: {
-                location,
-                page,
-                limit,
-                sortOrder
-            }
+            params
         });
         return res.data;
     } catch (error: any) {

@@ -7,10 +7,9 @@ import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Colors } from "../utils";
 import { EvilIcons, Ionicons } from "@expo/vector-icons";
 import ImagePath from "../assets/images/ImagePath";
-import LocationAutocomplete from "./LocationAutocomplete";
-import Button from "./Button";
+
 import { RootState, AppDispatch } from "../redux/store";
-import { setCurrentLocation } from "../redux/slices/jobSlice";
+
 import { IMAGE_BASE_URL } from "../api/baseURL";
 import {
   getAllNotifications,
@@ -23,48 +22,22 @@ import Toast from "react-native-toast-message";
 
 
 const Header: React.FC = () => {
-  const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
+
   const [isNotificationModalVisible, setIsNotificationModalVisible] = useState(false);
   const dispatch = useDispatch<AppDispatch>();
   const navigation = useNavigation<any>();
   
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
-  const { currentLocation } = useSelector((state: RootState) => state.job);
+  const { currentAddress } = useSelector((state: RootState) => state.locations);
+
   const { notifications, unreadCount, loading } = useSelector((state: RootState) => state.notification);
   
-  // Get location from user profile or use default
-  const getDefaultLocation = () => {
-    if (user?.profile?.location) {
-      return user.profile.location;
-    }
-    return "New York, NY, USA";
-  };
 
-  const displayLocation = currentLocation || getDefaultLocation();
 
   const resolveImageUri = (uri?: string | null) => {
     if (!uri) return null;
     if (uri.startsWith("http") || uri.startsWith("file:")) return uri;
     return `${IMAGE_BASE_URL}${uri.startsWith("/") ? uri : `/${uri}`}`;
-  };
-
-  const handleLocationSelect = (locationData: {
-    city: string;
-    state: string;
-    country: string;
-    fullAddress: string;
-  }) => {
-    // Update Redux state with the new location
-    dispatch(setCurrentLocation(locationData.fullAddress));
-    setIsLocationModalVisible(false);
-  };
-
-  const formatLocationDisplay = () => {
-    if (displayLocation) {
-      const parts = displayLocation.split(',');
-      return parts.map(part => part.trim()).join(", ");
-    }
-    return "New York, NY, USA";
   };
 
   // Ref to track if component is mounted
@@ -228,25 +201,14 @@ const Header: React.FC = () => {
           <Text style={styles.titleText}>
             JobPoper
           </Text>
-          <TouchableOpacity 
-            style={styles.locationRow} 
-            onPress={() => setIsLocationModalVisible(true)}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name="location-outline"
-              size={16}
-              color={Colors.primary}
-            />
-            <Text style={styles.locationText}>
-              {formatLocationDisplay()}
-            </Text>
-            <Ionicons
-              name="chevron-down"
-              size={16}
-              color={Colors.gray}
-            />
-          </TouchableOpacity>
+          {currentAddress && (
+            <View style={styles.locationContainer}>
+              <Ionicons name="location-sharp" size={14} color={Colors.gray} />
+              <Text style={styles.locationText} numberOfLines={1}>
+                {currentAddress}
+              </Text>
+            </View>
+          )}
         </View>
       </View>
 
@@ -274,45 +236,7 @@ const Header: React.FC = () => {
       </View>
 
       {/* Location Change Modal */}
-      <Modal
-        visible={isLocationModalVisible}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setIsLocationModalVisible(false)}
-      >
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity 
-              onPress={() => setIsLocationModalVisible(false)}
-              style={styles.closeButton}
-            >
-              <Ionicons name="close" size={24} color={Colors.black} />
-            </TouchableOpacity>
-            <Text style={styles.modalTitle}>Change Location</Text>
-            <View style={styles.placeholder} />
-          </View>
-          
-          <ScrollView style={styles.modalContent}>
-            <Text style={styles.modalSubtitle}>
-              Select your preferred location to see relevant job opportunities
-            </Text>
-            
-            <LocationAutocomplete
-              label="Search Location"
-              placeholder="Enter city, state, or country"
-              onLocationSelect={handleLocationSelect}
-              firstContainerStyle={{ marginTop: 20 }}
-            />
-            
-            <View style={styles.currentLocationContainer}>
-              <Text style={styles.currentLocationLabel}>Current Location:</Text>
-              <Text style={styles.currentLocationText}>
-                {formatLocationDisplay()}
-              </Text>
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
+
 
       {/* Notification Dropdown Modal */}
       <Modal
@@ -405,32 +329,20 @@ const styles = StyleSheet.create({
   },
   titleText: {
     fontSize: 22,
-    fontWeight: "800",
     color: Colors.primary || "#1a1a1a",
   },
-  locationRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 4,
+  locationContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
   },
   locationText: {
-    fontSize: 14,
-    color: Colors.primary,
-    marginLeft: 6,
-    marginRight: 4,
-    fontWeight: "500",
+    fontSize: 13,
+    color: Colors.gray,
+    marginLeft: 2,
+    maxWidth: 200,
   },
-  oInline: {
-    backgroundColor: Colors.primary || "#2B8EF6",
-    color: Colors.white,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 13,
-    overflow: "hidden",
-    marginHorizontal: 4,
-    fontSize: 14,
-    fontWeight: "700",
-  },
+
   actions: { flexDirection: "row", alignItems: "center" },
   bellWrapper: {
     width: 36,
@@ -467,57 +379,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     resizeMode: "cover",
   },
-  // Modal styles
-  modalContainer: {
-    flex: 1,
-    backgroundColor: Colors.white,
-  },
-  modalHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.lightGray,
-  },
-  closeButton: {
-    padding: 4,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: Colors.black,
-  },
-  placeholder: {
-    width: 32,
-  },
-  modalContent: {
-    flex: 1,
-    paddingHorizontal: 20,
-  },
-  modalSubtitle: {
-    fontSize: 16,
-    color: Colors.gray,
-    marginTop: 20,
-    lineHeight: 22,
-  },
-  currentLocationContainer: {
-    marginTop: 30,
-    padding: 16,
-    backgroundColor: Colors.lightGray,
-    borderRadius: 12,
-  },
-  currentLocationLabel: {
-    fontSize: 14,
-    color: Colors.gray,
-    marginBottom: 4,
-  },
-  currentLocationText: {
-    fontSize: 16,
-    color: Colors.black,
-    fontWeight: "500",
-  },
+
   // Notification dropdown styles
   notificationOverlay: {
     flex: 1,

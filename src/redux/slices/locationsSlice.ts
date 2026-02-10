@@ -16,6 +16,9 @@ type LocationsState = {
   loading: boolean;
   error: string | null;
   lastAddedLocation: SavedLocation | null;
+  currentLocation: { latitude: number; longitude: number } | null;
+  currentAddress: string | null;
+  permissionStatus: 'granted' | 'denied' | 'undetermined';
 };
 
 const initialState: LocationsState = {
@@ -23,6 +26,9 @@ const initialState: LocationsState = {
   loading: false,
   error: null,
   lastAddedLocation: null,
+  currentLocation: null,
+  currentAddress: null,
+  permissionStatus: 'undetermined',
 };
 
 // Save location async thunk
@@ -99,6 +105,15 @@ const locationsSlice = createSlice({
     },
     clearLastAddedLocation: (state) => {
       state.lastAddedLocation = null;
+    },
+    setCurrentLocation: (state, action: PayloadAction<{ latitude: number; longitude: number } | null>) => {
+      state.currentLocation = action.payload;
+    },
+    setPermissionStatus: (state, action: PayloadAction<'granted' | 'denied' | 'undetermined'>) => {
+      state.permissionStatus = action.payload;
+    },
+    setCurrentAddress: (state, action: PayloadAction<string | null>) => {
+      state.currentAddress = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -179,6 +194,6 @@ const locationsSlice = createSlice({
   },
 });
 
-export const { addLocation, removeLocation, clearLocations, clearError, clearLastAddedLocation } = locationsSlice.actions;
+export const { addLocation, removeLocation, clearLocations, clearError, clearLastAddedLocation, setCurrentLocation, setCurrentAddress, setPermissionStatus } = locationsSlice.actions;
 export default locationsSlice.reducer;
 

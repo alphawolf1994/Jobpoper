@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, memo } from 'react';
 import {
   View,
   Text,
@@ -23,48 +23,45 @@ interface HotJobsProps {
 const HotJobs: React.FC<HotJobsProps> = ({ searchQuery = '' }) => {
   const navigation = useNavigation<any>();
   const dispatch = useDispatch<AppDispatch>();
-  const jobState = useSelector((state: RootState) => state.job);
-  const { hotJobs = [], loading = false, currentLocation, allHotJobs = [] } = jobState || {};
+  const hotJobs = useSelector((state: RootState) => state.job.hotJobs);
+  const allHotJobs = useSelector((state: RootState) => state.job.allHotJobs);
+  const loading = useSelector((state: RootState) => state.job.loading);
+  const currentLocation = useSelector((state: RootState) => state.job.currentLocation);
+  
   const { user } = useSelector((state: RootState) => state.auth);
+  // Get coordinates from locations slice
+  const { currentLocation: locationCoords } = useSelector((state: RootState) => state.locations);
   
   // Use allHotJobs if searching, otherwise use hotJobs
   const displayJobs = searchQuery.trim() ? allHotJobs : hotJobs;
 
   
-  // Get location from Redux state, user profile, or use default
-  const getLocation = () => {
-    if (currentLocation) {
-      return currentLocation;
-    }
-    if (user?.profile?.location) {
-      return user.profile.location;
-    }
-    return "New York, NY, USA";
-  };
+
 
   useEffect(() => {
-    const location = getLocation();
-    
     if (searchQuery && searchQuery.trim()) {
       // Use search API when search query exists
       dispatch(searchHotJobsPaginated({ 
-        location,
         search: searchQuery.trim(),
+        latitude: locationCoords?.latitude,
+        longitude: locationCoords?.longitude,
         page: 1,
         limit: 10,
         sortOrder: 'desc',
         append: false
       }));
-    } else {
-      // Use default API when no search query
+    } else if (hotJobs.length === 0) {
+      // Only fetch default jobs if we don't have any yet
+      // HomeScreen focus effect handles background refreshes
       dispatch(getHotJobs({ 
-        location,
+        latitude: locationCoords?.latitude,
+        longitude: locationCoords?.longitude,
         page: 1,
         limit: 10,
         sortOrder: 'desc'
       }));
     }
-  }, [dispatch, currentLocation, user?.profile?.location, searchQuery]);
+  }, [dispatch, searchQuery, locationCoords, hotJobs.length]);
 
   const formatJobTags = (job: Job) => {
     const tags = [];
@@ -154,7 +151,7 @@ const HotJobs: React.FC<HotJobsProps> = ({ searchQuery = '' }) => {
       </View>
 
       {/* Job Cards ScrollView */}
-      {loading ? (
+      {(loading && displayJobs.length === 0) ? (
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading hot jobs...</Text>
         </View>
@@ -342,4 +339,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default HotJobs;
+export default memo(HotJobs);
