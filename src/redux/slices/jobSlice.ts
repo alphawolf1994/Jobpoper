@@ -15,6 +15,8 @@ import {
   searchListedJobsApi
 } from "../../api/jobApis";
 import { Job, JobResponse, CreateJobPayload, HotJobsResponse, ListedJobsResponse } from "../../interface/interfaces";
+import { geocodeAddressToCoordinates } from "../../utils/geocode";
+import { RootState } from "../store";
 
 interface JobState {
   jobs: Job[];
@@ -51,6 +53,19 @@ interface JobState {
   error: string | null;
   createJobSuccess: boolean;
   currentLocation: string | null;
+  currentLocationCoordinates: { latitude: number; longitude: number } | null;
+}
+
+async function resolveCoordinates(state: RootState): Promise<{ latitude: number; longitude: number }> {
+  const coords = state.job.currentLocationCoordinates;
+  if (coords) return coords;
+  const locationString =
+    state.job.currentLocation ||
+    state.auth?.user?.profile?.location ||
+    "New York, NY, USA";
+  const geocoded = await geocodeAddressToCoordinates(locationString);
+  if (geocoded) return geocoded;
+  throw new Error("Could not resolve location; try selecting a place from the search");
 }
 
 const initialState: JobState = {
@@ -70,6 +85,7 @@ const initialState: JobState = {
   error: null,
   createJobSuccess: false,
   currentLocation: null,
+  currentLocationCoordinates: null,
 };
 
 // Create Job Async Thunk
@@ -159,9 +175,11 @@ export const getHotJobs = createAsyncThunk(
     page?: number; 
     limit?: number; 
     sortOrder?: string; 
-  }, { rejectWithValue }) => {
+  }, { getState, rejectWithValue }) => {
     try {
-      const response = await getHotJobsApi(location, page, limit, sortOrder);
+      const state = getState() as RootState;
+      const { latitude, longitude } = await resolveCoordinates(state);
+      const response = await getHotJobsApi(latitude, longitude, page, limit, sortOrder);
       return response;
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to fetch hot jobs");
@@ -177,9 +195,11 @@ export const getListedJobs = createAsyncThunk(
     page?: number; 
     limit?: number; 
     sortOrder?: string; 
-  }, { rejectWithValue }) => {
+  }, { getState, rejectWithValue }) => {
     try {
-      const response = await getListedJobsApi(location, page, limit, sortOrder);
+      const state = getState() as RootState;
+      const { latitude, longitude } = await resolveCoordinates(state);
+      const response = await getListedJobsApi(latitude, longitude, page, limit, sortOrder);
       return response;
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to fetch listed jobs");
@@ -196,9 +216,11 @@ export const getAllHotJobsPaginated = createAsyncThunk(
     limit?: number; 
     sortOrder?: string;
     append?: boolean;
-  }, { rejectWithValue }) => {
+  }, { getState, rejectWithValue }) => {
     try {
-      const response = await getHotJobsApi(location, page, limit, sortOrder);
+      const state = getState() as RootState;
+      const { latitude, longitude } = await resolveCoordinates(state);
+      const response = await getHotJobsApi(latitude, longitude, page, limit, sortOrder);
       return { ...response, append };
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to fetch hot jobs");
@@ -225,9 +247,11 @@ export const searchHotJobsPaginated = createAsyncThunk(
     sortBy?: string;
     sortOrder?: string;
     append?: boolean;
-  }, { rejectWithValue }) => {
+  }, { getState, rejectWithValue }) => {
     try {
-      const response = await searchHotJobsApi(location, search, page, limit, sortBy, sortOrder);
+      const state = getState() as RootState;
+      const { latitude, longitude } = await resolveCoordinates(state);
+      const response = await searchHotJobsApi(latitude, longitude, search, page, limit, sortBy, sortOrder);
       return { ...response, append };
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to search hot jobs");
@@ -254,9 +278,11 @@ export const searchListedJobsPaginated = createAsyncThunk(
     sortBy?: string;
     sortOrder?: string;
     append?: boolean;
-  }, { rejectWithValue }) => {
+  }, { getState, rejectWithValue }) => {
     try {
-      const response = await searchListedJobsApi(location, search, page, limit, sortBy, sortOrder);
+      const state = getState() as RootState;
+      const { latitude, longitude } = await resolveCoordinates(state);
+      const response = await searchListedJobsApi(latitude, longitude, search, page, limit, sortBy, sortOrder);
       return { ...response, append };
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to search listed jobs");
@@ -273,9 +299,11 @@ export const getAllListedJobsPaginated = createAsyncThunk(
     limit?: number; 
     sortOrder?: string;
     append?: boolean;
-  }, { rejectWithValue }) => {
+  }, { getState, rejectWithValue }) => {
     try {
-      const response = await getListedJobsApi(location, page, limit, sortOrder);
+      const state = getState() as RootState;
+      const { latitude, longitude } = await resolveCoordinates(state);
+      const response = await getListedJobsApi(latitude, longitude, page, limit, sortOrder);
       return { ...response, append };
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to fetch listed jobs");
@@ -343,6 +371,9 @@ const jobSlice = createSlice({
     },
     setCurrentLocation: (state, action: PayloadAction<string>) => {
       state.currentLocation = action.payload;
+    },
+    setCurrentLocationCoordinates: (state, action: PayloadAction<{ latitude: number; longitude: number } | null>) => {
+      state.currentLocationCoordinates = action.payload;
     },
   },
   extraReducers: (builder) => {
@@ -708,5 +739,5 @@ const jobSlice = createSlice({
   },
 });
 
-export const { clearError, resetCreateJobSuccess, setCurrentJob, setCurrentLocation } = jobSlice.actions;
+export const { clearError, resetCreateJobSuccess, setCurrentJob, setCurrentLocation, setCurrentLocationCoordinates } = jobSlice.actions;
 export default jobSlice.reducer;

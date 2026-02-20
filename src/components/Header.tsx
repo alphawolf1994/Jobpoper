@@ -10,7 +10,7 @@ import ImagePath from "../assets/images/ImagePath";
 import LocationAutocomplete from "./LocationAutocomplete";
 import Button from "./Button";
 import { RootState, AppDispatch } from "../redux/store";
-import { setCurrentLocation } from "../redux/slices/jobSlice";
+import { setCurrentLocation, setCurrentLocationCoordinates } from "../redux/slices/jobSlice";
 import { IMAGE_BASE_URL } from "../api/baseURL";
 import {
   getAllNotifications,
@@ -53,9 +53,15 @@ const Header: React.FC = () => {
     state: string;
     country: string;
     fullAddress: string;
+    latitude?: number;
+    longitude?: number;
   }) => {
-    // Update Redux state with the new location
     dispatch(setCurrentLocation(locationData.fullAddress));
+    if (locationData.latitude != null && locationData.longitude != null) {
+      dispatch(setCurrentLocationCoordinates({ latitude: locationData.latitude, longitude: locationData.longitude }));
+    } else {
+      dispatch(setCurrentLocationCoordinates(null));
+    }
     setIsLocationModalVisible(false);
   };
 

@@ -171,25 +171,33 @@ export const getUserJobsApi = async () => {
 };
 
 // Get hot jobs API
-export const getHotJobsApi = async (location: string, page: number = 1, limit: number = 10, sortOrder: string = 'desc') => {
+export const getHotJobsApi = async (latitude: number, longitude: number, page: number = 1, limit: number = 10, sortOrder: string = 'desc') => {
     try {
         const res = await axiosInstance.get("/jobs/hot", {
             params: {
-                location,
+                latitude,
+                longitude,
                 page,
                 limit,
                 sortOrder
             }
         });
+        if (__DEV__) {
+            console.log("[getHotJobsApi] response:", JSON.stringify({ status: res.data?.status, jobsCount: res.data?.data?.jobs?.length, latitude, longitude }));
+        }
         return res.data;
     } catch (error: any) {
+        if (__DEV__) {
+            console.warn("[getHotJobsApi] error:", error.response?.status, error.response?.data, error.message);
+        }
         throw new Error(error.response?.data?.message || "Failed to fetch hot jobs");
     }
 };
 
 // Search hot jobs API
 export const searchHotJobsApi = async (
-    location: string, 
+    latitude: number,
+    longitude: number,
     search: string, 
     page: number = 1, 
     limit: number = 10, 
@@ -198,7 +206,8 @@ export const searchHotJobsApi = async (
 ) => {
     try {
         const params: any = {
-            location,
+            latitude,
+            longitude,
             search,
             page,
             limit,
@@ -218,7 +227,8 @@ export const searchHotJobsApi = async (
 
 // Search listed jobs API
 export const searchListedJobsApi = async (
-    location: string, 
+    latitude: number,
+    longitude: number,
     search: string, 
     page: number = 1, 
     limit: number = 10, 
@@ -227,7 +237,8 @@ export const searchListedJobsApi = async (
 ) => {
     try {
         const params: any = {
-            location,
+            latitude,
+            longitude,
             search,
             page,
             limit,
@@ -246,18 +257,25 @@ export const searchListedJobsApi = async (
 };
 
 // Get listed jobs API
-export const getListedJobsApi = async (location: string, page: number = 1, limit: number = 10, sortOrder: string = 'desc') => {
+export const getListedJobsApi = async (latitude: number, longitude: number, page: number = 1, limit: number = 10, sortOrder: string = 'desc') => {
     try {
         const res = await axiosInstance.get("/jobs/normal", {
             params: {
-                location,
+                latitude,
+                longitude,
                 page,
                 limit,
                 sortOrder
             }
         });
+        if (__DEV__) {
+            console.log("[getListedJobsApi] response:", JSON.stringify({ status: res.data?.status, jobsCount: res.data?.data?.jobs?.length, latitude, longitude }));
+        }
         return res.data;
     } catch (error: any) {
+        if (__DEV__) {
+            console.warn("[getListedJobsApi] error:", error.response?.status, error.response?.data, error.message);
+        }
         throw new Error(error.response?.data?.message || "Failed to fetch listed jobs");
     }
 };

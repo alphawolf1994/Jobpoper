@@ -18,7 +18,7 @@ import { logoutUser, clearAuth } from "../../redux/slices/authSlice";
 import { RootState, AppDispatch } from "../../redux/store";
 import { useNavigation } from "@react-navigation/native";
 import { useAlertModal } from "../../hooks/useAlertModal";
-import { setCurrentLocation } from "@/src/redux/slices/jobSlice";
+import { setCurrentLocation, setCurrentLocationCoordinates } from "@/src/redux/slices/jobSlice";
 
 interface MenuItemProps {
   icon: string;
@@ -63,7 +63,8 @@ const ProfileScreen = () => {
               await dispatch(logoutUser()).unwrap();
             } finally {
               dispatch(clearAuth());
-              dispatch(setCurrentLocation(''))
+              dispatch(setCurrentLocation(''));
+              dispatch(setCurrentLocationCoordinates(null));
               showAlert({
                 title: "Success",
                 message: "Logged out successfully!",

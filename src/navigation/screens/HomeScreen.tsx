@@ -9,7 +9,7 @@ import MyTextInput from "../../components/MyTextInput";
 import HotJobs from "../../components/HotJobs";
 import ListedJobs from "../../components/ListedJobs";
 import { useDispatch, useSelector } from 'react-redux';
-import { getHotJobs, getListedJobs, expireOldJobs } from '../../redux/slices/jobSlice';
+import { getHotJobs, getListedJobs, expireOldJobs, clearError } from '../../redux/slices/jobSlice';
 import { AppDispatch, RootState } from '../../redux/store';
 
 import { useFocusEffect } from "@react-navigation/native";
@@ -17,7 +17,7 @@ import { useFocusEffect } from "@react-navigation/native";
 const HomeScreen = ({ navigation }: any) => {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
-  const { currentLocation } = useSelector((state: RootState) => state.job);
+  const { currentLocation, error: jobError } = useSelector((state: RootState) => state.job);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
@@ -148,6 +148,18 @@ const HomeScreen = ({ navigation }: any) => {
         </TouchableOpacity>
       </View>
 
+      {jobError ? (
+        <TouchableOpacity
+          style={styles.errorBanner}
+          onPress={() => dispatch(clearError())}
+          activeOpacity={0.9}
+        >
+          <Ionicons name="warning-outline" size={18} color={Colors.white} />
+          <Text style={styles.errorBannerText} numberOfLines={2}>{jobError}</Text>
+          <Ionicons name="close" size={18} color={Colors.white} />
+        </TouchableOpacity>
+      ) : null}
+
       <HotJobs searchQuery={debouncedSearchQuery} />
       <ListedJobs searchQuery={debouncedSearchQuery} />
 
@@ -200,4 +212,20 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   container: { flex: 1 },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#C62828',
+    marginHorizontal: 16,
+    marginTop: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    gap: 8,
+  },
+  errorBannerText: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.white,
+  },
 });
