@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useState, useRef } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, BackHandler, Alert } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, BackHandler, Alert, RefreshControl } from "react-native";
 import { Colors } from "../../utils";
 import Header from "../../components/Header";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -17,7 +17,7 @@ import { useFocusEffect } from "@react-navigation/native";
 const HomeScreen = ({ navigation }: any) => {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
-  const { currentLocation, error: jobError } = useSelector((state: RootState) => state.job);
+  const { currentLocation, error: jobError, loading: jobLoading } = useSelector((state: RootState) => state.job);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
@@ -88,6 +88,23 @@ const HomeScreen = ({ navigation }: any) => {
     setSearchQuery('');
     setDebouncedSearchQuery('');
   }, []);
+
+  // Pull-to-refresh: reload hot jobs and listed jobs
+  const onRefresh = useCallback(() => {
+    dispatch(expireOldJobs());
+    dispatch(getHotJobs({
+      location: getLocation(),
+      page: 1,
+      limit: 10,
+      sortOrder: 'desc'
+    }));
+    dispatch(getListedJobs({
+      location: getLocation(),
+      page: 1,
+      limit: 10,
+      sortOrder: 'desc'
+    }));
+  }, [dispatch, currentLocation, user?.profile?.location]);
 
   // Handle Android back button
   useFocusEffect(
@@ -160,8 +177,20 @@ const HomeScreen = ({ navigation }: any) => {
         </TouchableOpacity>
       ) : null}
 
-      <HotJobs searchQuery={debouncedSearchQuery} />
-      <ListedJobs searchQuery={debouncedSearchQuery} />
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={jobLoading}
+            onRefresh={onRefresh}
+          />
+        }
+      >
+        <HotJobs searchQuery={debouncedSearchQuery} />
+        <ListedJobs searchQuery={debouncedSearchQuery} scrollEnabled={false} />
+      </ScrollView>
 
     </SafeAreaView>
   );
@@ -212,6 +241,8 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   container: { flex: 1 },
+  scrollView: { flex: 1 },
+  scrollContent: { paddingBottom: 24 },
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',

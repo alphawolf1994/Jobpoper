@@ -18,9 +18,10 @@ import { IMAGE_BASE_URL } from '../api/baseURL';
 
 interface ListedJobsProps {
   searchQuery?: string;
+  scrollEnabled?: boolean;
 }
 
-const ListedJobs: React.FC<ListedJobsProps> = ({ searchQuery = '' }) => {
+const ListedJobs: React.FC<ListedJobsProps> = ({ searchQuery = '', scrollEnabled = true }) => {
   const navigation = useNavigation<any>();
   const dispatch = useDispatch<AppDispatch>();
   const jobState = useSelector((state: RootState) => state.job);
@@ -148,6 +149,7 @@ const ListedJobs: React.FC<ListedJobsProps> = ({ searchQuery = '' }) => {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
+          scrollEnabled={scrollEnabled}
         />
       ) : (
         <View style={styles.emptyContainer}>

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "jobpoper",
+    "name": "JobPoper",
     "slug": "jobpoper",
     "version": "1.0.1",
     "orientation": "portrait",
@@ -8,7 +8,6 @@
     "scheme": "jobpoper",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
-
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.jobpoper",
@@ -42,12 +41,23 @@
       "favicon": "./assets/images/icon.png"
     },
     "plugins": [
-
-      ["expo-location"]
+      [
+        "expo-location"
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#FFFFFF"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "splash": {
+      "backgroundColor": "#FFFFFF",
+      "resizeMode": "contain"
     }
   }
 }
