@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "jobpoper",
+    "name": "JobPoper",
     "slug": "jobpoper",
-    "version": "1.0.1",
+    "version": "1.0.4",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "jobpoper",
@@ -12,6 +12,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.jobpoper",
+      "buildNumber": "4",
       "googleServicePlist": "./ios/jobpoper/GoogleService-Info.plist",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We use your location to place the delivery pin and find your address.",
@@ -37,6 +38,7 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.Jobpoper",
+      "versionCode": 4,
       "googleServicesFile": "./android/app/google-services.json"
     },
     "web": {
