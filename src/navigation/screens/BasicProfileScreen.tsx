@@ -1,7 +1,16 @@
-import 'react-native-get-random-values';
+import "react-native-get-random-values";
 import React, { useState } from "react";
-import { View, Text, StyleSheet, Image, KeyboardAvoidingView, Platform, ScrollView, TouchableOpacity } from "react-native";
-import { SafeAreaView } from 'react-native-safe-area-context';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  TouchableOpacity,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "../../utils";
 import MyTextInput from "../../components/MyTextInput";
 import Button from "../../components/Button";
@@ -22,7 +31,7 @@ const BasicProfileScreen = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { loading, error } = useSelector((state: RootState) => state.auth);
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
-  
+
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -30,13 +39,13 @@ const BasicProfileScreen = () => {
     city: "",
     state: "",
     country: "",
-    fullAddress: ""
+    fullAddress: "",
   });
   const [dob, setDob] = useState<Date | null>(null);
   const [showPicker, setShowPicker] = useState(false);
   const [agree, setAgree] = useState(false);
 
-  const navigateHome = () => (navigation as any).navigate('HomeTabs');
+  const navigateHome = () => (navigation as any).navigate("HomeTabs");
 
   const showCompletionSuccess = () =>
     showAlert({
@@ -78,7 +87,10 @@ const BasicProfileScreen = () => {
       return;
     }
 
-    if (!location.fullAddress && !(location.city || location.state || location.country)) {
+    if (
+      !location.fullAddress &&
+      !(location.city || location.state || location.country)
+    ) {
       showAlert({
         title: "Error",
         message: "Please select your city.",
@@ -91,115 +103,148 @@ const BasicProfileScreen = () => {
     //   showAlert({ title: 'Error', message: 'Please agree to the terms and conditions.', type: 'error' });
     //   return;
     // }
-console.log("location", location);
-    // try {
-    //   const profileData = {
-    //     fullName: fullName.trim(),
-    //     email: email.trim(),
-    //     location: location.fullAddress || `${location.city}, ${location.state}, ${location.country}`,
-    //     dateOfBirth: dob ? dob.toISOString().split('T')[0] : undefined,
-    //   };
+    console.log("location", location);
 
-    //   const result = await dispatch(completeProfile(profileData)).unwrap();
-      
-    //   if (result.status === 'success') {
-    //     // After successful profile completion, get updated user details
-    //     try {
-    //       const userResult = await dispatch(getCurrentUser()).unwrap();
-          
-    //       if (userResult.status === 'success' && userResult.data?.user) {
-    //         showCompletionSuccess();
-    //       } else {
-    //         showCompletionSuccess();
-    //       }
-    //     } catch (userError) {
-    //       // If getCurrentUser fails, still navigate to HomeTabs
-    //       showCompletionSuccess();
-    //     }
-    //   }
-    // } catch (error: any) {
-    //   showAlert({
-    //     title: "Error",
-    //     message: error.message || "Profile completion failed. Please try again.",
-    //     type: "error",
-    //   });
-    // }
+    try {
+      const profileData = {
+        fullName: fullName.trim(),
+        email: email.trim(),
+        location:
+          location.fullAddress ||
+          `${location.city}, ${location.state}, ${location.country}`.trim(),
+        dateOfBirth: dob ? dob.toISOString().split("T")[0] : undefined,
+      };
+
+      const result = await dispatch(completeProfile(profileData)).unwrap();
+
+      if (result.status === "success") {
+        try {
+          await dispatch(getCurrentUser()).unwrap();
+          // Regardless of getCurrentUser result, finish with success UI
+          showCompletionSuccess();
+        } catch {
+          // If getCurrentUser fails, still navigate to HomeTabs
+          showCompletionSuccess();
+        }
+      } else {
+        showAlert({
+          title: "Error",
+          message:
+            result.message || "Profile completion failed. Please try again.",
+          type: "error",
+        });
+      }
+    } catch (error: any) {
+      showAlert({
+        title: "Error",
+        message:
+          error?.message || "Profile completion failed. Please try again.",
+        type: "error",
+      });
+    }
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
-      <SafeAreaView edges={['top','bottom','left','right']} style={{flex:1}}>
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <View style={styles.headerContainer}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => (navigation as any).goBack()}>
-        <AntDesign
-              name="arrow-left"
-              size={24}
-              style={{
-                marginRight: 10,
-                marginTop: 2,
-              }}
-              color={Colors.black}
-            />
-        </TouchableOpacity>
-        <Text style={styles.title}>Complete Your Profile 👍</Text>
-        </View>
-<Text style={styles.subtitle}>Finish setting up your profile to start applying!</Text>
-
-        <MyTextInput label="Full Name *" placeholder="Enter your full name" value={fullName} onChange={setFullName} firstContainerStyle={{ marginTop: 24 }} />
-        <MyTextInput label="Email *" placeholder="Enter your email" value={email} onChange={setEmail} keyboardType="email-address" />
-        {/* <MyTextInput label="Phone Number" placeholder="Your phone number" value={phone} onChange={setPhone} editable={false} /> */}
-        <LocationAutocomplete 
-          label="City *" 
-          placeholder="Search for your city" 
-          onLocationSelect={(locationData) => setLocation(locationData)}
-        />
-
-        <TouchableOpacity onPress={() => setShowPicker(true)} activeOpacity={0.8}>
-          <View style={styles.inputWrapperRelative}>
-            <MyTextInput
-              label="Age"
-              placeholder="Select date of birth"
-              value={dob ? formatDate(dob) : ""}
-              editable={false}
-            />
-            <AntDesign
-              name="calendar"
-              size={20}
-              color={Colors.primary}
-              style={styles.trailingIcon}
-            />
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.container}
+    >
+      <SafeAreaView
+        edges={["top", "bottom", "left", "right"]}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.headerContainer}>
+            <TouchableOpacity
+              style={styles.backBtn}
+              onPress={() => (navigation as any).goBack()}
+            >
+              <AntDesign
+                name="arrow-left"
+                size={24}
+                style={{
+                  marginRight: 10,
+                  marginTop: 2,
+                }}
+                color={Colors.black}
+              />
+            </TouchableOpacity>
+            <Text style={styles.title}>Complete Your Profile 👍</Text>
           </View>
-        </TouchableOpacity>
-        {showPicker && (
-          <DateTimePicker
-            mode="date"
-            value={dob ?? new Date(2000, 0, 1)}
-            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-            maximumDate={new Date()}
-            minimumDate={new Date(1900, 0, 1)}
-            onChange={(_, date) => {
-              setShowPicker(false);
-              if (date) setDob(date);
+          <Text style={styles.subtitle}>
+            Finish setting up your profile to start applying!
+          </Text>
+
+          <MyTextInput
+            label="Full Name *"
+            placeholder="Enter your full name"
+            value={fullName}
+            onChange={setFullName}
+            firstContainerStyle={{ marginTop: 24 }}
+          />
+          <MyTextInput
+            label="Email *"
+            placeholder="Enter your email"
+            value={email}
+            onChange={setEmail}
+            keyboardType="email-address"
+          />
+          {/* <MyTextInput label="Phone Number" placeholder="Your phone number" value={phone} onChange={setPhone} editable={false} /> */}
+          <LocationAutocomplete
+            label="City *"
+            placeholder="Search for your city"
+            onLocationSelect={(locationData) => setLocation(locationData)}
+          />
+
+          <TouchableOpacity
+            onPress={() => setShowPicker(true)}
+            activeOpacity={0.8}
+          >
+            <View style={styles.inputWrapperRelative}>
+              <MyTextInput
+                label="Age"
+                placeholder="Select date of birth"
+                value={dob ? formatDate(dob) : ""}
+                editable={false}
+              />
+              <AntDesign
+                name="calendar"
+                size={20}
+                color={Colors.primary}
+                style={styles.trailingIcon}
+              />
+            </View>
+          </TouchableOpacity>
+          {showPicker && (
+            <DateTimePicker
+              mode="date"
+              value={dob ?? new Date(2000, 0, 1)}
+              display={Platform.OS === "ios" ? "spinner" : "default"}
+              maximumDate={new Date()}
+              minimumDate={new Date(1900, 0, 1)}
+              onChange={(_, date) => {
+                setShowPicker(false);
+                if (date) setDob(date);
+              }}
+            />
+          )}
+
+          <Button
+            label={loading ? "Completing Profile..." : "Continue"}
+            onPress={handleCompleteProfile}
+            disabled={loading}
+            style={{
+              backgroundColor: loading ? Colors.gray : Colors.primary,
+              borderRadius: 12,
+              marginTop: 24,
             }}
           />
-        )}
-
-      
-
-        <Button 
-          label={loading ? "Completing Profile..." : "Continue"} 
-          onPress={handleCompleteProfile}
-          disabled={loading}
-          style={{ 
-            backgroundColor: loading ? Colors.gray : Colors.primary, 
-            borderRadius: 12, 
-            marginTop: 24 
-          }} 
-        />
-      </ScrollView>
-      <Loader visible={loading} message="Completing your profile..." />
-      {alertModal}
+        </ScrollView>
+        <Loader visible={loading} message="Completing your profile..." />
+        {alertModal}
       </SafeAreaView>
     </KeyboardAvoidingView>
   );
@@ -210,17 +255,22 @@ const styles = StyleSheet.create({
   content: { padding: 20, paddingTop: 12 },
   backBtn: { marginRight: 12 },
   logoWrap: { alignItems: "center", marginTop: 40, marginBottom: 24 },
-  logo: { width: 80, height: 250, resizeMode: "contain", tintColor: Colors.primary },
-  title: { fontSize: 20, fontWeight: "bold", color: Colors.black,  },
+  logo: {
+    width: 80,
+    height: 250,
+    resizeMode: "contain",
+    tintColor: Colors.primary,
+  },
+  title: { fontSize: 20, fontWeight: "bold", color: Colors.black },
   subtitle: { fontSize: 14, color: Colors.gray, marginTop: 6 },
-  termsRow: { flexDirection: 'row', alignItems: 'flex-start', marginTop: 16 },
+  termsRow: { flexDirection: "row", alignItems: "flex-start", marginTop: 16 },
   termsText: { marginLeft: 10, color: Colors.SlateGray, flex: 1 },
-  link: { color: Colors.primary, fontWeight: '600' },
-  inputWrapperRelative: { position: 'relative' },
-  trailingIcon: { position: 'absolute', right: 16, bottom: 16 },
+  link: { color: Colors.primary, fontWeight: "600" },
+  inputWrapperRelative: { position: "relative" },
+  trailingIcon: { position: "absolute", right: 16, bottom: 16 },
   headerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     // paddingHorizontal: 16,
     paddingVertical: 12,
   },
