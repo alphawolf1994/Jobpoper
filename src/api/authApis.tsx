@@ -157,3 +157,13 @@ export const changePinApi = async (newPin: string) => {
     }
 };
 
+// Delete Account
+export const deleteAccountApi = async () => {
+    try {
+        const res = await axiosInstance.delete("/auth/delete-account");
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Failed to delete account");
+    }
+};
+

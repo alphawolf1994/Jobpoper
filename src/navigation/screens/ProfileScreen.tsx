@@ -19,6 +19,7 @@ import { RootState, AppDispatch } from "../../redux/store";
 import { useNavigation } from "@react-navigation/native";
 import { useAlertModal } from "../../hooks/useAlertModal";
 import { setCurrentLocation, setCurrentLocationCoordinates } from "@/src/redux/slices/jobSlice";
+import { deleteAccountApi } from "../../api/authApis";
 
 interface MenuItemProps {
   icon: string;
@@ -69,6 +70,51 @@ const ProfileScreen = () => {
                 title: "Success",
                 message: "Logged out successfully!",
                 type: "success",
+              });
+            }
+          },
+        },
+      ],
+    });
+  };
+
+  const handleDeleteAccount = () => {
+    showAlert({
+      title: "Delete Account",
+      message:
+        "This will permanently delete your account and all related data. This action cannot be undone. Are you sure you want to continue?",
+      type: "warning",
+      buttons: [
+        {
+          label: "Cancel",
+          variant: "secondary",
+        },
+        {
+          label: "Delete",
+          onPress: async () => {
+            try {
+              const response = await deleteAccountApi();
+
+              if (response?.status !== "success") {
+                throw new Error(response?.message || "Failed to delete account");
+              }
+
+              dispatch(clearAuth());
+              dispatch(setCurrentLocation(''));
+              dispatch(setCurrentLocationCoordinates(null));
+
+              (navigation as any).navigate("LoginScreen");
+
+              showAlert({
+                title: "Account Deleted",
+                message: "Your account has been deleted successfully.",
+                type: "success",
+              });
+            } catch (error: any) {
+              showAlert({
+                title: "Error",
+                message: error?.message || "Failed to delete account. Please try again.",
+                type: "error",
               });
             }
           },
@@ -153,6 +199,12 @@ const ProfileScreen = () => {
             label="Logout"
             onPress={handleLogout}
             iconColor="#EF4444"
+          />
+          <MenuItem
+            icon="trash-outline"
+            label="Delete Account"
+            onPress={handleDeleteAccount}
+            iconColor="#B91C1C"
           />
         </View>
       </ScrollView>
