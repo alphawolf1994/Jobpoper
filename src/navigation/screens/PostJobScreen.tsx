@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, Modal, FlatList } from "react-native";
 import { Colors } from "../../utils";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -19,14 +19,17 @@ import { useAlertModal } from "../../hooks/useAlertModal";
 import { formatDateDDMMYYYY } from "../../utils";
 import { Job, SavedLocationData } from '../../interface/interfaces';
 import { IMAGE_BASE_URL } from '../../api/baseURL';
+import VerificationBottomSheet, { VerificationBottomSheetHandle } from "../../components/VerificationBottomSheet";
 
 const PostJobScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const dispatch = useDispatch<AppDispatch>();
   const { loading } = useSelector((state: RootState) => state.job);
+  const { user } = useSelector((state: RootState) => state.auth);
   const { items: savedLocations, loading: locationsLoading, lastAddedLocation } = useSelector((state: RootState) => state.locations);
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
+  const verificationSheetRef = useRef<VerificationBottomSheetHandle>(null);
 
   // Check if in edit mode
   const isEditMode = (route.params as any)?.isEditMode ?? false;
@@ -362,6 +365,12 @@ const PostJobScreen = () => {
   };
 
   const handleSubmit = async () => {
+    // Block unverified users
+    if (!user?.isVerified) {
+      verificationSheetRef.current?.open();
+      return;
+    }
+
     // Validate form
     if (!formData.title.trim()) {
       showErrorAlert('Please enter a job title');
@@ -870,6 +879,7 @@ const PostJobScreen = () => {
           <View style={styles.bottomSpacing} />
         </ScrollView>
         {alertModal}
+        <VerificationBottomSheet ref={verificationSheetRef} />
       </SafeAreaView>
 
       {/* Location Selection Modal */}

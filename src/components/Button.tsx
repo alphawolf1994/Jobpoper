@@ -1,4 +1,4 @@
-import { StyleSheet, Text, TextStyle, TouchableOpacity, View, ViewStyle } from "react-native";
+import { StyleProp, StyleSheet, Text, TextStyle, TouchableOpacity, View, ViewStyle } from "react-native";
 import React, { ReactNode } from "react";
 import { Colors } from "../utils";
 
@@ -6,10 +6,10 @@ import { Colors } from "../utils";
 interface ButtonProps {
   label: string; // Label for the button
   onPress: () => void; // Function to execute when the button is pressed
-  style?: ViewStyle; // Optional custom style to override default styles
+  style?: StyleProp<ViewStyle>; // Optional custom style to override default styles
   icon?: ReactNode; // Optional icon component
   disabled?:boolean;
-  textStyle?:TextStyle
+  textStyle?: StyleProp<TextStyle>
 }
 
 const Button = ({ label, onPress ,style, icon,disabled,textStyle}: ButtonProps) => {

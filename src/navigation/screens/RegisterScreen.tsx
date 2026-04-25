@@ -55,7 +55,7 @@ const RegisterScreen = () => {
           </TouchableOpacity>
 
           <View style={styles.logoWrap}>
-            <Image source={ImagePath.newLogo} style={styles.logo} />
+            <Image source={ImagePath.Logo} style={styles.logo} />
             <Text style={styles.brandText}>JobPoper</Text>
           </View>
 

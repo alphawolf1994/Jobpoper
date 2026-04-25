@@ -26,9 +26,11 @@ const SplashScreen = () => {
           
           if (result.status === 'success' && result.data?.user) {
             const userData = result.data.user;
-            
-            // Check if profile is complete
-            if (userData.profile?.isProfileComplete) {
+
+            // Check role first — admins go to AdminTabs
+            if (userData.role === 'admin') {
+              (navigation as any).navigate('AdminTabs');
+            } else if (userData.profile?.isProfileComplete) {
               // Profile is complete, navigate to HomeTabs
               (navigation as any).navigate('HomeTabs');
             } else {

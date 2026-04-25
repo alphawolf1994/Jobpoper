@@ -10,13 +10,15 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from "expo-linear-gradient";
+import { StatusBar } from "expo-status-bar";
 import { Colors } from "../../utils";
 import Button from "../../components/Button";
 import Loader from "../../components/Loader";
 import { useNavigation, useRoute } from "@react-navigation/native";
-import { AntDesign } from "@expo/vector-icons";
+import { AntDesign, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
-import { sendPhoneVerification, resendVerification, verifyPhone } from "../../redux/slices/authSlice";
+import { sendPhoneVerification, resendVerification, setPhoneNumber, verifyPhone } from "../../redux/slices/authSlice";
 import { RootState, AppDispatch } from "../../redux/store";
 import { useAlertModal } from "../../hooks/useAlertModal";
 
@@ -24,7 +26,7 @@ const PhoneVerificationScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const dispatch = useDispatch<AppDispatch>();
-  const { loading, error, phoneNumber } = useSelector((state: RootState) => state.auth);
+  const { loading, phoneNumber } = useSelector((state: RootState) => state.auth);
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
   
   // Check if this is part of signup flow
@@ -43,19 +45,6 @@ const PhoneVerificationScreen = () => {
       title: "Error",
       message,
       type: "error",
-    });
-
-  const showSuccessAlert = (message: string, onConfirm: () => void) =>
-    showAlert({
-      title: "Success",
-      message,
-      type: "success",
-      buttons: [
-        {
-          label: "OK",
-          onPress: onConfirm,
-        },
-      ],
     });
 
   const handleCodeChange = (value: string, index: number) => {
@@ -111,7 +100,7 @@ const PhoneVerificationScreen = () => {
       // Code was already sent in SignupPhoneScreen, so start countdown immediately
       startCountdown();
     }
-  }, []);
+  }, [isSignup]);
 
   // Clear countdown timer on unmount
   useEffect(() => {
@@ -196,9 +185,14 @@ const PhoneVerificationScreen = () => {
       } as any)).unwrap();
       
       if (result.status === 'success') {
-        showSuccessAlert('Phone number verified successfully!', () =>
-          (navigation as any).navigate('CreatePinScreen')
-        );
+        if (countdownTimerRef.current) {
+          clearInterval(countdownTimerRef.current);
+          countdownTimerRef.current = null;
+        }
+
+        dispatch(setPhoneNumber(currentPhoneNumber));
+        console.log("Verify phone success, navigating to CreatePinScreen");
+        (navigation as any).navigate('CreatePinScreen');
       }
     } catch (error: any) {
       showErrorAlert(error.message || 'Phone verification failed. Please try again.');
@@ -234,66 +228,80 @@ const PhoneVerificationScreen = () => {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
       <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <TouchableOpacity style={styles.backBtn} onPress={() => (navigation as any).goBack()}>
-            <AntDesign
-              name="arrow-left"
-              size={24}
-              style={{
-                marginRight: 10,
-                marginTop: 2,
-              }}
-              color={Colors.black}
-            />
-          </TouchableOpacity>
-
-          <View style={styles.logoWrap}>
-            <Text style={styles.emoji}>📱</Text>
-            <Text style={styles.title}>Verify Your Phone</Text>
-            <Text style={styles.subtitle}>
-              We've sent a 6-digit verification code to{'\n'}
-              <Text style={styles.phoneNumber}>{passedPhoneNumber || phoneNumber}</Text>
-            </Text>
-          </View>
-
-          <View style={styles.codeContainer}>
-            {renderCodeInputs()}
-          </View>
-
-          {!isCodeSent ? (
-            <Button 
-              label="Send Verification Code" 
-              onPress={handleSendCode}
-              style={styles.sendButton}
-            />
-          ) : (
-            <View style={styles.verifySection}>
-              <Button 
-                label="Verify Code" 
-                onPress={() => handleVerifyCode()}
+        <StatusBar style="dark" backgroundColor="#EAF2FF" />
+        <LinearGradient
+          colors={["#EAF2FF", "#FFFFFF", "#F6F9FF"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.screenBackground}
+        >
+          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+            <TouchableOpacity style={styles.backBtn} onPress={() => (navigation as any).goBack()}>
+              <AntDesign
+                name="arrow-left"
+                size={24}
                 style={{
-                  ...styles.verifyButton,
-                  backgroundColor: verificationCode.join('').length === 6 ? Colors.primary : Colors.gray,
-                  opacity: verificationCode.join('').length === 6 ? 1 : 0.6
+                  marginRight: 10,
+                  marginTop: 2,
                 }}
-                disabled={loading || verificationCode.join('').length !== 6}
+                color={Colors.black}
               />
-              
-              <TouchableOpacity 
-                style={styles.resendButton}
-                onPress={handleResendCode}
-                disabled={countdown > 0}
-              >
-                <Text style={[
-                  styles.resendText,
-                  countdown > 0 && styles.resendTextDisabled
-                ]}>
-                  {countdown > 0 ? `Resend code in ${countdown}s` : 'Resend code'}
-                </Text>
-              </TouchableOpacity>
+            </TouchableOpacity>
+
+            <View style={styles.badge}>
+              <MaterialCommunityIcons name="cellphone-check" size={18} color={Colors.primary} />
+              <Text style={styles.badgeText}>Step 2 of 3</Text>
             </View>
-          )}
-        </ScrollView>
+
+            <View style={styles.logoWrap}>
+              <View style={styles.iconBubble}>
+                <Feather name="shield" size={30} color={Colors.primary} />
+              </View>
+              <Text style={styles.title}>Verify your phone</Text>
+              <Text style={styles.subtitle}>
+                Enter the 6-digit code sent to your number so we can secure your account.
+              </Text>
+              <Text style={styles.phoneNumber}>{passedPhoneNumber || phoneNumber}</Text>
+            </View>
+
+            <View style={styles.codeContainer}>
+              {renderCodeInputs()}
+            </View>
+
+            {!isCodeSent ? (
+              <Button
+                label="Send Verification Code"
+                onPress={handleSendCode}
+                style={styles.sendButton}
+              />
+            ) : (
+              <View style={styles.verifySection}>
+                <Button
+                  label="Verify Code"
+                  onPress={() => handleVerifyCode()}
+                  style={[
+                    styles.verifyButton,
+                    verificationCode.join('').length !== 6 && styles.disabledActionButton,
+                  ]}
+                  disabled={loading || verificationCode.join('').length !== 6}
+                />
+
+                <TouchableOpacity
+                  style={styles.resendButton}
+                  onPress={handleResendCode}
+                  disabled={countdown > 0}
+                >
+                  <Text style={[
+                    styles.resendText,
+                    countdown > 0 && styles.resendTextDisabled
+                  ]}>
+                    {countdown > 0 ? `Resend code in ${countdown}s` : 'Resend code'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </ScrollView>
+        </LinearGradient>
         <Loader visible={loading} message={isCodeSent ? "Verifying code..." : "Sending code..."} />
         {alertModal}
       </SafeAreaView>
@@ -305,6 +313,9 @@ const styles = StyleSheet.create({
   container: { 
     flex: 1, 
     backgroundColor: Colors.white 
+  },
+  screenBackground: {
+    flex: 1,
   },
   content: { 
     padding: 20, 
@@ -318,13 +329,39 @@ const styles = StyleSheet.create({
     top: 12, 
     zIndex: 1 
   },
+  badge: {
+    flexDirection: "row",
+    alignSelf: "flex-start",
+    alignItems: "center",
+    backgroundColor: "#FFFFFFCC",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 20,
+    gap: 8,
+  },
+  badgeText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: Colors.primary,
+  },
   logoWrap: { 
     alignItems: "center", 
-    marginBottom: 50 
+    marginBottom: 30 
   },
-  emoji: {
-    fontSize: 60,
+  iconBubble: {
+    width: 78,
+    height: 78,
+    borderRadius: 24,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 20,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 3,
   },
   title: { 
     fontSize: 28, 
@@ -338,46 +375,56 @@ const styles = StyleSheet.create({
     color: Colors.gray, 
     textAlign: 'center',
     lineHeight: 22,
-    paddingHorizontal: 20
+    paddingHorizontal: 20,
+    marginBottom: 10,
   },
   phoneNumber: {
-    fontWeight: 'bold',
+    fontWeight: '700',
     color: Colors.primary,
+    fontSize: 16,
   },
   codeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginVertical: 40,
-    paddingHorizontal: 20,
+    marginVertical: 24,
+    paddingHorizontal: 4,
   },
   codeInput: {
-    width: 45,
-    height: 55,
-    borderWidth: 2,
-    borderRadius: 12,
+    width: 50,
+    height: 62,
+    borderWidth: 1.5,
+    borderRadius: 18,
     fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
     marginHorizontal: 4,
   },
   codeInputEmpty: {
-    borderColor: Colors.gray,
-    backgroundColor: Colors.white,
+    borderColor: "#D1DCF6",
+    backgroundColor: "#FFFFFF",
   },
   codeInputFilled: {
     borderColor: Colors.primary,
-    backgroundColor: Colors.lightBlue || '#F0F8FF',
+    backgroundColor: "#EAF2FF",
   },
   sendButton: {
-    marginTop: 40,
-    borderRadius: 12,
+    marginTop: 8,
+    borderRadius: 18,
+    backgroundColor: Colors.primary,
+    paddingVertical: 16,
   },
   verifySection: {
-    marginTop: 40,
+    marginTop: 8,
   },
   verifyButton: {
-    borderRadius: 12,
+    borderRadius: 18,
     marginBottom: 16,
+    backgroundColor: Colors.primary,
+    paddingVertical: 16,
+  },
+  disabledActionButton: {
+    backgroundColor: "#A9B6D6",
+    opacity: 0.7,
   },
   resendButton: {
     alignItems: 'center',

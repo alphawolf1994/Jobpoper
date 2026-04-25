@@ -3,10 +3,21 @@ export interface JobPoperUser {
   id: string;
   phoneNumber: string;
   isPhoneVerified: boolean;
+  isVerified: boolean;
   isProfileComplete: boolean;
   role: 'user' | 'admin';
   profile?: UserProfile;
+  verification?: UserVerification;
   lastLogin?: string;
+}
+
+export interface UserVerification {
+  selfieImage?: string | null;
+  idPhotoImage?: string | null;
+  status: "not_submitted" | "under_review" | "approved" | "rejected";
+  submittedAt?: string | null;
+  reviewedAt?: string | null;
+  reviewNotes?: string;
 }
 
 export interface UserProfile {

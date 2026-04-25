@@ -182,6 +182,13 @@ const ProfileScreen = () => {
 
           <MenuItem
             icon="shield-checkmark-outline"
+            label="Verification details"
+            onPress={() => (navigation as any).navigate('VerificationDetailsScreen')}
+            iconColor="#2563EB"
+          />
+
+          <MenuItem
+            icon="shield-checkmark-outline"
             label="Privacy Policy"
             onPress={() => (navigation as any).navigate('PrivacyPolicyScreen')}
             iconColor="#8B5CF6"

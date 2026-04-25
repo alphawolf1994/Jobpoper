@@ -108,6 +108,66 @@ export const completeProfileApi = async (profileData: {
     }
 };
 
+export const getVerificationStatusApi = async () => {
+    try {
+        const res = await axiosInstance.get("/auth/verification-status");
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Failed to fetch verification status");
+    }
+};
+
+export const submitVerificationDocumentsApi = async (verificationData: {
+    selfieUri: string;
+    photoIdUri: string;
+}) => {
+    try {
+        const formData = new FormData();
+
+        const selfieName = verificationData.selfieUri.split("/").pop() || "selfie.jpg";
+        const selfieExt = selfieName.split(".").pop()?.toLowerCase();
+        const selfieType =
+            selfieExt === "png"
+                ? "image/png"
+                : selfieExt === "webp"
+                ? "image/webp"
+                : selfieExt === "heic"
+                ? "image/heic"
+                : "image/jpeg";
+
+        const photoIdName = verificationData.photoIdUri.split("/").pop() || "photo-id.jpg";
+        const photoIdExt = photoIdName.split(".").pop()?.toLowerCase();
+        const photoIdType =
+            photoIdExt === "png"
+                ? "image/png"
+                : photoIdExt === "webp"
+                ? "image/webp"
+                : photoIdExt === "heic"
+                ? "image/heic"
+                : "image/jpeg";
+
+        formData.append("selfie", {
+            uri: verificationData.selfieUri,
+            name: selfieName,
+            type: selfieType,
+        } as unknown as Blob);
+
+        formData.append("photoId", {
+            uri: verificationData.photoIdUri,
+            name: photoIdName,
+            type: photoIdType,
+        } as unknown as Blob);
+
+        const res = await axiosInstance.put("/auth/verification-documents", formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+        });
+
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Failed to submit verification documents");
+    }
+};
+
 // Get Current User
 export const getCurrentUserApi = async () => {
     try {
@@ -120,13 +180,7 @@ export const getCurrentUserApi = async () => {
 
 // Logout User (if needed for token invalidation)
 export const logoutUserApi = async () => {
-    try {
-        // Since the backend doesn't have a specific logout endpoint,
-        // we'll just clear the token on the client side
-        return { status: "success", message: "Logged out successfully" };
-    } catch (error: any) {
-        throw new Error("Logout failed");
-    }
+    return { status: "success", message: "Logged out successfully" };
 };
 
 // Check Phone Number
@@ -166,4 +220,3 @@ export const deleteAccountApi = async () => {
         throw new Error(error.response?.data?.message || "Failed to delete account");
     }
 };
-

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -26,6 +26,7 @@ import { IMAGE_BASE_URL } from '../../api/baseURL';
 import { showInterestOnJobApi } from '../../api/jobApis';
 import { useAlertModal } from "../../hooks/useAlertModal";
 import { formatDateDDMMYYYY } from "../../utils";
+import VerificationBottomSheet, { VerificationBottomSheetHandle } from "../../components/VerificationBottomSheet";
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -37,6 +38,7 @@ const JobDetailsScreen = () => {
   const { currentJob, loading, error } = useSelector((state: RootState) => state.job);
   const { user } = useSelector((state: RootState) => state.auth);
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
+  const verificationSheetRef = useRef<VerificationBottomSheetHandle>(null);
 
   // Get jobId from route params
   const jobId = (route.params as any)?.jobId;
@@ -142,6 +144,12 @@ const JobDetailsScreen = () => {
 
   const handleShowInterest = () => {
     if (!currentJob) return;
+
+    // Block unverified users
+    if (!user?.isVerified) {
+      verificationSheetRef.current?.open();
+      return;
+    }
 
     showAlert({
       title: "Show Interest",
@@ -831,6 +839,7 @@ const JobDetailsScreen = () => {
           </TouchableOpacity>
         </View>
       )}
+      <VerificationBottomSheet ref={verificationSheetRef} />
       {alertModal}
     </SafeAreaView>
   );

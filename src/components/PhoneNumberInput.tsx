@@ -1,16 +1,17 @@
-import React, { useState, useRef } from "react";
+import React, { useRef } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
-  TextInput,
   Platform,
   ViewStyle,
+  Dimensions,
 } from "react-native";
 import PhoneInput from "react-native-phone-number-input";
 import { Colors } from "../utils";
 import ErrorText from "./ErrorText";
+
+const COUNTRY_LIST_MAX_HEIGHT = Dimensions.get("window").height * 0.62;
 
 interface PhoneNumberInputProps {
   label?: string;
@@ -34,7 +35,7 @@ const PhoneNumberInput = ({
   error,
   containerStyle,
   firstContainerStyle,
-  defaultCode = "US",
+  defaultCode = "IN",
   disabled = false,
 }: PhoneNumberInputProps) => {
   const phoneInput = useRef<PhoneInput>(null);
@@ -61,6 +62,20 @@ const PhoneNumberInput = ({
           codeTextStyle={styles.codeText}
           flagButtonStyle={styles.flagButton}
           countryPickerButtonStyle={styles.countryPickerButton}
+          filterProps={{
+            placeholder: "Search country",
+            placeholderTextColor: Colors.gray,
+            style: styles.countryFilterInput,
+          }}
+          countryPickerProps={{
+            modalProps: {
+              statusBarTranslucent: false,
+            },
+            flatListProps: {
+              style: styles.countryList,
+            },
+            closeButtonStyle: styles.countryCloseButton,
+          }}
           renderDropdownImage={
             <Text style={styles.dropdownArrow}>▼</Text>
           }
@@ -123,6 +138,17 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.gray,
     marginLeft: 4,
+  },
+  countryFilterInput: {
+    marginTop: Platform.OS === "android" ? 10 : 6,
+    marginLeft: 12,
+    width: "72%",
+  },
+  countryList: {
+    maxHeight: COUNTRY_LIST_MAX_HEIGHT,
+  },
+  countryCloseButton: {
+    marginTop: Platform.OS === "android" ? 10 : 6,
   },
   label: {
     fontSize: 14,

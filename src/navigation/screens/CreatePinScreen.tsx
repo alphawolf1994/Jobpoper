@@ -10,11 +10,13 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from "expo-linear-gradient";
+import { StatusBar } from "expo-status-bar";
 import { Colors } from "../../utils";
 import Button from "../../components/Button";
 import Loader from "../../components/Loader";
 import { useNavigation } from "@react-navigation/native";
-import { AntDesign } from "@expo/vector-icons";
+import { AntDesign, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
 import { registerUser, clearError, getCurrentUser } from "../../redux/slices/authSlice";
 import { RootState, AppDispatch } from "../../redux/store";
@@ -41,19 +43,6 @@ const CreatePinScreen = () => {
       title: "Error",
       message,
       type: "error",
-    });
-
-  const showSuccessAlert = (message: string, onConfirm: () => void) =>
-    showAlert({
-      title: "Success",
-      message,
-      type: "success",
-      buttons: [
-        {
-          label: "OK",
-          onPress: onConfirm,
-        },
-      ],
     });
 
   const handlePinChange = (value: string, index: number, isConfirm = false) => {
@@ -151,23 +140,21 @@ const CreatePinScreen = () => {
             
             // Check if profile is complete
             if (userData.profile?.isProfileComplete) {
-              showSuccessAlert('Account created successfully!', () => (navigation as any).navigate('HomeTabs'));
+              console.log("Register success, navigating to HomeTabs");
+              (navigation as any).navigate('HomeTabs');
             } else {
-              showSuccessAlert('Account created successfully! Please complete your profile.', () =>
-                (navigation as any).navigate('BasicProfileScreen')
-              );
+              console.log("Register success, navigating to BasicProfileScreen");
+              (navigation as any).navigate('BasicProfileScreen');
             }
           } else {
             // If getCurrentUser fails, navigate to BasicProfileScreen
-            showSuccessAlert('Account created successfully!', () =>
-              (navigation as any).navigate('BasicProfileScreen')
-            );
+            console.log("Register success with no user payload, navigating to BasicProfileScreen");
+            (navigation as any).navigate('BasicProfileScreen');
           }
-        } catch (userError) {
+        } catch {
           // If getCurrentUser fails, navigate to BasicProfileScreen
-          showSuccessAlert('Account created successfully!', () =>
-            (navigation as any).navigate('BasicProfileScreen')
-          );
+          console.log("Register success, getCurrentUser failed, navigating to BasicProfileScreen");
+          (navigation as any).navigate('BasicProfileScreen');
         }
       }
     } catch (error: any) {
@@ -211,91 +198,105 @@ const CreatePinScreen = () => {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
       <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          {step === 1 && (
-            <TouchableOpacity style={styles.backBtn} onPress={() => (navigation as any).goBack()}>
-              <AntDesign
-                name="arrow-left"
-                size={24}
-                style={{
-                  marginRight: 10,
-                  marginTop: 2,
-                }}
-                color={Colors.black}
-              />
-            </TouchableOpacity>
-          )}
+        <StatusBar style="dark" backgroundColor="#EAF2FF" />
+        <LinearGradient
+          colors={["#EAF2FF", "#FFFFFF", "#F6F9FF"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.screenBackground}
+        >
+          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+            {step === 1 && (
+              <TouchableOpacity style={styles.backBtn} onPress={() => (navigation as any).goBack()}>
+                <AntDesign
+                  name="arrow-left"
+                  size={24}
+                  style={{
+                    marginRight: 10,
+                    marginTop: 2,
+                  }}
+                  color={Colors.black}
+                />
+              </TouchableOpacity>
+            )}
 
-          {step === 2 && (
-            <TouchableOpacity style={styles.backBtn} onPress={handleBackToCreatePin}>
-              <AntDesign
-                name="arrow-left"
-                size={24}
-                style={{
-                  marginRight: 10,
-                  marginTop: 2,
-                }}
-                color={Colors.black}
-              />
-            </TouchableOpacity>
-          )}
+            {step === 2 && (
+              <TouchableOpacity style={styles.backBtn} onPress={handleBackToCreatePin}>
+                <AntDesign
+                  name="arrow-left"
+                  size={24}
+                  style={{
+                    marginRight: 10,
+                    marginTop: 2,
+                  }}
+                  color={Colors.black}
+                />
+              </TouchableOpacity>
+            )}
 
-          <View style={styles.logoWrap}>
-            <Text style={styles.emoji}>🔐</Text>
-            <Text style={styles.title}>
-              {step === 1 ? 'Create Your PIN' : 'Confirm Your PIN'}
-            </Text>
-            <Text style={styles.subtitle}>
-              {step === 1 
-                ? 'Create a 4-digit PIN for your account'
-                : 'Please confirm your 4-digit PIN'
-              }
-            </Text>
-          </View>
-
-          {step === 1 ? (
-            <View style={styles.pinSection}>
-              <View style={styles.pinContainer}>
-                {renderPinInputs(pin, pinInputRefs)}
-              </View>
-              <Button 
-                label="Continue" 
-                onPress={() => {
-                  if (pin.join('').length === 4) {
-                    setStep(2);
-                    confirmPinInputRefs.current[0]?.focus();
-                  }
-                }}
-                style={{
-                  ...styles.continueButton,
-                  backgroundColor: pin.join('').length === 4 ? Colors.primary : Colors.gray,
-                  opacity: pin.join('').length === 4 ? 1 : 0.6
-                }}
-                disabled={pin.join('').length !== 4}
-              />
+            <View style={styles.badge}>
+              <MaterialCommunityIcons name="form-textbox-password" size={18} color={Colors.primary} />
+              <Text style={styles.badgeText}>{step === 1 ? "Step 3 of 3" : "Final step"}</Text>
             </View>
-          ) : (
-            <View style={styles.confirmSection}>
-              <Text style={styles.phoneDisplay}>{phoneNumber}</Text>
-              <View style={styles.pinContainer}>
-                {renderPinInputs(confirmPin, confirmPinInputRefs, true)}
+
+            <View style={styles.logoWrap}>
+              <View style={styles.iconBubble}>
+                <Feather name={step === 1 ? "lock" : "check-circle"} size={30} color={Colors.primary} />
               </View>
-              {error && (
-                <Text style={styles.errorText}>{error}</Text>
-              )}
-              <Button 
-                label={loading ? "Creating Account..." : "Create Account"} 
-                onPress={() => handleConfirmPin()}
-                style={{
-                  ...styles.createButton,
-                  backgroundColor: confirmPin.join('').length === 4 ? Colors.primary : Colors.gray,
-                  opacity: confirmPin.join('').length === 4 ? 1 : 0.6
-                }}
-                disabled={loading || confirmPin.join('').length !== 4}
-              />
+              <Text style={styles.title}>
+                {step === 1 ? 'Create your PIN' : 'Confirm your PIN'}
+              </Text>
+              <Text style={styles.subtitle}>
+                {step === 1 
+                  ? 'Create a secure 4-digit PIN for quick login next time.'
+                  : 'Re-enter the same 4-digit PIN to finish creating your account.'
+                }
+              </Text>
             </View>
-          )}
-        </ScrollView>
+
+            {step === 1 ? (
+              <View style={styles.pinSection}>
+                <View style={styles.pinContainer}>
+                  {renderPinInputs(pin, pinInputRefs)}
+                </View>
+                <Button
+                  label="Continue"
+                  onPress={() => {
+                    if (pin.join('').length === 4) {
+                      setStep(2);
+                      confirmPinInputRefs.current[0]?.focus();
+                    }
+                  }}
+                  style={[
+                    styles.continueButton,
+                    pin.join('').length !== 4 && styles.disabledActionButton,
+                  ]}
+                  disabled={pin.join('').length !== 4}
+                />
+              </View>
+            ) : (
+              <View style={styles.confirmSection}>
+                <Text style={styles.phoneLabel}>Creating account for</Text>
+                <Text style={styles.phoneDisplay}>{phoneNumber}</Text>
+                <View style={styles.pinContainer}>
+                  {renderPinInputs(confirmPin, confirmPinInputRefs, true)}
+                </View>
+                {error && (
+                  <Text style={styles.errorText}>{error}</Text>
+                )}
+                <Button
+                  label={loading ? "Creating Account..." : "Create Account"}
+                  onPress={() => handleConfirmPin()}
+                  style={[
+                    styles.createButton,
+                    confirmPin.join('').length !== 4 && styles.disabledActionButton,
+                  ]}
+                  disabled={loading || confirmPin.join('').length !== 4}
+                />
+              </View>
+            )}
+          </ScrollView>
+        </LinearGradient>
         <Loader visible={loading} message="Creating your account..." />
         {alertModal}
       </SafeAreaView>
@@ -307,6 +308,9 @@ const styles = StyleSheet.create({
   container: { 
     flex: 1, 
     backgroundColor: Colors.white 
+  },
+  screenBackground: {
+    flex: 1,
   },
   content: { 
     padding: 20, 
@@ -320,13 +324,39 @@ const styles = StyleSheet.create({
     top: 12, 
     zIndex: 1 
   },
+  badge: {
+    flexDirection: "row",
+    alignSelf: "flex-start",
+    alignItems: "center",
+    backgroundColor: "#FFFFFFCC",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 20,
+    gap: 8,
+  },
+  badgeText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: Colors.primary,
+  },
   logoWrap: { 
     alignItems: "center", 
-    marginBottom: 50 
+    marginBottom: 30 
   },
-  emoji: {
-    fontSize: 60,
+  iconBubble: {
+    width: 78,
+    height: 78,
+    borderRadius: 24,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
     marginBottom: 20,
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 3,
   },
   title: { 
     fontSize: 28, 
@@ -343,52 +373,66 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20
   },
   pinSection: {
-    marginTop: 40,
+    marginTop: 8,
   },
   confirmSection: {
-    marginTop: 40,
+    marginTop: 8,
+  },
+  phoneLabel: {
+    fontSize: 13,
+    color: Colors.gray,
+    textAlign: 'center',
+    marginBottom: 6,
   },
   phoneDisplay: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     color: Colors.primary,
     textAlign: 'center',
-    marginBottom: 30,
+    marginBottom: 18,
   },
   pinContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginVertical: 40,
-    paddingHorizontal: 20,
+    marginVertical: 24,
+    paddingHorizontal: 4,
   },
   pinInput: {
-    width: 60,
-    height: 60,
-    borderWidth: 2,
-    borderRadius: 12,
+    width: 64,
+    height: 64,
+    borderWidth: 1.5,
+    borderRadius: 18,
     fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginHorizontal: 8,
+    marginHorizontal: 4,
   },
   pinInputEmpty: {
-    borderColor: Colors.gray,
-    backgroundColor: Colors.white,
+    borderColor: "#D1DCF6",
+    backgroundColor: "#FFFFFF",
   },
   pinInputFilled: {
     borderColor: Colors.primary,
-    backgroundColor: Colors.lightBlue || '#F0F8FF',
+    backgroundColor: "#EAF2FF",
   },
   continueButton: {
-    marginTop: 40,
-    borderRadius: 12,
+    marginTop: 12,
+    borderRadius: 18,
+    backgroundColor: Colors.primary,
+    paddingVertical: 16,
   },
   createButton: {
-    marginTop: 40,
-    borderRadius: 12,
+    marginTop: 12,
+    borderRadius: 18,
+    backgroundColor: Colors.primary,
+    paddingVertical: 16,
+  },
+  disabledActionButton: {
+    backgroundColor: "#A9B6D6",
+    opacity: 0.7,
   },
   errorText: {
-    color: 'red',
+    color: Colors.red,
     fontSize: 14,
     textAlign: 'center',
     marginTop: 10,

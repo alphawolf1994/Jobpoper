@@ -10,7 +10,12 @@ import HotJobs from "../../components/HotJobs";
 import ListedJobs from "../../components/ListedJobs";
 import { useDispatch, useSelector } from 'react-redux';
 import { getHotJobs, getListedJobs, expireOldJobs, clearError } from '../../redux/slices/jobSlice';
+import { getCurrentUser } from "../../redux/slices/authSlice";
 import { AppDispatch, RootState } from '../../redux/store';
+import {
+  fetchVerificationStatus,
+} from "../../redux/slices/verificationSlice";
+import VerificationBottomSheet, { VerificationBottomSheetHandle } from "../../components/VerificationBottomSheet";
 
 import { useFocusEffect } from "@react-navigation/native";
 
@@ -18,11 +23,16 @@ const HomeScreen = ({ navigation }: any) => {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
   const { currentLocation, error: jobError, loading: jobLoading } = useSelector((state: RootState) => state.job);
+  const { status: verificationStatus, promptDismissed } = useSelector(
+    (state: RootState) => state.verification
+  );
   
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isInitialMountRef = useRef(true);
+  const verificationSheetRef = useRef<VerificationBottomSheetHandle>(null);
+  const [isVerificationSheetVisible, setIsVerificationSheetVisible] = useState(false);
 
   const handlePostJob = () => {
     navigation.navigate('PostJobScreen');
@@ -132,6 +142,49 @@ const HomeScreen = ({ navigation }: any) => {
     }, [])
   );
 
+  const shouldShowVerificationPrompt =
+    user?.isVerified === false &&
+    verificationStatus === "not_submitted" &&
+    !promptDismissed;
+
+  useEffect(() => {
+    console.log("HomeScreen user isVerified =>", user?.isVerified);
+  }, [user?.isVerified]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id) {
+        dispatch(getCurrentUser());
+        dispatch(fetchVerificationStatus());
+      }
+
+      if (!shouldShowVerificationPrompt || isVerificationSheetVisible) {
+        return;
+      }
+
+      const timer = setTimeout(() => {
+        setIsVerificationSheetVisible(true);
+        verificationSheetRef.current?.open();
+      }, 350);
+
+      return () => clearTimeout(timer);
+    }, [dispatch, user?.id, shouldShowVerificationPrompt, isVerificationSheetVisible])
+  );
+
+  useEffect(() => {
+    if (!shouldShowVerificationPrompt || isVerificationSheetVisible) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setIsVerificationSheetVisible(true);
+      verificationSheetRef.current?.open();
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [shouldShowVerificationPrompt, isVerificationSheetVisible]);
+
+
   return (
     <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={{ flex: 1, }}>
       <Header />
@@ -191,6 +244,12 @@ const HomeScreen = ({ navigation }: any) => {
         <HotJobs searchQuery={debouncedSearchQuery} />
         <ListedJobs searchQuery={debouncedSearchQuery} scrollEnabled={false} />
       </ScrollView>
+
+      <VerificationBottomSheet
+        ref={verificationSheetRef}
+        dismissOnClose={true}
+        onDismiss={() => setIsVerificationSheetVisible(false)}
+      />
 
     </SafeAreaView>
   );

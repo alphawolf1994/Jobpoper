@@ -5,6 +5,8 @@ import authSlice from './slices/authSlice';
 import jobSlice from './slices/jobSlice';
 import locationsSlice from './slices/locationsSlice';
 import notificationSlice from './slices/notificationSlice';
+import verificationSlice from './slices/verificationSlice';
+import adminSlice from './slices/adminSlice';
 import { authMiddleware } from './middleware/authMiddleware';
 
 // Configuration for redux-persist
@@ -20,6 +22,8 @@ const rootReducer = combineReducers({
   job: jobSlice,
   locations: locationsSlice,
   notification: notificationSlice,
+  verification: verificationSlice,
+  admin: adminSlice,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

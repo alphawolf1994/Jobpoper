@@ -1,0 +1,208 @@
+{
+  "folders": [
+    {
+      "name": "📱 Jobpoper (Frontend)",
+      "path": "."
+    },
+    {
+      "name": "⚙️ Jobpoper Backend",
+      "path": "../jobpoper_backend"
+    }
+  ],
+  "settings": {
+    // ── Editor ──────────────────────────────────────────────────────────────
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2,
+    "editor.rulers": [100],
+    "editor.wordWrap": "on",
+    "editor.bracketPairColorization.enabled": true,
+    "editor.suggestSelection": "first",
+    "editor.inlineSuggest.enabled": true,
+
+    // ── TypeScript ───────────────────────────────────────────────────────────
+    "typescript.preferences.importModuleSpecifier": "relative",
+    "typescript.updateImportsOnFileMove.enabled": "always",
+    "typescript.inlayHints.parameterNames.enabled": "literals",
+
+    // ── ESLint ───────────────────────────────────────────────────────────────
+    "eslint.validate": [
+      "javascript",
+      "javascriptreact",
+      "typescript",
+      "typescriptreact"
+    ],
+    "editor.codeActionsOnSave": {
+      "source.fixAll.eslint": "explicit"
+    },
+
+    // ── Files ────────────────────────────────────────────────────────────────
+    "files.exclude": {
+      "**/node_modules": true,
+      "**/.expo": true,
+      "**/.git": true,
+      "**/dist": true,
+      "**/__pycache__": true,
+      "**/.DS_Store": true
+    },
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/.expo": true,
+      "**/package-lock.json": true
+    },
+    "files.watcherExclude": {
+      "**/node_modules/**": true,
+      "**/.expo/**": true,
+      "**/dist/**": true
+    },
+
+    // ── Explorer ─────────────────────────────────────────────────────────────
+    "explorer.compactFolders": false,
+    "explorer.confirmDelete": true,
+    "workbench.editor.enablePreview": false,
+
+    // ── Git ──────────────────────────────────────────────────────────────────
+    "git.autofetch": true,
+    "git.confirmSync": false,
+    "git.enableSmartCommit": true
+  },
+
+  "extensions": {
+    "recommendations": [
+      // TypeScript & React Native
+      "esbenp.prettier-vscode",
+      "dbaeumer.vscode-eslint",
+      "ms-vscode.vscode-typescript-next",
+      "dsznajder.es7-react-js-snippets",
+      "msjsdiag.vscode-react-native",
+
+      // Expo
+      "expo.vscode-expo-tools",
+
+      // Git
+      "eamodio.gitlens",
+      "mhutchie.git-graph",
+
+      // Productivity
+      "christian-kohler.path-intellisense",
+      "streetsidesoftware.code-spell-checker",
+      "usernamehw.errorlens",
+      "aaron-bond.better-comments",
+      "PKief.material-icon-theme",
+
+      // Backend (Node / Python / general API)
+      "humao.rest-client",
+      "rangav.vscode-thunder-client",
+      "ms-python.python",
+      "ms-python.vscode-pylance",
+      "ms-azuretools.vscode-docker"
+    ]
+  },
+
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "📱 Run on Android",
+        "type": "reactnativedirect",
+        "request": "launch",
+        "platform": "android",
+        "cwd": "${workspaceFolder:📱 Jobpoper (Frontend)}"
+      },
+      {
+        "name": "📱 Run on iOS",
+        "type": "reactnativedirect",
+        "request": "launch",
+        "platform": "ios",
+        "cwd": "${workspaceFolder:📱 Jobpoper (Frontend)}"
+      },
+      {
+        "name": "⚙️ Backend: Node (node --inspect)",
+        "type": "node",
+        "request": "launch",
+        "program": "${workspaceFolder:⚙️ Jobpoper Backend}/src/index.js",
+        "runtimeArgs": ["--nolazy"],
+        "sourceMaps": true,
+        "envFile": "${workspaceFolder:⚙️ Jobpoper Backend}/.env",
+        "cwd": "${workspaceFolder:⚙️ Jobpoper Backend}"
+      },
+      {
+        "name": "⚙️ Backend: Python (FastAPI/Django)",
+        "type": "debugpy",
+        "request": "launch",
+        "module": "uvicorn",
+        "args": ["main:app", "--reload"],
+        "cwd": "${workspaceFolder:⚙️ Jobpoper Backend}",
+        "envFile": "${workspaceFolder:⚙️ Jobpoper Backend}/.env"
+      }
+    ]
+  },
+
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "📱 Start Expo (Frontend)",
+        "type": "shell",
+        "command": "npx expo start",
+        "options": {
+          "cwd": "${workspaceFolder:📱 Jobpoper (Frontend)}"
+        },
+        "group": "build",
+        "presentation": {
+          "panel": "dedicated",
+          "reveal": "always"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "📱 Install Frontend Dependencies",
+        "type": "shell",
+        "command": "npm install",
+        "options": {
+          "cwd": "${workspaceFolder:📱 Jobpoper (Frontend)}"
+        },
+        "group": "build",
+        "problemMatcher": []
+      },
+      {
+        "label": "⚙️ Install Backend Dependencies",
+        "type": "shell",
+        "command": "npm install",
+        "options": {
+          "cwd": "${workspaceFolder:⚙️ Jobpoper Backend}"
+        },
+        "group": "build",
+        "problemMatcher": []
+      },
+      {
+        "label": "⚙️ Start Backend (npm run dev)",
+        "type": "shell",
+        "command": "npm run dev",
+        "options": {
+          "cwd": "${workspaceFolder:⚙️ Jobpoper Backend}"
+        },
+        "group": "build",
+        "presentation": {
+          "panel": "dedicated",
+          "reveal": "always"
+        },
+        "problemMatcher": []
+      },
+      {
+        "label": "🚀 Start Both (Frontend + Backend)",
+        "dependsOn": [
+          "📱 Start Expo (Frontend)",
+          "⚙️ Start Backend (npm run dev)"
+        ],
+        "dependsOrder": "parallel",
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "problemMatcher": []
+      }
+    ]
+  }
+}

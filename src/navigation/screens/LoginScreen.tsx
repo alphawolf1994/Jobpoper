@@ -8,18 +8,22 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from "expo-linear-gradient";
+import { StatusBar } from "expo-status-bar";
 import { Colors } from "../../utils";
 import Button from "../../components/Button";
 import Loader from "../../components/Loader";
 import PhoneNumberInput from "../../components/PhoneNumberInput";
 import { useNavigation } from "@react-navigation/native";
-import { AntDesign } from "@expo/vector-icons";
+import { AntDesign, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
 import { loginUser, clearError, getCurrentUser, checkPhone } from "../../redux/slices/authSlice";
 import { RootState, AppDispatch } from "../../redux/store";
 import { useAlertModal } from "../../hooks/useAlertModal";
+import ImagePath from "../../assets/images/ImagePath";
 
 const LoginScreen = () => {
   const navigation = useNavigation();
@@ -33,6 +37,7 @@ const LoginScreen = () => {
   const [formattedPhoneNumber, setFormattedPhoneNumber] = useState("");
   const [pin, setPin] = useState(['', '', '', '']);
   const [step, setStep] = useState(1); // 1 = phone, 2 = PIN
+  const [isCheckingPhone, setIsCheckingPhone] = useState(false);
 
   const pinInputRefs = useRef<(TextInput | null)[]>([null, null, null, null]);
 
@@ -85,8 +90,11 @@ const LoginScreen = () => {
     }
 
     try {
+      setIsCheckingPhone(true);
+
       // Check if phone number exists
       const result = await dispatch(checkPhone(formattedPhoneNumber.trim())).unwrap();
+      console.log("checkPhone result =>", result);
 
       if (result.status === 'success' && result.data) {
         const { exists, isActive } = result.data;
@@ -95,7 +103,17 @@ const LoginScreen = () => {
           showAlert({
             title: "Account Not Found",
             message: "No account found with this phone number. Please sign up to create an account.",
-            type: "error",
+            type: "warning",
+            buttons: [
+              {
+                label: "Close",
+                variant: "secondary",
+              },
+              {
+                label: "Create Account",
+                onPress: () => (navigation as any).navigate("SignupPhoneScreen"),
+              },
+            ],
           });
           return;
         }
@@ -112,13 +130,22 @@ const LoginScreen = () => {
         // Phone exists and is active, proceed to PIN screen
         setStep(2);
         pinInputRefs.current[0]?.focus();
+        return;
       }
+
+      showAlert({
+        title: "Check Failed",
+        message: result?.message || "We could not verify this number right now. Please try again.",
+        type: "error",
+      });
     } catch (error: any) {
       showAlert({
         title: "Error",
         message: error || "Failed to check phone number. Please try again.",
         type: "error",
       });
+    } finally {
+      setIsCheckingPhone(false);
     }
   };
 
@@ -149,17 +176,21 @@ const LoginScreen = () => {
           if (userResult.status === 'success' && userResult.data?.user) {
             const userData = userResult.data.user;
 
-            // Check if profile is complete and navigate directly
-            if (userData.profile?.isProfileComplete) {
+            // Admin users always go to the admin panel
+            if (userData.role === 'admin') {
+              (navigation as any).navigate("AdminTabs");
+            } else if (userData.profile?.isProfileComplete) {
+              // Regular user with complete profile
               (navigation as any).navigate("HomeTabs");
             } else {
+              // Regular user with incomplete profile
               (navigation as any).navigate("BasicProfileScreen");
             }
           } else {
             // If no user data, navigate to HomeTabs
             (navigation as any).navigate("HomeTabs");
           }
-        } catch (userError) {
+        } catch {
           // If getCurrentUser fails, still navigate to HomeTabs
           (navigation as any).navigate("HomeTabs");
         }
@@ -207,106 +238,139 @@ const LoginScreen = () => {
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
       <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          {step === 1 && (
-            <TouchableOpacity style={styles.backBtn} onPress={() => (navigation as any).goBack()}>
-              <AntDesign
-                name="arrow-left"
-                size={24}
-                style={{
-                  marginRight: 10,
-                  marginTop: 2,
-                }}
-                color={Colors.black}
-              />
-            </TouchableOpacity>
-          )}
+        <StatusBar style="dark" backgroundColor="#EAF2FF" />
+        <LinearGradient
+          colors={["#EAF2FF", "#FFFFFF", "#F6F9FF"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.screenBackground}
+        >
+          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+            {step === 1 && (
+              <TouchableOpacity style={styles.backBtn} onPress={() => (navigation as any).goBack()}>
+                <AntDesign
+                  name="arrow-left"
+                  size={24}
+                  style={{
+                    marginRight: 10,
+                    marginTop: 2,
+                  }}
+                  color={Colors.black}
+                />
+              </TouchableOpacity>
+            )}
 
-          {step === 2 && (
-            <TouchableOpacity style={styles.backBtn} onPress={handleBackToPhone}>
-              <AntDesign
-                name="arrow-left"
-                size={24}
-                style={{
-                  marginRight: 10,
-                  marginTop: 2,
-                }}
-                color={Colors.black}
-              />
-            </TouchableOpacity>
-          )}
+            {step === 2 && (
+              <TouchableOpacity style={styles.backBtn} onPress={handleBackToPhone}>
+                <AntDesign
+                  name="arrow-left"
+                  size={24}
+                  style={{
+                    marginRight: 10,
+                    marginTop: 2,
+                  }}
+                  color={Colors.black}
+                />
+              </TouchableOpacity>
+            )}
 
-          <View style={styles.logoWrap}>
-            <Text style={styles.emoji}>🔐</Text>
-            <Text style={styles.title}>
-              {step === 1 ? 'Welcome Back!' : 'Enter Your PIN'}
-            </Text>
-            <Text style={styles.subtitle}>
-              {step === 1
-                ? 'Enter your phone number to continue'
-                : 'Enter your 4-digit PIN to login'
-              }
-            </Text>
-          </View>
-
-          {step === 1 ? (
-            <View style={styles.phoneSection}>
-              <PhoneNumberInput
-                label="Phone Number"
-                placeholder="Enter your phone number"
-                value={phoneNumber}
-                onChangeText={(text) => {
-                  setPhoneNumber(text);
-                  if (error) {
-                    dispatch(clearError());
-                  }
-                }}
-                onChangeFormattedText={(formattedText) => {
-                  setFormattedPhoneNumber(formattedText);
-                  if (error) {
-                    dispatch(clearError());
-                  }
-                }}
-                error={error}
-                firstContainerStyle={{ marginTop: 0 }}
+            <View style={styles.badge}>
+              <MaterialCommunityIcons
+                name={step === 1 ? "shield-check-outline" : "lock-check-outline"}
+                size={18}
+                color={Colors.primary}
               />
-              <Button
-                label="Continue"
-                onPress={handlePhoneSubmit}
-                style={styles.continueButton}
-                disabled={!formattedPhoneNumber.trim()}
-              />
+              <Text style={styles.badgeText}>{step === 1 ? "Returning users" : "Secure access"}</Text>
             </View>
-          ) : (
-            <View style={styles.pinSection}>
-              {/* <Text style={styles.phoneDisplay}>{formattedPhoneNumber}</Text> */}
-              <View style={styles.pinContainer}>
-                {renderPinInputs()}
+
+            <View style={styles.logoWrap}>
+              <Image source={ImagePath.newLogo} style={styles.logoImage} />
+              {/* <Text style={styles.brandText}>JobPoper</Text> */}
+              <Text style={styles.title}>
+                {step === 1 ? 'Welcome back' : 'Enter your PIN'}
+              </Text>
+              <Text style={styles.subtitle}>
+                {step === 1
+                  ? 'Login is built for fast access. Start with your phone number and continue in seconds.'
+                  : 'Your number is confirmed. Enter the 4-digit PIN to open your account.'
+                }
+              </Text>
+            </View>
+
+            {step === 1 ? (
+              <View style={styles.phoneSection}>
+                <PhoneNumberInput
+                  label="Enter your registered phone number to Login"
+                  placeholder="Enter your phone number"
+                  value={phoneNumber}
+                  onChangeText={(text) => {
+                    setPhoneNumber(text);
+                    if (error) {
+                      dispatch(clearError());
+                    }
+                  }}
+                  onChangeFormattedText={(formattedText) => {
+                    setFormattedPhoneNumber(formattedText);
+                    if (error) {
+                      dispatch(clearError());
+                    }
+                  }}
+                  error={error}
+                  firstContainerStyle={{ marginTop: 0 }}
+                />
+                <Button
+                  label="Continue to PIN"
+                  onPress={handlePhoneSubmit}
+                  style={[
+                    styles.continueButton,
+                    !formattedPhoneNumber.trim() && styles.disabledActionButton,
+                  ]}
+                  disabled={!formattedPhoneNumber.trim()}
+                />
               </View>
-              {error && (
-                <Text style={styles.errorText}>{error}</Text>
-              )}
-              <Button
-                label={loading ? "Logging in..." : "Login"}
-                onPress={handleLogin}
-                style={{
-                  ...styles.loginButton,
-                  backgroundColor: pin.join('').length === 4 ? Colors.primary : Colors.gray,
-                  opacity: pin.join('').length === 4 ? 1 : 0.6
-                }}
-                disabled={loading || pin.join('').length !== 4}
-              />
-            </View>
-          )}
+            ) : (
+              <View style={styles.pinSection}>
+                <View style={styles.pinHeader}>
+                  <Text style={styles.pinCaption}>Logging in with</Text>
+                  <Text style={styles.phoneDisplay}>{formattedPhoneNumber}</Text>
+                </View>
+                <View style={styles.pinContainer}>
+                  {renderPinInputs()}
+                </View>
+                {error && (
+                  <Text style={styles.errorText}>{error}</Text>
+                )}
+                <Button
+                  label={loading ? "Logging in..." : "Login"}
+                  onPress={handleLogin}
+                  style={[
+                    styles.loginButton,
+                    pin.join('').length !== 4 && styles.disabledActionButton,
+                  ]}
+                  disabled={loading || pin.join('').length !== 4}
+                />
+              </View>
+            )}
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>Don't have an account?</Text>
-            <TouchableOpacity onPress={() => (navigation as any).navigate('SignupPhoneScreen')}>
-              <Text style={styles.signupLink}>Sign up</Text>
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-        <Loader visible={loading} message="Logging you in..." />
+            <View style={styles.dividerWrap}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>OR</Text>
+              <View style={styles.dividerLine} />
+            </View>
+
+            <Button
+              label="Create New Account"
+              onPress={() => (navigation as any).navigate('SignupPhoneScreen')}
+              style={styles.secondaryButton}
+              textStyle={styles.secondaryButtonText}
+              icon={<Feather name="user-plus" size={18} color={Colors.primary} />}
+            />
+          </ScrollView>
+        </LinearGradient>
+        <Loader
+          visible={loading || isCheckingPhone}
+          message={isCheckingPhone ? "Checking account..." : "Logging you in..."}
+        />
         {alertModal}
       </SafeAreaView>
     </KeyboardAvoidingView>
@@ -317,6 +381,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.white
+  },
+  screenBackground: {
+    flex: 1,
   },
   content: {
     padding: 20,
@@ -330,13 +397,38 @@ const styles = StyleSheet.create({
     top: 12,
     zIndex: 1
   },
+  badge: {
+    flexDirection: "row",
+    alignSelf: "flex-start",
+    alignItems: "center",
+    backgroundColor: "#FFFFFFCC",
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 20,
+    gap: 8,
+  },
+  badgeText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: Colors.primary,
+  },
   logoWrap: {
     alignItems: "center",
-    marginBottom: 20
+    marginBottom: 16
   },
-  emoji: {
-    fontSize: 60,
-    marginBottom: 20,
+  logoImage: {
+    width: 92,
+    height: 92,
+    resizeMode: "contain",
+    tintColor: Colors.primary,
+    marginBottom: 2,
+  },
+  brandText: {
+    color: Colors.primary,
+    fontSize: 28,
+    fontWeight: "700",
+    marginBottom: 14,
   },
   title: {
     fontSize: 28,
@@ -356,65 +448,95 @@ const styles = StyleSheet.create({
     marginTop: 0,
   },
   continueButton: {
-    borderRadius: 12,
+    borderRadius: 18,
     marginTop: 20,
+    backgroundColor: "#123EA7",
+    paddingVertical: 16,
   },
   pinSection: {
     marginTop: 0,
   },
+  pinHeader: {
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  pinCaption: {
+    fontSize: 13,
+    color: Colors.gray,
+    marginBottom: 6,
+  },
   phoneDisplay: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 17,
+    fontWeight: '700',
     color: Colors.primary,
     textAlign: 'center',
-    marginBottom: 30,
   },
   pinContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     marginVertical: 20,
-    paddingHorizontal: 20,
+    paddingHorizontal: 4,
   },
   pinInput: {
-    width: 60,
-    height: 60,
-    borderWidth: 2,
-    borderRadius: 12,
+    width: 64,
+    height: 64,
+    borderWidth: 1.5,
+    borderRadius: 18,
     fontSize: 24,
     fontWeight: 'bold',
     textAlign: 'center',
-    marginHorizontal: 8,
+    marginHorizontal: 4,
   },
   pinInputEmpty: {
-    borderColor: Colors.gray,
-    backgroundColor: Colors.white,
+    borderColor: "#D1DCF6",
+    backgroundColor: "#FFFFFF",
   },
   pinInputFilled: {
     borderColor: Colors.primary,
-    backgroundColor: Colors.lightBlue || '#F0F8FF',
+    backgroundColor: "#EAF2FF",
   },
   loginButton: {
-    marginTop: 40,
-    borderRadius: 12,
+    marginTop: 24,
+    borderRadius: 18,
+    backgroundColor: Colors.primary,
+    paddingVertical: 16,
   },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 40,
+  disabledActionButton: {
+    backgroundColor: "#A9B6D6",
+    opacity: 0.7,
   },
-  footerText: {
-    fontSize: 16,
+  dividerWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 24,
+    marginBottom: 18,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#D7E0F2",
+  },
+  dividerText: {
+    marginHorizontal: 12,
+    fontSize: 13,
+    fontWeight: "700",
     color: Colors.gray,
-    marginRight: 8,
+    letterSpacing: 1,
   },
-  signupLink: {
-    fontSize: 16,
+  secondaryButton: {
+    marginTop: 0,
+    borderRadius: 18,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1.5,
+    borderColor: "#C8D7FF",
+    paddingVertical: 15,
+  },
+  secondaryButtonText: {
     color: Colors.primary,
-    fontWeight: '600',
+    fontSize: 16,
   },
   errorText: {
-    color: 'red',
+    color: Colors.red,
     fontSize: 14,
     textAlign: 'center',
     marginTop: 10,
