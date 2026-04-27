@@ -19,7 +19,7 @@ import {
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useDispatch, useSelector } from "react-redux";
 import Button from "../../components/Button";
-import { Colors } from "../../utils";
+import { Colors, isFreshLocalVerificationUri } from "../../utils";
 import { RootState, AppDispatch } from "../../redux/store";
 import {
   clearVerificationError,
@@ -45,6 +45,9 @@ const VerificationDetailsScreen = () => {
   } = useSelector((state: RootState) => state.verification);
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
   const canEditDocuments = status === "not_submitted" || status === "rejected";
+  const isRejected = status === "rejected";
+  const hasNewSelfie = isFreshLocalVerificationUri(selfieUri);
+  const hasNewIdPhoto = isFreshLocalVerificationUri(idPhotoUri);
 
   const resolveImageUri = useCallback((uri?: string | null) => {
     if (!uri) return null;
@@ -55,8 +58,8 @@ const VerificationDetailsScreen = () => {
   useFocusEffect(
     useCallback(() => {
       const isLocalDraft =
-        (selfieUri?.startsWith("file:") ?? false) ||
-        (idPhotoUri?.startsWith("file:") ?? false);
+        isFreshLocalVerificationUri(selfieUri) ||
+        isFreshLocalVerificationUri(idPhotoUri);
 
       // Avoid overwriting freshly-picked local files (file://...) with server data
       // when user is re-uploading after rejection.
@@ -72,12 +75,17 @@ const VerificationDetailsScreen = () => {
     }, [dispatch, status, selfieUri, idPhotoUri])
   );
 
-  const steps = [
+  const steps = useMemo(
+    () => [
     {
       key: "selfie",
-      title: "Upload selfie",
-      subtitle: "Take or choose a clear selfie for identity matching.",
-      done: !!selfieUri,
+      title: isRejected ? "Replace selfie" : "Upload selfie",
+      subtitle: isRejected
+        ? hasNewSelfie
+          ? "New selfie selected. You can change it before submitting."
+          : "Admin rejected your last selfie. Open this step and add a new photo from camera or gallery."
+        : "Take or choose a clear selfie for identity matching.",
+      done: isRejected ? hasNewSelfie : !!selfieUri,
       icon: "camera-outline" as const,
       onPress: () => {
         if (!canEditDocuments) {
@@ -98,9 +106,13 @@ const VerificationDetailsScreen = () => {
     },
     {
       key: "id",
-      title: "Upload photo ID",
-      subtitle: "Add a clear photo of your ID card, passport, or license.",
-      done: !!idPhotoUri,
+      title: isRejected ? "Replace photo ID" : "Upload photo ID",
+      subtitle: isRejected
+        ? hasNewIdPhoto
+          ? "New ID photo selected. You can change it before submitting."
+          : "Admin rejected your last ID image. Open this step and add a new photo from camera or gallery."
+        : "Add a clear photo of your ID card, passport, or license.",
+      done: isRejected ? hasNewIdPhoto : !!idPhotoUri,
       icon: "card-outline" as const,
       onPress: () => {
         if (!canEditDocuments) {
@@ -119,13 +131,17 @@ const VerificationDetailsScreen = () => {
         (navigation as any).navigate("VerificationIdScreen");
       },
     },
-  ];
+  ],
+    [isRejected, hasNewSelfie, hasNewIdPhoto, selfieUri, idPhotoUri, status, dispatch, navigation, showAlert]
+  );
 
   const completedSteps = steps.filter((step) => step.done).length;
   const isReadyToSubmit =
-    !!selfieUri &&
-    !!idPhotoUri &&
-    (status === "not_submitted" || status === "rejected");
+    status === "rejected"
+      ? hasNewSelfie && hasNewIdPhoto
+      : !!selfieUri &&
+        !!idPhotoUri &&
+        status === "not_submitted";
 
   const statusConfig = useMemo(() => {
     switch (status) {
@@ -170,13 +186,33 @@ const VerificationDetailsScreen = () => {
       return;
     }
 
-    if (!selfieUri) {
-      (navigation as any).navigate("VerificationSelfieScreen");
-      return;
+    if (status === "rejected") {
+      if (!hasNewSelfie) {
+        (navigation as any).navigate("VerificationSelfieScreen");
+        return;
+      }
+      if (!hasNewIdPhoto) {
+        (navigation as any).navigate("VerificationIdScreen");
+        return;
+      }
+    } else {
+      if (!selfieUri) {
+        (navigation as any).navigate("VerificationSelfieScreen");
+        return;
+      }
+
+      if (!idPhotoUri) {
+        (navigation as any).navigate("VerificationIdScreen");
+        return;
+      }
     }
 
-    if (!idPhotoUri) {
-      (navigation as any).navigate("VerificationIdScreen");
+    if (!selfieUri || !idPhotoUri) {
+      showAlert({
+        title: "Missing documents",
+        message: "Please add both a selfie and a photo ID before submitting.",
+        type: "warning",
+      });
       return;
     }
 
@@ -206,6 +242,12 @@ const VerificationDetailsScreen = () => {
       ? "View Under Review"
       : isReadyToSubmit
       ? "Submit for Review"
+      : status === "rejected"
+      ? !hasNewSelfie
+        ? "Replace selfie first"
+        : !hasNewIdPhoto
+        ? "Replace photo ID"
+        : "Submit for Review"
       : !selfieUri
       ? "Upload Selfie"
       : "Upload Photo ID";
@@ -249,13 +291,25 @@ const VerificationDetailsScreen = () => {
           </View>
 
           <View style={styles.heroWrap}>
-            <View style={styles.iconBubble}>
-              <Feather name="shield" size={30} color={Colors.primary} />
+            <View
+              style={[
+                styles.iconBubble,
+                isRejected && { backgroundColor: "#FFF5F5", borderWidth: 1, borderColor: "#FFD8D8" },
+              ]}
+            >
+              <Feather
+                name="shield"
+                size={30}
+                color={isRejected ? "#E35D5D" : Colors.primary}
+              />
             </View>
-            <Text style={styles.title}>Verify your profile</Text>
+            <Text style={styles.title}>
+              {isRejected ? "Resubmit verification" : "Verify your profile"}
+            </Text>
             <Text style={styles.subtitle}>
-              Upload your selfie and one photo ID. After submission, admin will
-              review and update the final status here.
+              {isRejected
+                ? "Your last submission was not accepted. Replace both documents below with clearer photos, read the admin note if any, then submit again for review."
+                : "Upload your selfie and one photo ID. After submission, admin will review and update the final status here."}
             </Text>
           </View>
 
@@ -300,8 +354,14 @@ const VerificationDetailsScreen = () => {
             style={styles.summaryCard}
           >
             <View style={styles.summaryHeader}>
-              <Text style={styles.summaryTitle}>Progress</Text>
-              <Text style={styles.summaryCount}>{completedSteps}/2 complete</Text>
+              <Text style={styles.summaryTitle}>
+                {isRejected ? "Resubmit checklist" : "Progress"}
+              </Text>
+              <Text style={styles.summaryCount}>
+                {isRejected
+                  ? `${completedSteps}/2 new photos`
+                  : `${completedSteps}/2 complete`}
+              </Text>
             </View>
             <View style={styles.progressTrack}>
               <View
@@ -342,7 +402,14 @@ const VerificationDetailsScreen = () => {
 
           {(selfiePreview || idPreview) && (
             <View style={styles.previewSection}>
-              <Text style={styles.previewHeading}>Submitted details</Text>
+              <Text style={styles.previewHeading}>
+                {isRejected ? "Previous submission (reference)" : "Submitted details"}
+              </Text>
+              {isRejected ? (
+                <Text style={styles.previewHint}>
+                  These are the photos that were reviewed. You must still add new images using the steps above.
+                </Text>
+              ) : null}
               <View style={styles.previewGrid}>
                 {selfiePreview ? (
                   <View style={styles.previewItem}>
@@ -593,6 +660,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "800",
     color: Colors.black,
+    marginBottom: 8,
+  },
+  previewHint: {
+    fontSize: 13,
+    lineHeight: 19,
+    color: "#697386",
     marginBottom: 12,
   },
   previewGrid: {

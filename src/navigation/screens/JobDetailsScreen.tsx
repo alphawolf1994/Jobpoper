@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -16,7 +16,7 @@ import * as Location from 'expo-location';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from "../../utils";
 import { Ionicons, AntDesign } from "@expo/vector-icons";
-import { useNavigation, useRoute } from "@react-navigation/native";
+import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 import { useDispatch, useSelector } from 'react-redux';
 import { getJobById } from '../../redux/slices/jobSlice';
 import { AppDispatch, RootState } from '../../redux/store';
@@ -27,6 +27,7 @@ import { showInterestOnJobApi } from '../../api/jobApis';
 import { useAlertModal } from "../../hooks/useAlertModal";
 import { formatDateDDMMYYYY } from "../../utils";
 import VerificationBottomSheet, { VerificationBottomSheetHandle } from "../../components/VerificationBottomSheet";
+import { fetchVerificationStatus } from "../../redux/slices/verificationSlice";
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -53,6 +54,14 @@ const JobDetailsScreen = () => {
       dispatch(getJobById(jobId));
     }
   }, [dispatch, jobId]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (user?.id && !user?.isVerified) {
+        dispatch(fetchVerificationStatus());
+      }
+    }, [dispatch, user?.id, user?.isVerified])
+  );
 
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();

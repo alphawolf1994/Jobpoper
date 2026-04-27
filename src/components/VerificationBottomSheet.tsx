@@ -1,26 +1,41 @@
-import React, { useRef, useImperativeHandle, forwardRef, useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from "react-native";
+import React, { useRef, useImperativeHandle, forwardRef } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Dimensions,
+  ScrollView,
+} from "react-native";
 import RBSheet from "react-native-raw-bottom-sheet";
 import { LinearGradient } from "expo-linear-gradient";
 import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../utils";
-import { useDispatch } from "react-redux";
-import { AppDispatch } from "../redux/store";
+import { useDispatch, useSelector } from "react-redux";
+import { AppDispatch, RootState } from "../redux/store";
 import { dismissVerificationPrompt } from "../redux/slices/verificationSlice";
 import { useNavigation } from "@react-navigation/native";
 
-const SHEET_HEIGHT = Math.min(
-  Math.max(Dimensions.get("window").height * 0.52, 410),
+const windowHeight = Dimensions.get("window").height;
+
+/** Default prompt — same ballpark as before */
+const SHEET_HEIGHT_DEFAULT = Math.min(
+  Math.max(windowHeight * 0.52, 410),
   500
 );
+
+/** Under review / rejected copy is longer — use more of the screen so actions stay visible */
+const SHEET_HEIGHT_TALL = Math.min(Math.max(windowHeight * 0.72, 540), windowHeight * 0.9);
 
 export interface VerificationBottomSheetHandle {
   open: () => void;
   close: () => void;
 }
 
+type SheetVariant = "not_submitted" | "under_review" | "rejected";
+
 interface Props {
-  /** Called when the sheet closes (either via "Maybe later" or backdrop tap) */
+  /** Called when the sheet closes (either via secondary action or backdrop tap) */
   onDismiss?: () => void;
   /** If true, dispatches dismissVerificationPrompt on close (used on HomeScreen) */
   dismissOnClose?: boolean;
@@ -31,34 +46,51 @@ const VerificationBottomSheet = forwardRef<VerificationBottomSheetHandle, Props>
     const dispatch = useDispatch<AppDispatch>();
     const navigation = useNavigation<any>();
     const sheetRef = useRef<any>(null);
+    const verificationStatus = useSelector(
+      (state: RootState) => state.verification.status
+    );
+
+    const variant: SheetVariant =
+      verificationStatus === "under_review"
+        ? "under_review"
+        : verificationStatus === "rejected"
+        ? "rejected"
+        : "not_submitted";
+
+    const sheetHeight =
+      variant === "under_review" || variant === "rejected"
+        ? SHEET_HEIGHT_TALL
+        : SHEET_HEIGHT_DEFAULT;
 
     useImperativeHandle(ref, () => ({
       open: () => sheetRef.current?.open(),
       close: () => sheetRef.current?.close(),
     }));
 
-    const handleVerifyNow = () => {
-      dispatch(dismissVerificationPrompt());
+    const goToVerificationDetails = () => {
+      if (variant === "not_submitted") {
+        dispatch(dismissVerificationPrompt());
+      }
       sheetRef.current?.close();
       setTimeout(() => {
         navigation.navigate("VerificationDetailsScreen");
       }, 150);
     };
 
-    const handleLater = () => {
+    const handleSecondary = () => {
       sheetRef.current?.close();
     };
 
     return (
       <RBSheet
         ref={sheetRef}
-        height={SHEET_HEIGHT}
+        height={sheetHeight}
         openDuration={280}
         closeOnPressMask={true}
         closeOnPressBack={true}
         draggable={true}
         onClose={() => {
-          if (dismissOnClose) {
+          if (dismissOnClose && variant === "not_submitted") {
             dispatch(dismissVerificationPrompt());
           }
           onDismiss?.();
@@ -83,57 +115,128 @@ const VerificationBottomSheet = forwardRef<VerificationBottomSheetHandle, Props>
         }}
       >
         <View style={styles.sheetContent}>
-          <LinearGradient
-            colors={["#EAF2FF", "#FFFFFF"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.sheetCard}
+          <ScrollView
+            style={styles.sheetScroll}
+            contentContainerStyle={styles.sheetScrollContent}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
           >
-            <View style={styles.sheetIconWrap}>
-              <Ionicons
-                name="shield-checkmark-outline"
-                size={34}
-                color={Colors.primary}
-              />
-            </View>
-            <Text style={styles.sheetTitle}>Verify yourself</Text>
-            <Text style={styles.sheetSubtitle}>
-              Verify yourself to take up the quick jobs and start earning.
-            </Text>
-
-            <View style={styles.sheetPoints}>
-              <View style={styles.sheetPoint}>
-                <Ionicons name="flash-outline" size={16} color={Colors.primary} />
-                <Text style={styles.sheetPointText}>Unlock quick jobs faster</Text>
-              </View>
-              <View style={styles.sheetPoint}>
-                <Ionicons
-                  name="checkmark-circle-outline"
-                  size={16}
-                  color={Colors.primary}
-                />
-                <Text style={styles.sheetPointText}>
-                  Build more trust with clients
+            <LinearGradient
+              colors={
+                variant === "under_review"
+                  ? ["#EEF4FF", "#FFFFFF"]
+                  : variant === "rejected"
+                  ? ["#FFF1F1", "#FFFFFF"]
+                  : ["#EAF2FF", "#FFFFFF"]
+              }
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[
+                styles.sheetCard,
+                variant === "rejected" && { borderColor: "#FFD8D8" },
+              ]}
+            >
+            {variant === "under_review" ? (
+              <>
+                <View
+                  style={[
+                    styles.sheetIconWrap,
+                    { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#C7D4F6" },
+                  ]}
+                >
+                  <Ionicons name="time-outline" size={34} color={Colors.primary} />
+                </View>
+                <Text style={styles.sheetTitle}>Verification in progress</Text>
+                <Text style={styles.sheetSubtitle}>
+                  You have already submitted your documents. Our team is reviewing them. You will be able to post jobs
+                  and use full features once your profile is verified.
                 </Text>
-              </View>
-            </View>
-
-            <TouchableOpacity
-              style={styles.verifyNowButton}
-              activeOpacity={0.85}
-              onPress={handleVerifyNow}
-            >
-              <Text style={styles.verifyNowButtonText}>Verify Now</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.sheetLaterButton}
-              activeOpacity={0.75}
-              onPress={handleLater}
-            >
-              <Text style={styles.sheetLaterText}>Maybe later</Text>
-            </TouchableOpacity>
-          </LinearGradient>
+                <View style={styles.sheetPoints}>
+                  <View style={styles.sheetPoint}>
+                    <Ionicons name="hourglass-outline" size={16} color={Colors.primary} />
+                    <Text style={styles.sheetPointText}>Review usually completes within a short time</Text>
+                  </View>
+                  <View style={styles.sheetPoint}>
+                    <Ionicons name="notifications-outline" size={16} color={Colors.primary} />
+                    <Text style={styles.sheetPointText}>We will update your status here when there is news</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.verifyNowButton}
+                  activeOpacity={0.85}
+                  onPress={goToVerificationDetails}
+                >
+                  <Text style={styles.verifyNowButtonText}>View verification status</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.sheetLaterButton} activeOpacity={0.75} onPress={handleSecondary}>
+                  <Text style={styles.sheetLaterText}>Got it</Text>
+                </TouchableOpacity>
+              </>
+            ) : variant === "rejected" ? (
+              <>
+                <View
+                  style={[
+                    styles.sheetIconWrap,
+                    { backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#FFD8D8" },
+                  ]}
+                >
+                  <Ionicons name="alert-circle-outline" size={34} color="#E35D5D" />
+                </View>
+                <Text style={styles.sheetTitle}>Verification needs an update</Text>
+                <Text style={styles.sheetSubtitle}>
+                  Your last submission was not accepted. Open verification to read the admin note and upload clearer
+                  documents, then submit again.
+                </Text>
+                <View style={styles.sheetPoints}>
+                  <View style={[styles.sheetPoint, { backgroundColor: "#FFFFFFB8" }]}>
+                    <Ionicons name="camera-outline" size={16} color="#E35D5D" />
+                    <Text style={styles.sheetPointText}>Replace selfie and ID with new photos</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={[styles.verifyNowButton, { backgroundColor: "#E35D5D" }]}
+                  activeOpacity={0.85}
+                  onPress={goToVerificationDetails}
+                >
+                  <Text style={styles.verifyNowButtonText}>Review & resubmit</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.sheetLaterButton} activeOpacity={0.75} onPress={handleSecondary}>
+                  <Text style={styles.sheetLaterText}>Maybe later</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <View style={styles.sheetIconWrap}>
+                  <Ionicons name="shield-checkmark-outline" size={34} color={Colors.primary} />
+                </View>
+                <Text style={styles.sheetTitle}>Verify yourself</Text>
+                <Text style={styles.sheetSubtitle}>
+                  Verify yourself to take up the quick jobs and start earning.
+                </Text>
+                <View style={styles.sheetPoints}>
+                  <View style={styles.sheetPoint}>
+                    <Ionicons name="flash-outline" size={16} color={Colors.primary} />
+                    <Text style={styles.sheetPointText}>Unlock quick jobs faster</Text>
+                  </View>
+                  <View style={styles.sheetPoint}>
+                    <Ionicons name="checkmark-circle-outline" size={16} color={Colors.primary} />
+                    <Text style={styles.sheetPointText}>Build more trust with clients</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.verifyNowButton}
+                  activeOpacity={0.85}
+                  onPress={goToVerificationDetails}
+                >
+                  <Text style={styles.verifyNowButtonText}>Verify Now</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.sheetLaterButton} activeOpacity={0.75} onPress={handleSecondary}>
+                  <Text style={styles.sheetLaterText}>Maybe later</Text>
+                </TouchableOpacity>
+              </>
+            )}
+            </LinearGradient>
+          </ScrollView>
         </View>
       </RBSheet>
     );
@@ -147,10 +250,17 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 18,
     paddingTop: 6,
-    paddingBottom: 24,
+    paddingBottom: 12,
+    minHeight: 0,
+  },
+  sheetScroll: {
+    flex: 1,
+  },
+  sheetScrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
   },
   sheetCard: {
-    flex: 1,
     borderRadius: 24,
     paddingHorizontal: 20,
     paddingVertical: 20,
@@ -203,6 +313,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#334155",
     fontWeight: "600",
+    flex: 1,
   },
   verifyNowButton: {
     backgroundColor: Colors.primary,

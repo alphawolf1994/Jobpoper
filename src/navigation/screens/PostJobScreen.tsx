@@ -12,6 +12,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { useDispatch, useSelector } from 'react-redux';
 import { createJob, updateJob } from '../../redux/slices/jobSlice';
+import { fetchVerificationStatus } from "../../redux/slices/verificationSlice";
 import { AppDispatch, RootState } from '../../redux/store';
 import { SavedLocation, clearLastAddedLocation } from '../../redux/slices/locationsSlice';
 import { fetchLocations } from '../../redux/slices/locationsSlice';
@@ -127,6 +128,9 @@ const PostJobScreen = () => {
   useFocusEffect(
     React.useCallback(() => {
       dispatch(fetchLocations());
+      if (!user?.isVerified) {
+        dispatch(fetchVerificationStatus());
+      }
 
       // Check if a new location was added via Redux state
       if (lastAddedLocation) {
@@ -140,7 +144,7 @@ const PostJobScreen = () => {
         // Clear the last added location so it doesn't trigger again
         dispatch(clearLastAddedLocation());
       }
-    }, [dispatch, lastAddedLocation, locationModalType])
+    }, [dispatch, lastAddedLocation, locationModalType, user?.isVerified])
   );
 
   // Initialize form with job data when in edit mode
