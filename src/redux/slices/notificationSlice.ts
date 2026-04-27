@@ -41,14 +41,17 @@ const initialState: NotificationState = {
 // Get All Notifications Async Thunk
 export const getAllNotifications = createAsyncThunk(
   "notification/getAllNotifications",
-  async (params?: {
-    page?: number;
-    limit?: number;
-    isRead?: string;
-    sortBy?: string;
-    sortOrder?: string;
-    append?: boolean;
-  }, { rejectWithValue }) => {
+  async (
+    params: {
+      page?: number;
+      limit?: number;
+      isRead?: string;
+      sortBy?: string;
+      sortOrder?: string;
+      append?: boolean;
+    } | undefined,
+    { rejectWithValue }
+  ) => {
     try {
       const { append, ...apiParams } = params || {};
       const response = await getAllNotificationsApi(apiParams);
@@ -121,6 +124,19 @@ const notificationSlice = createSlice({
     clearNotifications: (state) => {
       state.notifications = [];
       state.pagination = null;
+    },
+    addNotificationFromPush: (state, action: PayloadAction<Notification>) => {
+      const n = action.payload;
+      if (state.notifications.some((x) => x._id === n._id)) {
+        return;
+      }
+      state.notifications = [n, ...state.notifications];
+      if (!n.isRead) {
+        state.unreadCount += 1;
+      }
+    },
+    incrementUnreadCount: (state) => {
+      state.unreadCount += 1;
     },
   },
   extraReducers: (builder) => {
@@ -247,6 +263,6 @@ const notificationSlice = createSlice({
   },
 });
 
-export const { clearError, clearNotifications } = notificationSlice.actions;
+export const { clearError, clearNotifications, addNotificationFromPush, incrementUnreadCount } = notificationSlice.actions;
 export default notificationSlice.reducer;
 

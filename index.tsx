@@ -2,10 +2,14 @@ import './gesture-handler';
 
 import '@expo/metro-runtime'; // Necessary for Fast Refresh on Web
 import { registerRootComponent } from 'expo';
+import { Platform } from 'react-native';
 
+import { registerBackgroundHandler } from './src/services/notifications/pushNotificationHandler';
+import { isFirebaseAvailable } from './src/services/notifications/firebaseAvailability';
 import { App } from './src/App';
 
-// registerRootComponent calls AppRegistry.registerComponent('main', () => App);
-// It also ensures that whether you load the app in Expo Go or in a native build,
-// the environment is set up appropriately
+if (Platform.OS !== 'web' && isFirebaseAvailable()) {
+  registerBackgroundHandler();
+}
+
 registerRootComponent(App);

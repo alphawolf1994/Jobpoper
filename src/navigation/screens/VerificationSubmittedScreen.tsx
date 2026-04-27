@@ -51,7 +51,16 @@ const VerificationSubmittedScreen = () => {
         end={{ x: 1, y: 1 }}
         style={styles.screenBackground}
       >
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => {
+            if ((navigation as any).canGoBack?.()) {
+              navigation.goBack();
+            } else {
+              (navigation as any).navigate("HomeTabs");
+            }
+          }}
+        >
           <AntDesign name="arrow-left" size={24} color={Colors.black} />
         </TouchableOpacity>
 

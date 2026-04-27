@@ -20,7 +20,7 @@ platform :ios, podfile_properties['ios.deploymentTarget'] || '15.1'
 
 prepare_react_native_project!
 
-target 'jobpoper' do
+target 'JobPoper' do
   use_expo_modules!
 
   if ENV['EXPO_USE_COMMUNITY_AUTOLINKING'] == '1'
@@ -50,7 +50,15 @@ target 'jobpoper' do
   )
 
   post_install do |installer|
-    react_native_post_install(
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |build_config|
+        build_config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+        if target.name.start_with?('RNFB')
+          build_config.build_settings['CLANG_ENABLE_MODULES'] = 'NO'
+        end
+      end
+    end
+        react_native_post_install(
       installer,
       config[:reactNativePath],
       :mac_catalyst_enabled => false,

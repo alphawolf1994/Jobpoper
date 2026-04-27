@@ -54,8 +54,17 @@ const VerificationDetailsScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
+      const isLocalDraft =
+        (selfieUri?.startsWith("file:") ?? false) ||
+        (idPhotoUri?.startsWith("file:") ?? false);
+
+      // Avoid overwriting freshly-picked local files (file://...) with server data
+      // when user is re-uploading after rejection.
       const shouldRefreshFromServer =
-        status !== "not_submitted" || (!selfieUri && !idPhotoUri);
+        !isLocalDraft &&
+        (status === "under_review" ||
+          status === "approved" ||
+          (!selfieUri && !idPhotoUri));
 
       if (shouldRefreshFromServer) {
         dispatch(fetchVerificationStatus());
@@ -219,7 +228,13 @@ const VerificationDetailsScreen = () => {
         >
           <TouchableOpacity
             style={styles.backBtn}
-            onPress={() => navigation.goBack()}
+            onPress={() => {
+              if ((navigation as any).canGoBack?.()) {
+                navigation.goBack();
+              } else {
+                (navigation as any).navigate("HomeTabs");
+              }
+            }}
           >
             <AntDesign name="arrow-left" size={24} color={Colors.black} />
           </TouchableOpacity>

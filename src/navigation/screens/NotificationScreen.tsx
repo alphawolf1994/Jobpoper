@@ -150,6 +150,8 @@ const NotificationScreen = () => {
       const [type, id] = notification.navigationIdentifier.split(":");
       if (type === "job" && id) {
         navigation.navigate("JobDetailsScreen", { jobId: id });
+      } else if (type === "verification") {
+        navigation.navigate("VerificationDetailsScreen");
       }
     },
     [navigation, handleMarkAsRead]

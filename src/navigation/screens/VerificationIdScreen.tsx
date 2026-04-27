@@ -67,7 +67,16 @@ const VerificationIdScreen = () => {
         style={styles.screenBackground}
       >
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => {
+              if ((navigation as any).canGoBack?.()) {
+                navigation.goBack();
+              } else {
+                (navigation as any).navigate("VerificationDetailsScreen");
+              }
+            }}
+          >
             <AntDesign name="arrow-left" size={24} color={Colors.black} />
           </TouchableOpacity>
 

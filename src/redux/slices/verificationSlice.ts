@@ -94,8 +94,7 @@ const verificationSlice = createSlice({
       state.error = null;
       if (
         state.status === "approved" ||
-        state.status === "under_review" ||
-        state.status === "rejected"
+        state.status === "under_review"
       ) {
         state.status = "not_submitted";
       }
@@ -105,8 +104,7 @@ const verificationSlice = createSlice({
       state.error = null;
       if (
         state.status === "approved" ||
-        state.status === "under_review" ||
-        state.status === "rejected"
+        state.status === "under_review"
       ) {
         state.status = "not_submitted";
       }

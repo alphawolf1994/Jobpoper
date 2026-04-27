@@ -150,6 +150,10 @@ export const logoutUser = createAsyncThunk(
   "auth/logoutUser",
   async (_, { rejectWithValue }) => {
     try {
+      const { unregisterCurrentDevice } = await import(
+        "../../services/devices/deviceService"
+      );
+      await unregisterCurrentDevice().catch(() => {});
       const response = await logoutUserApi();
       return response;
     } catch (error: any) {

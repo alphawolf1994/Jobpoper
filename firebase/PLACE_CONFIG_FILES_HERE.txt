@@ -1,0 +1,11 @@
+Add these from the Firebase console (Project settings) for your JobPoper Android and iOS apps:
+
+1) google-services.json  →  save as:  firebase/google-services.json
+2) GoogleService-Info.plist  →  save as:  firebase/GoogleService-Info.plist
+
+Package / bundle IDs must match app.json (Android: com.anonymous.Jobpoper, iOS: com.anonymous.jobpoper).
+
+Then run:  npx expo prebuild
+Then:  npx expo run:android   or   npx expo run:ios
+
+Expo Go does not include native Firebase — use a dev build.

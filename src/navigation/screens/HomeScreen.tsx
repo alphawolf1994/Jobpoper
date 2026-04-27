@@ -171,20 +171,6 @@ const HomeScreen = ({ navigation }: any) => {
     }, [dispatch, user?.id, shouldShowVerificationPrompt, isVerificationSheetVisible])
   );
 
-  useEffect(() => {
-    if (!shouldShowVerificationPrompt || isVerificationSheetVisible) {
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      setIsVerificationSheetVisible(true);
-      verificationSheetRef.current?.open();
-    }, 250);
-
-    return () => clearTimeout(timer);
-  }, [shouldShowVerificationPrompt, isVerificationSheetVisible]);
-
-
   return (
     <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={{ flex: 1, }}>
       <Header />
