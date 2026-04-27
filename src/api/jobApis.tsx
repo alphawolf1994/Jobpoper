@@ -13,6 +13,7 @@ export const createJobApi = async (jobData: {
     scheduledTime: string;
     responsePreference?: 'direct_contact' | 'show_interest';
     attachments?: string[];
+    distanceKm?: number | null;
 }) => {
     try {
         // Build multipart form data
@@ -38,6 +39,13 @@ export const createJobApi = async (jobData: {
         formData.append("scheduledTime", jobData.scheduledTime);
         if (jobData.responsePreference) {
             formData.append("responsePreference", jobData.responsePreference);
+        }
+        if (
+            jobData.distanceKm !== undefined &&
+            jobData.distanceKm !== null &&
+            !Number.isNaN(jobData.distanceKm)
+        ) {
+            formData.append("distanceKm", String(jobData.distanceKm));
         }
 console.log("Job Data Attachments:", formData);
         // Append up to 5 images using the same field name: attachments
@@ -92,6 +100,7 @@ export const updateJobApi = async (jobId: string, jobData: {
     responsePreference?: 'direct_contact' | 'show_interest';
     attachments?: string[];
     existingAttachments?: string[];
+    distanceKm?: number | null;
 }) => {
     try {
         // Build multipart form data
@@ -115,6 +124,13 @@ export const updateJobApi = async (jobId: string, jobData: {
         if (jobData.scheduledDate) formData.append("scheduledDate", jobData.scheduledDate);
         if (jobData.scheduledTime) formData.append("scheduledTime", jobData.scheduledTime);
         if (jobData.responsePreference) formData.append("responsePreference", jobData.responsePreference);
+        if (
+            jobData.distanceKm !== undefined &&
+            jobData.distanceKm !== null &&
+            !Number.isNaN(jobData.distanceKm)
+        ) {
+            formData.append("distanceKm", String(jobData.distanceKm));
+        }
         // Existing attachments as JSON string
         if (jobData.existingAttachments) {
             formData.append("existingAttachments", JSON.stringify(jobData.existingAttachments));

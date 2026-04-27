@@ -22,3 +22,64 @@ export async function geocodeAddressToCoordinates(
     return null;
   }
 }
+
+/**
+ * Compute the great-circle distance (in kilometers) between two lat/lng points
+ * using the Haversine formula. Returns null if any value is invalid.
+ */
+export function calculateDistanceKm(
+  lat1?: number | null,
+  lon1?: number | null,
+  lat2?: number | null,
+  lon2?: number | null
+): number | null {
+  if (
+    typeof lat1 !== "number" ||
+    typeof lon1 !== "number" ||
+    typeof lat2 !== "number" ||
+    typeof lon2 !== "number"
+  ) {
+    return null;
+  }
+  if (
+    Number.isNaN(lat1) ||
+    Number.isNaN(lon1) ||
+    Number.isNaN(lat2) ||
+    Number.isNaN(lon2)
+  ) {
+    return null;
+  }
+
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const R = 6371; // Earth's radius in km
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) *
+      Math.cos(toRad(lat2)) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c;
+  return Math.round(distance * 100) / 100; // 2 decimal places
+}
+
+/**
+ * Format a distance in km into a short human-readable label.
+ *  - 0.42 km   → "420 m"
+ *  - 5 km     → "5 km"
+ *  - 12.45 km → "12.5 km"
+ */
+export function formatDistanceLabel(distanceKm: number | null | undefined): string {
+  if (distanceKm === null || distanceKm === undefined || Number.isNaN(distanceKm)) {
+    return "";
+  }
+  if (distanceKm < 1) {
+    return `${Math.round(distanceKm * 1000)} m`;
+  }
+  if (distanceKm < 10) {
+    return `${distanceKm.toFixed(1)} km`;
+  }
+  return `${Math.round(distanceKm)} km`;
+}

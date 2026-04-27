@@ -802,6 +802,7 @@ export interface Job {
   formattedScheduledDate?: string;
   contactInfo?: string;
   interestedUsers?: InterestedUserEntry[];
+  distanceKm?: number | null;
 }
 
 export interface JobResponse {
@@ -840,6 +841,7 @@ export interface CreateJobPayload {
   scheduledTime: string;
   responsePreference?: 'direct_contact' | 'show_interest';
   attachments?: string[];
+  distanceKm?: number | null;
 }
 
 export interface HotJobsResponse {

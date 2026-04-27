@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useMemo } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, Modal, FlatList } from "react-native";
 import { Colors } from "../../utils";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -17,6 +17,7 @@ import { SavedLocation, clearLastAddedLocation } from '../../redux/slices/locati
 import { fetchLocations } from '../../redux/slices/locationsSlice';
 import { useAlertModal } from "../../hooks/useAlertModal";
 import { formatDateDDMMYYYY } from "../../utils";
+import { calculateDistanceKm, formatDistanceLabel } from "../../utils/geocode";
 import { Job, SavedLocationData } from '../../interface/interfaces';
 import { IMAGE_BASE_URL } from '../../api/baseURL';
 import VerificationBottomSheet, { VerificationBottomSheetHandle } from "../../components/VerificationBottomSheet";
@@ -82,6 +83,18 @@ const PostJobScreen = () => {
   const [selectedOnSiteLocation, setSelectedOnSiteLocation] = useState<SavedLocation | null>(null);
   const [selectedPickupSource, setSelectedPickupSource] = useState<SavedLocation | null>(null);
   const [selectedPickupDestination, setSelectedPickupDestination] = useState<SavedLocation | null>(null);
+
+  // Distance (km) between pickup source and destination — computed automatically
+  const pickupDistanceKm = useMemo(() => {
+    if (jobType !== 'Pickup') return null;
+    if (!selectedPickupSource || !selectedPickupDestination) return null;
+    return calculateDistanceKm(
+      selectedPickupSource.latitude,
+      selectedPickupSource.longitude,
+      selectedPickupDestination.latitude,
+      selectedPickupDestination.longitude,
+    );
+  }, [jobType, selectedPickupSource, selectedPickupDestination]);
 
   // Location modal state
   const [showLocationModal, setShowLocationModal] = useState(false);
@@ -422,6 +435,8 @@ const PostJobScreen = () => {
           },
         attachments: newAttachments,
         existingAttachments: keptExistingAttachments,
+        // Only persist distance for Pickup jobs
+        distanceKm: jobType === 'Pickup' ? pickupDistanceKm : null,
       };
 
       let result;
@@ -614,6 +629,20 @@ const PostJobScreen = () => {
                       <Ionicons name="chevron-down" size={20} color="#9AA0A6" />
                     </View>
                   </TouchableOpacity>
+
+                  {/* Distance display — appears once both pickup and destination are selected */}
+                  {selectedPickupSource && selectedPickupDestination ? (
+                    <View style={styles.distanceContainer}>
+                      <View style={styles.distanceIconWrapper}>
+                        <Ionicons name="navigate-outline" size={16} color={Colors.primary} />
+                      </View>
+                      <Text style={styles.distanceText}>
+                        {pickupDistanceKm !== null && pickupDistanceKm !== undefined
+                          ? `Distance: ${formatDistanceLabel(pickupDistanceKm)}`
+                          : 'Distance unavailable for selected locations'}
+                      </Text>
+                    </View>
+                  ) : null}
                 </View>
               </>
             )}
@@ -995,6 +1024,24 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.black,
     marginBottom: 8,
+  },
+  distanceContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: Colors.BlueLightShade,
+    borderRadius: 10,
+    alignSelf: 'flex-start',
+  },
+  distanceIconWrapper: {
+    marginRight: 6,
+  },
+  distanceText: {
+    fontSize: 13,
+    color: Colors.primary,
+    fontWeight: '600',
   },
   currencyNote: {
     fontSize: 12,
