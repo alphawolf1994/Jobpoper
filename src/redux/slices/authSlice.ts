@@ -9,10 +9,12 @@ import {
   getCurrentUserApi,
   logoutUserApi,
   changePinApi,
-  checkPhoneApi
+  checkPhoneApi,
+  getVehiclePreferenceApi,
+  updateVehiclePreferenceApi
 } from "../../api/authApis";
 import { setAuthToken } from "../../api/axiosInstance";
-import { JobPoperUser, AuthResponse } from "../../interface/interfaces";
+import { JobPoperUser, AuthResponse, VehiclePreference, VehicleType } from "../../interface/interfaces";
 
 interface AuthState {
   user: JobPoperUser | null;
@@ -171,6 +173,39 @@ export const changePin = createAsyncThunk(
       return response;
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to change PIN");
+    }
+  }
+);
+
+// Get Vehicle Preference (Pickup/Delivery service preference)
+export const getVehiclePreference = createAsyncThunk(
+  "auth/getVehiclePreference",
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await getVehiclePreferenceApi();
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "Failed to fetch vehicle preference");
+    }
+  }
+);
+
+// Update Vehicle Preference (Pickup/Delivery service preference)
+export const updateVehiclePreference = createAsyncThunk(
+  "auth/updateVehiclePreference",
+  async (
+    data: {
+      vehicleType: VehicleType;
+      vehicleNumber: string;
+      pricePerKm: number;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await updateVehiclePreferenceApi(data);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "Failed to save vehicle preference");
     }
   }
 );
@@ -361,6 +396,50 @@ const authSlice = createSlice({
         state.loading = false;
       })
       .addCase(changePin.fulfilled, (state) => {
+        state.loading = false;
+        state.error = null;
+      })
+      // Get Vehicle Preference
+      .addCase(getVehiclePreference.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(getVehiclePreference.rejected, (state, action) => {
+        state.error = action.payload as string;
+        state.loading = false;
+      })
+      .addCase(getVehiclePreference.fulfilled, (state, action) => {
+        const response = action.payload;
+        if (response?.status === 'success' && response?.data?.vehiclePreference && state.user) {
+          state.user = {
+            ...state.user,
+            vehiclePreference: response.data.vehiclePreference,
+          };
+        }
+        state.loading = false;
+        state.error = null;
+      })
+      // Update Vehicle Preference
+      .addCase(updateVehiclePreference.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateVehiclePreference.rejected, (state, action) => {
+        state.error = action.payload as string;
+        state.loading = false;
+      })
+      .addCase(updateVehiclePreference.fulfilled, (state, action) => {
+        const response = action.payload;
+        if (response?.status === 'success' && response?.data) {
+          if (response.data.user) {
+            state.user = response.data.user;
+          } else if (response.data.vehiclePreference && state.user) {
+            state.user = {
+              ...state.user,
+              vehiclePreference: response.data.vehiclePreference,
+            };
+          }
+        }
         state.loading = false;
         state.error = null;
       })

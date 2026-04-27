@@ -14,6 +14,7 @@ import AllListedJobsScreen from "./screens/AllListedJobsScreen";
 import MyJobsScreen from "./screens/MyJobsScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import UserDetailsScreen from "./screens/UserDetailsScreen";
+import VehiclePreferenceScreen from "./screens/VehiclePreferenceScreen";
 import ChangePinScreen from "./screens/ChangePinScreen";
 import PostJobScreen from "./screens/PostJobScreen";
 import JobDetailsScreen from "./screens/JobDetailsScreen";
@@ -234,6 +235,10 @@ const RootStack = createNativeStackNavigator({
     // ── Profile Management ─────────────────────────────────────────────────
     UserDetailsScreen: {
       screen: UserDetailsScreen,
+      options: { headerShown: false },
+    },
+    VehiclePreferenceScreen: {
+      screen: VehiclePreferenceScreen,
       options: { headerShown: false },
     },
     ChangePinScreen: {

@@ -8,6 +8,7 @@ export interface JobPoperUser {
   role: 'user' | 'admin';
   profile?: UserProfile;
   verification?: UserVerification;
+  vehiclePreference?: VehiclePreference;
   lastLogin?: string;
 }
 
@@ -18,6 +19,16 @@ export interface UserVerification {
   submittedAt?: string | null;
   reviewedAt?: string | null;
   reviewNotes?: string;
+}
+
+export type VehicleType = '2_wheeler' | '3_wheeler' | '4_wheeler';
+
+export interface VehiclePreference {
+  vehicleType: VehicleType | null;
+  vehicleNumber: string | null;
+  pricePerKm: number | null;
+  isSet: boolean;
+  updatedAt?: string | null;
 }
 
 export interface UserProfile {

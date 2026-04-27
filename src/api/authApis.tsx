@@ -220,3 +220,33 @@ export const deleteAccountApi = async () => {
         throw new Error(error.response?.data?.message || "Failed to delete account");
     }
 };
+
+// Get Vehicle Preference (Pickup/Delivery service preference)
+export const getVehiclePreferenceApi = async () => {
+    try {
+        const res = await axiosInstance.get("/auth/vehicle-preference");
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Failed to fetch vehicle preference");
+    }
+};
+
+// Update / Create Vehicle Preference (Pickup/Delivery service preference)
+export const updateVehiclePreferenceApi = async (data: {
+    vehicleType: '2_wheeler' | '3_wheeler' | '4_wheeler';
+    vehicleNumber: string;
+    pricePerKm: number;
+}) => {
+    try {
+        const payload = {
+            vehicleType: data.vehicleType,
+            vehicleNumber: data.vehicleNumber,
+            pricePerKm: data.pricePerKm,
+        };
+
+        const res = await axiosInstance.put("/auth/vehicle-preference", payload);
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Failed to save vehicle preference");
+    }
+};

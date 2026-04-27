@@ -167,6 +167,13 @@ const ProfileScreen = () => {
           />
 
           <MenuItem
+            icon="bicycle-outline"
+            label="Pickup Service Preference"
+            onPress={() => (navigation as any).navigate('VehiclePreferenceScreen')}
+            iconColor="#0EA5E9"
+          />
+
+          <MenuItem
             icon="key-outline"
             label="Security PIN"
             onPress={() => (navigation as any).navigate('ChangePinScreen')}
