@@ -21,6 +21,16 @@ export interface UserVerification {
   reviewNotes?: string;
 }
 
+export interface ServiceCategory {
+  _id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  icon?: string;
+  isActive?: boolean;
+  sortOrder?: number;
+}
+
 export type VehicleType = '2_wheeler' | '3_wheeler' | '4_wheeler';
 
 export interface VehiclePreference {
@@ -803,6 +813,7 @@ export interface Job {
   contactInfo?: string;
   interestedUsers?: InterestedUserEntry[];
   distanceKm?: number | null;
+  category?: ServiceCategory | string | null;
 }
 
 export interface JobResponse {
@@ -842,6 +853,7 @@ export interface CreateJobPayload {
   responsePreference?: 'direct_contact' | 'show_interest';
   attachments?: string[];
   distanceKm?: number | null;
+  category?: string | null;
 }
 
 export interface HotJobsResponse {

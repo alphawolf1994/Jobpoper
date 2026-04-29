@@ -14,6 +14,7 @@ export const createJobApi = async (jobData: {
     responsePreference?: 'direct_contact' | 'show_interest';
     attachments?: string[];
     distanceKm?: number | null;
+    category?: string | null;
 }) => {
     try {
         // Build multipart form data
@@ -46,6 +47,9 @@ export const createJobApi = async (jobData: {
             !Number.isNaN(jobData.distanceKm)
         ) {
             formData.append("distanceKm", String(jobData.distanceKm));
+        }
+        if (jobData.category) {
+            formData.append("category", jobData.category);
         }
 console.log("Job Data Attachments:", formData);
         // Append up to 5 images using the same field name: attachments
@@ -101,6 +105,7 @@ export const updateJobApi = async (jobId: string, jobData: {
     attachments?: string[];
     existingAttachments?: string[];
     distanceKm?: number | null;
+    category?: string | null;
 }) => {
     try {
         // Build multipart form data
@@ -130,6 +135,10 @@ export const updateJobApi = async (jobId: string, jobData: {
             !Number.isNaN(jobData.distanceKm)
         ) {
             formData.append("distanceKm", String(jobData.distanceKm));
+        }
+        if (jobData.category !== undefined) {
+            // Empty string clears the category on the backend
+            formData.append("category", jobData.category ?? "");
         }
         // Existing attachments as JSON string
         if (jobData.existingAttachments) {
@@ -187,17 +196,24 @@ export const getUserJobsApi = async () => {
 };
 
 // Get hot jobs API
-export const getHotJobsApi = async (latitude: number, longitude: number, page: number = 1, limit: number = 10, sortOrder: string = 'desc') => {
+export const getHotJobsApi = async (
+    latitude: number,
+    longitude: number,
+    page: number = 1,
+    limit: number = 10,
+    sortOrder: string = 'desc',
+    category?: string | null,
+) => {
     try {
-        const res = await axiosInstance.get("/jobs/hot", {
-            params: {
-                latitude,
-                longitude,
-                page,
-                limit,
-                sortOrder
-            }
-        });
+        const params: any = {
+            latitude,
+            longitude,
+            page,
+            limit,
+            sortOrder
+        };
+        if (category) params.category = category;
+        const res = await axiosInstance.get("/jobs/hot", { params });
         if (__DEV__) {
             console.log("[getHotJobsApi] response:", JSON.stringify({ status: res.data?.status, jobsCount: res.data?.data?.jobs?.length, latitude, longitude }));
         }
@@ -214,11 +230,12 @@ export const getHotJobsApi = async (latitude: number, longitude: number, page: n
 export const searchHotJobsApi = async (
     latitude: number,
     longitude: number,
-    search: string, 
-    page: number = 1, 
-    limit: number = 10, 
-    sortBy?: string, 
-    sortOrder: string = 'desc'
+    search: string,
+    page: number = 1,
+    limit: number = 10,
+    sortBy?: string,
+    sortOrder: string = 'desc',
+    category?: string | null,
 ) => {
     try {
         const params: any = {
@@ -232,6 +249,7 @@ export const searchHotJobsApi = async (
         if (sortBy) {
             params.sortBy = sortBy;
         }
+        if (category) params.category = category;
         const res = await axiosInstance.get("/jobs/search/hot", {
             params
         });
@@ -245,11 +263,12 @@ export const searchHotJobsApi = async (
 export const searchListedJobsApi = async (
     latitude: number,
     longitude: number,
-    search: string, 
-    page: number = 1, 
-    limit: number = 10, 
-    sortBy?: string, 
-    sortOrder: string = 'desc'
+    search: string,
+    page: number = 1,
+    limit: number = 10,
+    sortBy?: string,
+    sortOrder: string = 'desc',
+    category?: string | null,
 ) => {
     try {
         const params: any = {
@@ -263,6 +282,7 @@ export const searchListedJobsApi = async (
         if (sortBy) {
             params.sortBy = sortBy;
         }
+        if (category) params.category = category;
         const res = await axiosInstance.get("/jobs/search/normal", {
             params
         });
@@ -273,17 +293,24 @@ export const searchListedJobsApi = async (
 };
 
 // Get listed jobs API
-export const getListedJobsApi = async (latitude: number, longitude: number, page: number = 1, limit: number = 10, sortOrder: string = 'desc') => {
+export const getListedJobsApi = async (
+    latitude: number,
+    longitude: number,
+    page: number = 1,
+    limit: number = 10,
+    sortOrder: string = 'desc',
+    category?: string | null,
+) => {
     try {
-        const res = await axiosInstance.get("/jobs/normal", {
-            params: {
-                latitude,
-                longitude,
-                page,
-                limit,
-                sortOrder
-            }
-        });
+        const params: any = {
+            latitude,
+            longitude,
+            page,
+            limit,
+            sortOrder
+        };
+        if (category) params.category = category;
+        const res = await axiosInstance.get("/jobs/normal", { params });
         if (__DEV__) {
             console.log("[getListedJobsApi] response:", JSON.stringify({ status: res.data?.status, jobsCount: res.data?.data?.jobs?.length, latitude, longitude }));
         }

@@ -17,9 +17,11 @@ import MyTextInput from '../../components/MyTextInput';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import { getAllHotJobsPaginated, searchHotJobsPaginated } from '../../redux/slices/jobSlice';
+import { fetchServiceCategories } from '../../redux/slices/serviceCategorySlice';
 import { AppDispatch, RootState } from '../../redux/store';
-import { Job } from '../../interface/interfaces';
+import { Job, ServiceCategory } from '../../interface/interfaces';
 import { IMAGE_BASE_URL } from '@/src/api/baseURL';
+import CategoryPickerSheet from '../../components/CategoryPickerSheet';
 
 const HotJobsScreen = () => {
   const navigation = useNavigation<any>();
@@ -32,6 +34,15 @@ const HotJobsScreen = () => {
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isInitialMountRef = useRef(true);
 
+  // Category filter state
+  const [filterCategory, setFilterCategory] = useState<ServiceCategory | null>(null);
+  const [showFilterSheet, setShowFilterSheet] = useState(false);
+  const {
+    items: categoryItems,
+    loading: categoriesLoading,
+    error: categoriesError,
+  } = useSelector((state: RootState) => state.serviceCategories);
+
   // Get location from Redux state, user profile, or use default
   const getLocation = useCallback(() => {
     if (currentLocation) {
@@ -43,31 +54,34 @@ const HotJobsScreen = () => {
     return "New York, NY, USA";
   }, [currentLocation, user?.profile?.location]);
 
-  // Load jobs (default or search)
-  const loadJobs = useCallback((page: number = 1, append: boolean = false, searchTerm?: string) => {
+  // Load jobs (default or search) — always passes the active category filter
+  const loadJobs = useCallback((page: number = 1, append: boolean = false, searchTerm?: string, categoryId?: string | null) => {
     const location = getLocation();
-    
+    const categoryParam = categoryId !== undefined ? categoryId : (filterCategory?._id ?? null);
+
     if (searchTerm && searchTerm.trim()) {
       // Use search API
-      dispatch(searchHotJobsPaginated({ 
+      dispatch(searchHotJobsPaginated({
         location,
         search: searchTerm.trim(),
         page,
         limit: 10,
         sortOrder: 'desc',
-        append
+        append,
+        category: categoryParam,
       }));
     } else {
       // Use default API
-      dispatch(getAllHotJobsPaginated({ 
+      dispatch(getAllHotJobsPaginated({
         location,
         page,
         limit: 10,
         sortOrder: 'desc',
-        append
+        append,
+        category: categoryParam,
       }));
     }
-  }, [dispatch, getLocation]);
+  }, [dispatch, getLocation, filterCategory]);
 
   // Initial load (only on mount)
   useEffect(() => {
@@ -75,6 +89,25 @@ const HotJobsScreen = () => {
     isInitialMountRef.current = false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Fetch service categories once on mount (cached in redux)
+  useEffect(() => {
+    if (!categoryItems || categoryItems.length === 0) {
+      dispatch(fetchServiceCategories());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSelectCategory = useCallback((cat: ServiceCategory) => {
+    setFilterCategory(cat);
+    // Refetch immediately with the new category so user sees filtered results without waiting
+    loadJobs(1, false, searchQuery, cat._id);
+  }, [loadJobs, searchQuery]);
+
+  const handleResetCategory = useCallback(() => {
+    setFilterCategory(null);
+    loadJobs(1, false, searchQuery, null);
+  }, [loadJobs, searchQuery]);
 
   // Debounced search effect
   useEffect(() => {
@@ -240,15 +273,59 @@ const HotJobsScreen = () => {
           />
         </View>
         {searchQuery.trim().length > 0 && (
-          <TouchableOpacity 
-            style={styles.clearButton} 
+          <TouchableOpacity
+            style={styles.clearButton}
             onPress={handleClearSearch}
             activeOpacity={0.7}
           >
             <Ionicons name="close-circle" size={30} color="#9AA0A6" />
           </TouchableOpacity>
         )}
+
+        {/* Filter button */}
+        <TouchableOpacity
+          style={[styles.filterBtn, filterCategory && styles.filterBtnActive]}
+          onPress={() => setShowFilterSheet(true)}
+          activeOpacity={0.85}
+        >
+          <Ionicons
+            name="options-outline"
+            size={22}
+            color={filterCategory ? Colors.white : Colors.primary}
+          />
+          {filterCategory ? <View style={styles.filterDot} /> : null}
+        </TouchableOpacity>
       </View>
+
+      {/* Active filter chip */}
+      {filterCategory ? (
+        <View style={styles.activeFilterRow}>
+          <View style={styles.activeFilterChip}>
+            <Ionicons name="grid-outline" size={14} color={Colors.primary} />
+            <Text style={styles.activeFilterText} numberOfLines={1}>
+              {filterCategory.name}
+            </Text>
+            <TouchableOpacity onPress={handleResetCategory} hitSlop={10}>
+              <Ionicons name="close-circle" size={16} color={Colors.primary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : null}
+
+      <CategoryPickerSheet
+        visible={showFilterSheet}
+        onClose={() => setShowFilterSheet(false)}
+        onSelect={handleSelectCategory}
+        categories={categoryItems}
+        loading={categoriesLoading}
+        error={categoriesError}
+        selectedId={filterCategory?._id ?? null}
+        onRetry={() => dispatch(fetchServiceCategories())}
+        showReset
+        onReset={handleResetCategory}
+        title="Filter by category"
+        subtitle="Narrow results to a single service category"
+      />
 
       {loading && allHotJobs.length === 0 ? (
         <View style={styles.loadingContainer}>
@@ -310,6 +387,59 @@ const styles = StyleSheet.create({
     backgroundColor: '#e9e9eaff',
     paddingHorizontal: 14,
     borderWidth: 0,
+  },
+  filterBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    marginTop: 6,
+    marginLeft: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EEF4FF',
+    borderWidth: 1,
+    borderColor: '#DCE7FF',
+    position: 'relative',
+  },
+  filterBtnActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  filterDot: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FFC53D',
+    borderWidth: 1,
+    borderColor: Colors.white,
+  },
+  activeFilterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 4,
+  },
+  activeFilterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: '#EEF4FF',
+    borderWidth: 1,
+    borderColor: '#DCE7FF',
+    maxWidth: '90%',
+  },
+  activeFilterText: {
+    fontSize: 13,
+    color: Colors.primary,
+    fontWeight: '700',
+    flexShrink: 1,
   },
   listContent: {
     paddingHorizontal: 16,

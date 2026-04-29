@@ -19,9 +19,11 @@ import { fetchLocations } from '../../redux/slices/locationsSlice';
 import { useAlertModal } from "../../hooks/useAlertModal";
 import { formatDateDDMMYYYY } from "../../utils";
 import { calculateDistanceKm, formatDistanceLabel } from "../../utils/geocode";
-import { Job, SavedLocationData } from '../../interface/interfaces';
+import { Job, SavedLocationData, ServiceCategory } from '../../interface/interfaces';
 import { IMAGE_BASE_URL } from '../../api/baseURL';
 import VerificationBottomSheet, { VerificationBottomSheetHandle } from "../../components/VerificationBottomSheet";
+import CategoryPickerSheet from "../../components/CategoryPickerSheet";
+import { fetchServiceCategories } from "../../redux/slices/serviceCategorySlice";
 
 const PostJobScreen = () => {
   const navigation = useNavigation();
@@ -101,6 +103,15 @@ const PostJobScreen = () => {
   const [showLocationModal, setShowLocationModal] = useState(false);
   const [locationModalType, setLocationModalType] = useState<'onSite' | 'pickupSource' | 'pickupDestination'>('onSite');
 
+  // Service category state
+  const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | null>(null);
+  const [showCategorySheet, setShowCategorySheet] = useState(false);
+  const {
+    items: categoryItems,
+    loading: categoriesLoading,
+    error: categoriesError,
+  } = useSelector((state: RootState) => state.serviceCategories);
+
   // Date & Time pickers state
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
@@ -147,6 +158,21 @@ const PostJobScreen = () => {
     }, [dispatch, lastAddedLocation, locationModalType, user?.isVerified])
   );
 
+  // Fetch service categories on mount (cached in redux)
+  React.useEffect(() => {
+    if (!categoryItems || categoryItems.length === 0) {
+      dispatch(fetchServiceCategories());
+    }
+  }, [dispatch, categoryItems?.length]);
+
+  // If edit data only provides a category id string, resolve it from the loaded list
+  React.useEffect(() => {
+    if (!selectedCategory && isEditMode && jobDataToEdit?.category && typeof jobDataToEdit.category === 'string') {
+      const found = categoryItems.find(c => c._id === jobDataToEdit.category);
+      if (found) setSelectedCategory(found);
+    }
+  }, [categoryItems, isEditMode, jobDataToEdit, selectedCategory]);
+
   // Initialize form with job data when in edit mode
   React.useEffect(() => {
     if (isEditMode && jobDataToEdit) {
@@ -160,6 +186,11 @@ const PostJobScreen = () => {
         time: jobDataToEdit.scheduledTime || '',
         urgency: jobDataToEdit.urgency || '',
       });
+
+      // Prefill service category from edit job data — accepts populated object or raw id string
+      if (jobDataToEdit.category && typeof jobDataToEdit.category === 'object') {
+        setSelectedCategory(jobDataToEdit.category as ServiceCategory);
+      }
 
       // Set job type
       if (jobDataToEdit.jobType) {
@@ -401,6 +432,10 @@ const PostJobScreen = () => {
       showErrorAlert('Please enter the cost/budget');
       return;
     }
+    if (!selectedCategory) {
+      showErrorAlert('Please select a service category');
+      return;
+    }
     // Validate locations based on job type
     if (jobType === 'OnSite' && !selectedOnSiteLocation) {
       showErrorAlert('Please select the job location');
@@ -441,6 +476,8 @@ const PostJobScreen = () => {
         existingAttachments: keptExistingAttachments,
         // Only persist distance for Pickup jobs
         distanceKm: jobType === 'Pickup' ? pickupDistanceKm : null,
+        // Service category id (backend accepts ObjectId or slug)
+        category: selectedCategory ? selectedCategory._id : null,
       };
 
       let result;
@@ -470,6 +507,7 @@ const PostJobScreen = () => {
           setSelectedOnSiteLocation(null);
           setSelectedPickupSource(null);
           setSelectedPickupDestination(null);
+          setSelectedCategory(null);
           setResponsePreference('direct_contact');
           setAttachments([]);
           setExistingAttachments([]);
@@ -552,6 +590,36 @@ const PostJobScreen = () => {
             <Text style={styles.currencyNote}>
               Payment as per local currency of your location.
             </Text>
+          </View>
+
+          {/* Service Category */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Service Category *</Text>
+            <TouchableOpacity
+              onPress={() => setShowCategorySheet(true)}
+              activeOpacity={0.85}
+            >
+              <View style={[styles.dropdown, styles.inputRow, styles.locationSelectable]}>
+                <View style={styles.categoryLeft}>
+                  <Ionicons
+                    name="grid-outline"
+                    size={20}
+                    color={selectedCategory ? Colors.primary : "#9AA0A6"}
+                    style={{ marginRight: 10 }}
+                  />
+                  <Text
+                    style={selectedCategory ? styles.dropdownText : styles.placeholder}
+                    numberOfLines={1}
+                  >
+                    {selectedCategory ? selectedCategory.name : "Select a service category..."}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-down" size={20} color="#9AA0A6" />
+              </View>
+            </TouchableOpacity>
+            {categoriesError && categoryItems.length === 0 ? (
+              <Text style={styles.categoryError}>{categoriesError}</Text>
+            ) : null}
           </View>
 
           {/* Job Type Selection */}
@@ -913,6 +981,18 @@ const PostJobScreen = () => {
         </ScrollView>
         {alertModal}
         <VerificationBottomSheet ref={verificationSheetRef} />
+
+        {/* Category Picker Sheet */}
+        <CategoryPickerSheet
+          visible={showCategorySheet}
+          onClose={() => setShowCategorySheet(false)}
+          onSelect={(cat) => setSelectedCategory(cat)}
+          categories={categoryItems}
+          loading={categoriesLoading}
+          error={categoriesError}
+          selectedId={selectedCategory?._id ?? null}
+          onRetry={() => dispatch(fetchServiceCategories())}
+        />
       </SafeAreaView>
 
       {/* Location Selection Modal */}
@@ -1052,6 +1132,17 @@ const styles = StyleSheet.create({
     color: Colors.gray,
     marginTop: 6,
     fontStyle: 'italic',
+  },
+  categoryLeft: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    minWidth: 0,
+  },
+  categoryError: {
+    marginTop: 6,
+    fontSize: 12,
+    color: '#E35D5D',
   },
   input: {
     height: 50,

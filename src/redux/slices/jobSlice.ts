@@ -170,16 +170,17 @@ export const getUserJobs = createAsyncThunk(
 // Get Hot Jobs Async Thunk
 export const getHotJobs = createAsyncThunk(
   "job/getHotJobs",
-  async ({ location, page = 1, limit = 10, sortOrder = 'desc' }: { 
-    location: string; 
-    page?: number; 
-    limit?: number; 
-    sortOrder?: string; 
+  async ({ location, page = 1, limit = 10, sortOrder = 'desc', category }: {
+    location: string;
+    page?: number;
+    limit?: number;
+    sortOrder?: string;
+    category?: string | null;
   }, { getState, rejectWithValue }) => {
     try {
       const state = getState() as RootState;
       const { latitude, longitude } = await resolveCoordinates(state);
-      const response = await getHotJobsApi(latitude, longitude, page, limit, sortOrder);
+      const response = await getHotJobsApi(latitude, longitude, page, limit, sortOrder, category ?? null);
       return response;
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to fetch hot jobs");
@@ -190,16 +191,17 @@ export const getHotJobs = createAsyncThunk(
 // Get Listed Jobs Async Thunk
 export const getListedJobs = createAsyncThunk(
   "job/getListedJobs",
-  async ({ location, page = 1, limit = 10, sortOrder = 'desc' }: { 
-    location: string; 
-    page?: number; 
-    limit?: number; 
-    sortOrder?: string; 
+  async ({ location, page = 1, limit = 10, sortOrder = 'desc', category }: {
+    location: string;
+    page?: number;
+    limit?: number;
+    sortOrder?: string;
+    category?: string | null;
   }, { getState, rejectWithValue }) => {
     try {
       const state = getState() as RootState;
       const { latitude, longitude } = await resolveCoordinates(state);
-      const response = await getListedJobsApi(latitude, longitude, page, limit, sortOrder);
+      const response = await getListedJobsApi(latitude, longitude, page, limit, sortOrder, category ?? null);
       return response;
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to fetch listed jobs");
@@ -210,17 +212,18 @@ export const getListedJobs = createAsyncThunk(
 // Get All Hot Jobs with Pagination (for AllHotJobsScreen)
 export const getAllHotJobsPaginated = createAsyncThunk(
   "job/getAllHotJobsPaginated",
-  async ({ location, page = 1, limit = 10, sortOrder = 'desc', append = false }: { 
-    location: string; 
-    page?: number; 
-    limit?: number; 
+  async ({ location, page = 1, limit = 10, sortOrder = 'desc', append = false, category }: {
+    location: string;
+    page?: number;
+    limit?: number;
     sortOrder?: string;
     append?: boolean;
+    category?: string | null;
   }, { getState, rejectWithValue }) => {
     try {
       const state = getState() as RootState;
       const { latitude, longitude } = await resolveCoordinates(state);
-      const response = await getHotJobsApi(latitude, longitude, page, limit, sortOrder);
+      const response = await getHotJobsApi(latitude, longitude, page, limit, sortOrder, category ?? null);
       return { ...response, append };
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to fetch hot jobs");
@@ -231,27 +234,29 @@ export const getAllHotJobsPaginated = createAsyncThunk(
 // Search Hot Jobs with Pagination
 export const searchHotJobsPaginated = createAsyncThunk(
   "job/searchHotJobsPaginated",
-  async ({ 
-    location, 
-    search, 
-    page = 1, 
-    limit = 10, 
-    sortBy, 
-    sortOrder = 'desc', 
-    append = false 
-  }: { 
-    location: string; 
+  async ({
+    location,
+    search,
+    page = 1,
+    limit = 10,
+    sortBy,
+    sortOrder = 'desc',
+    append = false,
+    category,
+  }: {
+    location: string;
     search: string;
-    page?: number; 
-    limit?: number; 
+    page?: number;
+    limit?: number;
     sortBy?: string;
     sortOrder?: string;
     append?: boolean;
+    category?: string | null;
   }, { getState, rejectWithValue }) => {
     try {
       const state = getState() as RootState;
       const { latitude, longitude } = await resolveCoordinates(state);
-      const response = await searchHotJobsApi(latitude, longitude, search, page, limit, sortBy, sortOrder);
+      const response = await searchHotJobsApi(latitude, longitude, search, page, limit, sortBy, sortOrder, category ?? null);
       return { ...response, append };
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to search hot jobs");
@@ -262,27 +267,29 @@ export const searchHotJobsPaginated = createAsyncThunk(
 // Search Listed Jobs with Pagination
 export const searchListedJobsPaginated = createAsyncThunk(
   "job/searchListedJobsPaginated",
-  async ({ 
-    location, 
-    search, 
-    page = 1, 
-    limit = 10, 
-    sortBy, 
-    sortOrder = 'desc', 
-    append = false 
-  }: { 
-    location: string; 
+  async ({
+    location,
+    search,
+    page = 1,
+    limit = 10,
+    sortBy,
+    sortOrder = 'desc',
+    append = false,
+    category,
+  }: {
+    location: string;
     search: string;
-    page?: number; 
-    limit?: number; 
+    page?: number;
+    limit?: number;
     sortBy?: string;
     sortOrder?: string;
     append?: boolean;
+    category?: string | null;
   }, { getState, rejectWithValue }) => {
     try {
       const state = getState() as RootState;
       const { latitude, longitude } = await resolveCoordinates(state);
-      const response = await searchListedJobsApi(latitude, longitude, search, page, limit, sortBy, sortOrder);
+      const response = await searchListedJobsApi(latitude, longitude, search, page, limit, sortBy, sortOrder, category ?? null);
       return { ...response, append };
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to search listed jobs");
@@ -293,17 +300,18 @@ export const searchListedJobsPaginated = createAsyncThunk(
 // Get All Listed Jobs with Pagination (for AllListedJobsScreen)
 export const getAllListedJobsPaginated = createAsyncThunk(
   "job/getAllListedJobsPaginated",
-  async ({ location, page = 1, limit = 10, sortOrder = 'desc', append = false }: { 
-    location: string; 
-    page?: number; 
-    limit?: number; 
+  async ({ location, page = 1, limit = 10, sortOrder = 'desc', append = false, category }: {
+    location: string;
+    page?: number;
+    limit?: number;
     sortOrder?: string;
     append?: boolean;
+    category?: string | null;
   }, { getState, rejectWithValue }) => {
     try {
       const state = getState() as RootState;
       const { latitude, longitude } = await resolveCoordinates(state);
-      const response = await getListedJobsApi(latitude, longitude, page, limit, sortOrder);
+      const response = await getListedJobsApi(latitude, longitude, page, limit, sortOrder, category ?? null);
       return { ...response, append };
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to fetch listed jobs");
