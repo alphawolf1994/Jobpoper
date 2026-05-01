@@ -8,6 +8,7 @@ import notificationSlice from './slices/notificationSlice';
 import verificationSlice from './slices/verificationSlice';
 import adminSlice from './slices/adminSlice';
 import serviceCategorySlice from './slices/serviceCategorySlice';
+import businessCategorySlice from './slices/businessCategorySlice';
 import { authMiddleware } from './middleware/authMiddleware';
 
 // Configuration for redux-persist
@@ -26,6 +27,7 @@ const rootReducer = combineReducers({
   verification: verificationSlice,
   admin: adminSlice,
   serviceCategories: serviceCategorySlice,
+  businessCategories: businessCategorySlice,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

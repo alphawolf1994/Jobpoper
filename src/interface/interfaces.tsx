@@ -31,6 +31,16 @@ export interface ServiceCategory {
   sortOrder?: number;
 }
 
+export interface BusinessCategory {
+  _id: string;
+  name: string;
+  slug: string;
+  description?: string;
+  icon?: string;
+  isActive?: boolean;
+  sortOrder?: number;
+}
+
 export type VehicleType = '2_wheeler' | '3_wheeler' | '4_wheeler';
 
 export interface VehiclePreference {

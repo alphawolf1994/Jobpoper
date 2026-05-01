@@ -167,6 +167,13 @@ const ProfileScreen = () => {
           />
 
           <MenuItem
+            icon="storefront-outline"
+            label="Are you a business?"
+            onPress={() => (navigation as any).navigate('BusinessProfilesScreen')}
+            iconColor="#14B8A6"
+          />
+
+          <MenuItem
             icon="bicycle-outline"
             label="Pickup Service Preference"
             onPress={() => (navigation as any).navigate('VehiclePreferenceScreen')}

@@ -16,6 +16,8 @@ import ProfileScreen from "./screens/ProfileScreen";
 import UserDetailsScreen from "./screens/UserDetailsScreen";
 import VehiclePreferenceScreen from "./screens/VehiclePreferenceScreen";
 import ChangePinScreen from "./screens/ChangePinScreen";
+import BusinessProfilesScreen from "./screens/BusinessProfilesScreen";
+import AddBusinessProfileScreen from "./screens/AddBusinessProfileScreen";
 import PostJobScreen from "./screens/PostJobScreen";
 import JobDetailsScreen from "./screens/JobDetailsScreen";
 import { NotFound } from "./screens/NotFound";
@@ -243,6 +245,14 @@ const RootStack = createNativeStackNavigator({
     },
     ChangePinScreen: {
       screen: ChangePinScreen,
+      options: { headerShown: false },
+    },
+    BusinessProfilesScreen: {
+      screen: BusinessProfilesScreen,
+      options: { headerShown: false },
+    },
+    AddBusinessProfileScreen: {
+      screen: AddBusinessProfileScreen,
       options: { headerShown: false },
     },
 
