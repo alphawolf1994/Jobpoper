@@ -152,6 +152,8 @@ const NotificationScreen = () => {
         navigation.navigate("JobDetailsScreen", { jobId: id });
       } else if (type === "verification") {
         navigation.navigate("VerificationDetailsScreen");
+      } else if (type === "business-profile") {
+        navigation.navigate("BusinessProfilesScreen");
       }
     },
     [navigation, handleMarkAsRead]
@@ -405,4 +407,3 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 });
-

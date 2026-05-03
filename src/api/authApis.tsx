@@ -193,6 +193,14 @@ export const checkPhoneApi = async (phoneNumber: string) => {
         const res = await axiosInstance.post("/auth/check-phone", payload);
         return res.data;
     } catch (error: any) {
+        if (error.code === "ECONNABORTED") {
+            throw new Error("The server took too long to respond. Please check your connection and try again.");
+        }
+
+        if (!error.response && error.message) {
+            throw new Error(error.message);
+        }
+
         throw new Error(error.response?.data?.message || "Failed to check phone number");
     }
 };

@@ -51,6 +51,42 @@ export const getAdminJobByIdApi = async (jobId: string) => {
   }
 };
 
+// ─── Business Approvals ──────────────────────────────────────────────────────
+
+export const getAdminBusinessApprovalRequestsApi = async (
+  limit: number = 100
+) => {
+  try {
+    const res = await axiosInstance.get("/admin/business-profiles/pending", {
+      params: { limit },
+    });
+    return res.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+        "Failed to fetch business approval requests"
+    );
+  }
+};
+
+export const reviewBusinessProfileApi = async (
+  profileId: string,
+  data: { status: "approved" | "rejected"; rejectionReason?: string }
+) => {
+  try {
+    const res = await axiosInstance.put(
+      `/admin/business-profiles/${profileId}/review`,
+      data
+    );
+    return res.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+        "Failed to review business profile request"
+    );
+  }
+};
+
 // ─── Verifications ────────────────────────────────────────────────────────────
 
 export const getAdminVerificationsApi = async () => {

@@ -5,6 +5,8 @@ import {
   getAdminUserByIdApi,
   getAdminJobsApi,
   getAdminJobByIdApi,
+  getAdminBusinessApprovalRequestsApi,
+  reviewBusinessProfileApi,
   getAdminVerificationsApi,
   reviewVerificationApi,
 } from "../../api/adminApis";
@@ -76,12 +78,37 @@ export interface AdminJob {
   }>;
 }
 
+export interface AdminBusinessApprovalRequest {
+  id: string;
+  businessName: string;
+  category?: { id: string; name: string; slug: string } | string | null;
+  address?: string;
+  phoneNumber?: string;
+  status: "pending" | "approved" | "rejected";
+  rejectionReason?: string | null;
+  submittedAt: string;
+  createdAt: string;
+  updatedAt?: string;
+  user: {
+    id: string | null;
+    phoneNumber: string;
+    fullName: string;
+  };
+  images?: {
+    id: string;
+    url: string;
+    isPrimary?: boolean;
+    uploadedAt?: string | null;
+  }[];
+}
+
 export interface DashboardStats {
   totalUsers: number;
   totalJobs: number;
   activeJobs: number;
   verifiedUsers: number;
   pendingVerifications: number;
+  pendingBusinessApprovals: number;
 }
 
 interface AdminState {
@@ -100,6 +127,11 @@ interface AdminState {
   selectedJob: AdminJob | null;
   jobsLoading: boolean;
   jobsError: string | null;
+
+  businessApprovalRequests: AdminBusinessApprovalRequest[];
+  businessApprovalsLoading: boolean;
+  businessApprovalsError: string | null;
+  businessReviewLoading: boolean;
 
   verifications: AdminUser[];
   verificationsLoading: boolean;
@@ -123,6 +155,11 @@ const initialState: AdminState = {
   selectedJob: null,
   jobsLoading: false,
   jobsError: null,
+
+  businessApprovalRequests: [],
+  businessApprovalsLoading: false,
+  businessApprovalsError: null,
+  businessReviewLoading: false,
 
   verifications: [],
   verificationsLoading: false,
@@ -172,6 +209,41 @@ export const fetchAdminJobById = createAsyncThunk(
   }
 );
 
+export const fetchAdminBusinessApprovalRequests = createAsyncThunk(
+  "admin/fetchBusinessApprovalRequests",
+  async (limit: number = 100, { rejectWithValue }) => {
+    try { return await getAdminBusinessApprovalRequestsApi(limit); }
+    catch (e: any) { return rejectWithValue(e?.message || "Failed to fetch business approval requests"); }
+  }
+);
+
+export const reviewBusinessProfile = createAsyncThunk(
+  "admin/reviewBusinessProfile",
+  async (
+    {
+      profileId,
+      status,
+      rejectionReason,
+    }: {
+      profileId: string;
+      status: "approved" | "rejected";
+      rejectionReason?: string;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      return await reviewBusinessProfileApi(profileId, {
+        status,
+        rejectionReason,
+      });
+    } catch (e: any) {
+      return rejectWithValue(
+        e?.message || "Failed to review business profile request"
+      );
+    }
+  }
+);
+
 export const fetchAdminVerifications = createAsyncThunk(
   "admin/fetchVerifications",
   async (_, { rejectWithValue }) => {
@@ -201,6 +273,7 @@ const adminSlice = createSlice({
       state.dashboardError = null;
       state.usersError = null;
       state.jobsError = null;
+      state.businessApprovalsError = null;
       state.verificationsError = null;
     },
     clearSelectedUser: (state) => { state.selectedUser = null; },
@@ -225,6 +298,7 @@ const adminSlice = createSlice({
             activeJobs:           s.activeJobs               ?? 0,
             verifiedUsers:        s.verifiedUsers            ?? 0,
             pendingVerifications: s.pendingVerificationRequests ?? 0,
+            pendingBusinessApprovals: s.pendingBusinessApprovalRequests ?? 0,
           };
           state.recentUsers = data.recentUsers ?? [];
           state.recentJobs  = data.recentJobs  ?? [];
@@ -297,6 +371,45 @@ const adminSlice = createSlice({
       .addCase(fetchAdminJobById.rejected, (state, action) => {
         state.jobsLoading = false;
         state.jobsError = action.payload as string;
+      });
+
+    // ── Business approval requests ───────────────────────────────────────────
+    builder
+      .addCase(fetchAdminBusinessApprovalRequests.pending, (state) => {
+        state.businessApprovalsLoading = true;
+        state.businessApprovalsError = null;
+      })
+      .addCase(fetchAdminBusinessApprovalRequests.fulfilled, (state, action) => {
+        state.businessApprovalsLoading = false;
+        state.businessApprovalRequests =
+          action.payload?.data?.requests ?? [];
+      })
+      .addCase(fetchAdminBusinessApprovalRequests.rejected, (state, action) => {
+        state.businessApprovalsLoading = false;
+        state.businessApprovalsError = action.payload as string;
+      })
+      .addCase(reviewBusinessProfile.pending, (state) => {
+        state.businessReviewLoading = true;
+        state.businessApprovalsError = null;
+      })
+      .addCase(reviewBusinessProfile.fulfilled, (state, action) => {
+        state.businessReviewLoading = false;
+        const reviewedId = action.payload?.data?.profile?.id;
+        if (reviewedId) {
+          state.businessApprovalRequests = (
+            state.businessApprovalRequests ?? []
+          ).filter((p) => p.id !== reviewedId);
+          if (state.dashboardStats?.pendingBusinessApprovals) {
+            state.dashboardStats.pendingBusinessApprovals = Math.max(
+              0,
+              state.dashboardStats.pendingBusinessApprovals - 1
+            );
+          }
+        }
+      })
+      .addCase(reviewBusinessProfile.rejected, (state, action) => {
+        state.businessReviewLoading = false;
+        state.businessApprovalsError = action.payload as string;
       });
 
     // ── Verifications list ─────────────────────────────────────────────────────

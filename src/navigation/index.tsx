@@ -1,17 +1,15 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
-import { HeaderButton, Text } from "@react-navigation/elements";
 import {
   createStaticNavigation,
   StaticParamList,
 } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { Image, View } from "react-native";
-import bell from "../assets/bell.png";
-import newspaper from "../assets/newspaper.png";
 import HomeScreen from "./screens/HomeScreen";
 import HotJobsScreen from "./screens/HotJobsScreen";
 import AllListedJobsScreen from "./screens/AllListedJobsScreen";
 import MyJobsScreen from "./screens/MyJobsScreen";
+import BusinessTabScreen from "./screens/BusinessTabScreen";
+import BusinessDetailScreen from "./screens/BusinessDetailScreen";
 import ProfileScreen from "./screens/ProfileScreen";
 import UserDetailsScreen from "./screens/UserDetailsScreen";
 import VehiclePreferenceScreen from "./screens/VehiclePreferenceScreen";
@@ -34,7 +32,7 @@ import PhoneVerificationScreen from "./screens/PhoneVerificationScreen";
 
 import React from "react";
 
-import { AntDesign, Feather, Fontisto, Ionicons } from "@expo/vector-icons";
+import { Feather, Fontisto, Ionicons } from "@expo/vector-icons";
 
 import { Colors } from "../utils";
 
@@ -59,6 +57,8 @@ import AdminJobsScreen from "./screens/admin/AdminJobsScreen";
 import AdminJobDetailScreen from "./screens/admin/AdminJobDetailScreen";
 import AdminVerificationsScreen from "./screens/admin/AdminVerificationsScreen";
 import AdminVerificationDetailScreen from "./screens/admin/AdminVerificationDetailScreen";
+import AdminBusinessApprovalsScreen from "./screens/admin/AdminBusinessApprovalsScreen";
+import AdminBusinessApprovalDetailScreen from "./screens/admin/AdminBusinessApprovalDetailScreen";
 
 const ADMIN_ACCENT = "#1E40AF";
 
@@ -74,11 +74,15 @@ const BottomTabNavigator = () => {
             Home: "home",
             "Hot Jobs": "fire",
             "My Jobs": "briefcase",
+            Business: "storefront-outline",
             Profile: "user",
           };
           const iconName = map[route.name] ?? "circle";
           if (iconName === "fire") {
             return <Fontisto name="fire" size={size} color={color} />;
+          }
+          if (iconName === "storefront-outline") {
+            return <Ionicons name="storefront-outline" size={size} color={color} />;
           }
           return <Feather name={iconName as any} size={size} color={color} />;
         },
@@ -90,6 +94,7 @@ const BottomTabNavigator = () => {
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Hot Jobs" component={HotJobsScreen} />
       <Tab.Screen name="My Jobs" component={MyJobsScreen} />
+      <Tab.Screen name="Business" component={BusinessTabScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
   );
@@ -108,6 +113,7 @@ const AdminTabNavigator = () => {
             AdminUsersTab: "people-outline",
             AdminJobsTab: "briefcase-outline",
             AdminVerificationsTab: "shield-checkmark-outline",
+            AdminBusinessApprovalsTab: "storefront-outline",
           };
           const iconName = iconMap[route.name] ?? "circle-outline";
           return <Ionicons name={iconName as any} size={size} color={color} />;
@@ -140,6 +146,11 @@ const AdminTabNavigator = () => {
         name="AdminVerificationsTab"
         component={AdminVerificationsScreen}
         options={{ title: "Verifications" }}
+      />
+      <AdminTab.Screen
+        name="AdminBusinessApprovalsTab"
+        component={AdminBusinessApprovalsScreen}
+        options={{ title: "Business" }}
       />
     </AdminTab.Navigator>
   );
@@ -183,6 +194,10 @@ const RootStack = createNativeStackNavigator({
     },
     AdminVerificationDetailScreen: {
       screen: AdminVerificationDetailScreen,
+      options: { headerShown: false },
+    },
+    AdminBusinessApprovalDetailScreen: {
+      screen: AdminBusinessApprovalDetailScreen,
       options: { headerShown: false },
     },
 
@@ -231,6 +246,10 @@ const RootStack = createNativeStackNavigator({
     },
     AllListedJobsScreen: {
       screen: AllListedJobsScreen,
+      options: { headerShown: false },
+    },
+    BusinessDetailScreen: {
+      screen: BusinessDetailScreen,
       options: { headerShown: false },
     },
 
@@ -310,7 +329,7 @@ const RootStack = createNativeStackNavigator({
 
 export const Navigation = createStaticNavigation(RootStack);
 
-type RootStackParamList = {};
+type RootStackParamList = StaticParamList<typeof RootStack>;
 declare global {
   namespace ReactNavigation {
     interface RootParamList extends RootStackParamList {}

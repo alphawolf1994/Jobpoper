@@ -16,6 +16,10 @@ module.exports = {
       },
       infoPlist: {
         ...appJson.expo.ios?.infoPlist,
+        NSAppTransportSecurity: {
+          NSAllowsArbitraryLoads: true,
+          NSAllowsLocalNetworking: true,
+        },
         NSUserNotificationsUsageDescription:
           "We send notifications for jobs, interest, and important updates on JobPoper.",
       },

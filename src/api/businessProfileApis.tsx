@@ -81,15 +81,29 @@ export const createBusinessProfileApi = async (
  * Server response shape:
  *   { status: "success", data: { profiles: [...], pagination: { ... } } }
  */
-export const listApprovedBusinessProfilesApi = async (
-    page: number = 1,
-    limit: number = 10
-) => {
+export interface ListApprovedBusinessProfilesParams {
+    page?: number;
+    limit?: number;
+    search?: string;
+    category?: string | null;
+}
+
+export const listApprovedBusinessProfilesApi = async ({
+    page = 1,
+    limit = 10,
+    search,
+    category,
+}: ListApprovedBusinessProfilesParams = {}) => {
     try {
         const safePage = Math.max(1, Math.floor(page));
         const safeLimit = Math.max(1, Math.min(50, Math.floor(limit)));
         const res = await axiosInstance.get("/business-profiles", {
-            params: { page: safePage, limit: safeLimit },
+            params: {
+                page: safePage,
+                limit: safeLimit,
+                search: search?.trim() || undefined,
+                category: category || undefined,
+            },
         });
         return res.data;
     } catch (error: any) {
@@ -189,6 +203,21 @@ export const updateBusinessProfileApi = async (
             error?.response?.data?.message ||
                 error?.message ||
                 "Failed to update business profile"
+        );
+    }
+};
+
+// Delete an approved/rejected business profile. Pending profiles are locked
+// until admin review completes.
+export const deleteBusinessProfileApi = async (profileId: string) => {
+    try {
+        const res = await axiosInstance.delete(`/business-profiles/${profileId}`);
+        return res.data;
+    } catch (error: any) {
+        throw new Error(
+            error?.response?.data?.message ||
+                error?.message ||
+                "Failed to delete business profile"
         );
     }
 };

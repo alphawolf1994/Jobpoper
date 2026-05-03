@@ -26,6 +26,7 @@
           "apiKey": "AIzaSyDx-5zOU35lqenxx6TCR-OkQRj6cHpi5-U"
         }
       },
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/adaptive-icon.png",

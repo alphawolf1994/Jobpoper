@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -7,14 +7,21 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
+  TextInput,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigation } from "@react-navigation/native";
 
 import { Colors } from "../../utils";
 import { listApprovedBusinessProfilesApi } from "../../api/businessProfileApis";
 import { IMAGE_BASE_URL } from "../../api/baseURL";
+import CategoryPickerSheet from "../../components/CategoryPickerSheet";
+import { AppDispatch, RootState } from "../../redux/store";
+import { fetchBusinessCategories } from "../../redux/slices/businessCategorySlice";
+import { BusinessCategory } from "../../interface/interfaces";
 
 const PAGE_SIZE = 10;
 
@@ -78,14 +85,29 @@ const initialPagination: PaginationState = {
  * marked, otherwise the first entry of the images array.
  */
 const BusinessTabScreen = () => {
+  const navigation = useNavigation<any>();
+  const dispatch = useDispatch<AppDispatch>();
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const filtersReadyRef = useRef(false);
+
   const [profiles, setProfiles] = useState<BusinessProfileItem[]>([]);
   const [pagination, setPagination] =
     useState<PaginationState>(initialPagination);
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] =
+    useState<BusinessCategory | null>(null);
+  const [showCategorySheet, setShowCategorySheet] = useState(false);
   const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const {
+    items: categoryItems,
+    loading: categoriesLoading,
+    error: categoriesError,
+  } = useSelector((state: RootState) => state.businessCategories);
 
   const fetchPage = useCallback(
     async (page: number, mode: "initial" | "refresh" | "append") => {
@@ -97,7 +119,12 @@ const BusinessTabScreen = () => {
       setError(null);
 
       try {
-        const res = await listApprovedBusinessProfilesApi(page, PAGE_SIZE);
+        const res = await listApprovedBusinessProfilesApi({
+          page,
+          limit: PAGE_SIZE,
+          search: searchQuery,
+          category: selectedCategory?._id,
+        });
         const fetched: BusinessProfileItem[] = res?.data?.profiles ?? [];
         const meta = res?.data?.pagination ?? {};
 
@@ -132,12 +159,40 @@ const BusinessTabScreen = () => {
         if (mode === "append") setLoadingMore(false);
       }
     },
-    []
+    [searchQuery, selectedCategory?._id]
   );
 
   useEffect(() => {
     fetchPage(1, "initial");
-  }, [fetchPage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!categoryItems || categoryItems.length === 0) {
+      dispatch(fetchBusinessCategories());
+    }
+  }, [categoryItems, dispatch]);
+
+  useEffect(() => {
+    if (!filtersReadyRef.current) {
+      filtersReadyRef.current = true;
+      return;
+    }
+
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    searchTimeoutRef.current = setTimeout(() => {
+      fetchPage(1, "initial");
+    }, 400);
+
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [fetchPage, searchQuery, selectedCategory?._id]);
 
   const handleRefresh = useCallback(() => {
     fetchPage(1, "refresh");
@@ -156,6 +211,18 @@ const BusinessTabScreen = () => {
     fetchPage,
   ]);
 
+  const handleSelectCategory = useCallback((category: BusinessCategory) => {
+    setSelectedCategory(category);
+  }, []);
+
+  const handleResetCategory = useCallback(() => {
+    setSelectedCategory(null);
+  }, []);
+
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery("");
+  }, []);
+
   const renderItem = ({ item }: { item: BusinessProfileItem }) => {
     const primary =
       item.images?.find((img) => img.isPrimary) ?? item.images?.[0];
@@ -167,7 +234,13 @@ const BusinessTabScreen = () => {
         : undefined;
 
     return (
-      <TouchableOpacity activeOpacity={0.85} style={styles.card}>
+      <TouchableOpacity
+        activeOpacity={0.85}
+        style={styles.card}
+        onPress={() =>
+          navigation.navigate("BusinessDetailScreen", { profile: item })
+        }
+      >
         {imageUrl ? (
           <Image
             source={{ uri: imageUrl }}
@@ -264,7 +337,9 @@ const BusinessTabScreen = () => {
         </View>
         <Text style={styles.emptyTitle}>No businesses yet</Text>
         <Text style={styles.emptyMessage}>
-          Approved businesses will appear here.
+          {searchQuery.trim() || selectedCategory
+            ? "Try adjusting your search or category filter."
+            : "Approved businesses will appear here."}
         </Text>
       </View>
     );
@@ -278,6 +353,61 @@ const BusinessTabScreen = () => {
           <Text style={styles.headerSubtitle}>
             {pagination.total} approved
           </Text>
+        ) : null}
+      </View>
+
+      <View style={styles.searchSection}>
+        <View style={styles.searchRow}>
+          <View style={styles.searchInputWrap}>
+            <Ionicons
+              name="search"
+              size={18}
+              color="#8B95A6"
+              style={styles.searchIcon}
+            />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder="Search business name"
+              placeholderTextColor="#8B95A6"
+              style={styles.searchInput}
+              autoCorrect={false}
+              returnKeyType="search"
+            />
+            {searchQuery.length > 0 ? (
+              <TouchableOpacity onPress={handleClearSearch} hitSlop={10}>
+                <Ionicons name="close-circle" size={18} color="#8B95A6" />
+              </TouchableOpacity>
+            ) : null}
+          </View>
+
+          <TouchableOpacity
+            style={[
+              styles.filterButton,
+              selectedCategory && styles.filterButtonActive,
+            ]}
+            activeOpacity={0.85}
+            onPress={() => setShowCategorySheet(true)}
+          >
+            <Ionicons
+              name="options-outline"
+              size={20}
+              color={selectedCategory ? Colors.white : Colors.primary}
+            />
+          </TouchableOpacity>
+        </View>
+
+        {selectedCategory ? (
+          <View style={styles.filterChipRow}>
+            <View style={styles.filterChip}>
+              <Text style={styles.filterChipText} numberOfLines={1}>
+                {selectedCategory.name}
+              </Text>
+              <TouchableOpacity onPress={handleResetCategory} hitSlop={10}>
+                <Ionicons name="close" size={15} color={Colors.primary} />
+              </TouchableOpacity>
+            </View>
+          </View>
         ) : null}
       </View>
 
@@ -309,6 +439,21 @@ const BusinessTabScreen = () => {
           }
         />
       )}
+
+      <CategoryPickerSheet
+        visible={showCategorySheet}
+        onClose={() => setShowCategorySheet(false)}
+        onSelect={handleSelectCategory}
+        categories={categoryItems}
+        loading={categoriesLoading}
+        error={categoriesError}
+        selectedId={selectedCategory?._id ?? null}
+        onRetry={() => dispatch(fetchBusinessCategories())}
+        showReset
+        onReset={handleResetCategory}
+        title="Filter by business category"
+        subtitle="Choose a category to narrow the business list"
+      />
     </SafeAreaView>
   );
 };
@@ -339,6 +484,75 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
     color: Colors.gray,
+  },
+  searchSection: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGray,
+  },
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  searchInputWrap: {
+    flex: 1,
+    minHeight: 46,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2EAFF",
+    backgroundColor: "#F8FAFF",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+  },
+  searchIcon: {
+    marginRight: 8,
+  },
+  searchInput: {
+    flex: 1,
+    minHeight: 44,
+    fontSize: 14,
+    color: Colors.black,
+    paddingVertical: 0,
+  },
+  filterButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 12,
+    marginLeft: 10,
+    borderWidth: 1,
+    borderColor: "#E2EAFF",
+    backgroundColor: Colors.white,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  filterButtonActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  filterChipRow: {
+    flexDirection: "row",
+    marginTop: 10,
+  },
+  filterChip: {
+    maxWidth: "100%",
+    minHeight: 32,
+    borderRadius: 16,
+    backgroundColor: "#EEF4FF",
+    borderWidth: 1,
+    borderColor: "#D8E6FF",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+  },
+  filterChipText: {
+    maxWidth: 220,
+    fontSize: 13,
+    fontWeight: "600",
+    color: Colors.primary,
+    marginRight: 6,
   },
   loaderWrap: {
     flex: 1,

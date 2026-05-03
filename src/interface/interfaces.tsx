@@ -903,7 +903,7 @@ export interface ListedJobsResponse {
 export interface Notification {
   _id: string;
   recipient: string;
-  type: 'job_created' | 'job_interest' | 'verification_review';
+  type: 'job_created' | 'job_interest' | 'verification_review' | 'business_profile_review';
   title: string;
   message: string;
   relatedEntityType: string;

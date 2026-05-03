@@ -141,6 +141,7 @@ const AdminDashboardScreen = () => {
           <StatCard label="Active Jobs" value={dashboardStats?.activeJobs ?? 0} icon="checkmark-circle-outline" color={Colors.green} bg={Colors.lightMintGreen} />
           <StatCard label="Verified Users" value={dashboardStats?.verifiedUsers ?? 0} icon="shield-checkmark-outline" color="#0891B2" bg="#E0F7FA" />
           <StatCard label="Pending Reviews" value={dashboardStats?.pendingVerifications ?? 0} icon="time-outline" color={Colors.orange} bg="#FFF3E0" />
+          <StatCard label="Business Requests" value={dashboardStats?.pendingBusinessApprovals ?? 0} icon="storefront-outline" color="#EA580C" bg="#FFF7ED" />
         </View>
 
         {/* Recent Users */}

@@ -5,6 +5,7 @@ import { API_BASE_URL } from "./baseURL";
 const axiosInstance = axios.create({
   baseURL: API_BASE_URL,
   headers: { "Content-Type": "application/json" },
+  timeout: 20000,
   withCredentials: true,
 });
 
@@ -29,7 +30,9 @@ const getResolvedRequestURL = (config: any) => {
   }
 };
 
-const isVerifyPhoneRequest = (url: string) => url.includes("/auth/verify-phone");
+const AUTH_DEBUG_PATHS = ["/auth/check-phone", "/auth/verify-phone"];
+const shouldLogAuthRequest = (url: string) =>
+  AUTH_DEBUG_PATHS.some((path) => url.includes(path));
 
 // Request interceptor to log the fully resolved API URL.
 axiosInstance.interceptors.request.use(
@@ -37,8 +40,8 @@ axiosInstance.interceptors.request.use(
     const fullURL = getResolvedRequestURL(config);
     console.log("API Request URL:", fullURL);
 
-    if (isVerifyPhoneRequest(fullURL)) {
-      console.log("Verify Phone Request Payload:", config.data);
+    if (shouldLogAuthRequest(fullURL)) {
+      console.log("Auth Request Payload:", config.data);
     }
 
     return config;
@@ -60,10 +63,10 @@ axiosInstance.interceptors.response.use(
   (response) => {
     const fullURL = getResolvedRequestURL(response.config);
 
-    if (isVerifyPhoneRequest(fullURL)) {
-      console.log("Verify Phone Success URL:", fullURL);
-      console.log("Verify Phone Success Status:", response.status);
-      console.log("Verify Phone Success Response:", response.data);
+    if (shouldLogAuthRequest(fullURL)) {
+      console.log("Auth Success URL:", fullURL);
+      console.log("Auth Success Status:", response.status);
+      console.log("Auth Success Response:", response.data);
     }
 
     return response;
@@ -71,11 +74,11 @@ axiosInstance.interceptors.response.use(
   (error) => {
     const fullURL = getResolvedRequestURL(error.config);
 
-    if (isVerifyPhoneRequest(fullURL)) {
-      console.log("Verify Phone Failed URL:", fullURL);
-      console.log("Verify Phone Failed Status:", error.response?.status);
-      console.log("Verify Phone Failed Response:", error.response?.data);
-      console.log("Verify Phone Failed Message:", error.message);
+    if (shouldLogAuthRequest(fullURL)) {
+      console.log("Auth Failed URL:", fullURL);
+      console.log("Auth Failed Status:", error.response?.status);
+      console.log("Auth Failed Response:", error.response?.data);
+      console.log("Auth Failed Message:", error.message);
     }
 
     if (error.response?.status === 401) {

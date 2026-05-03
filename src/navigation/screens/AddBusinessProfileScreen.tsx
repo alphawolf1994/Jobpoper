@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -20,9 +20,13 @@ import { Colors } from "../../utils";
 import { Button, MyTextInput, PhoneNumberInput, LocationAutocomplete } from "../../components";
 import Loader from "../../components/Loader";
 import CategoryPickerSheet from "../../components/CategoryPickerSheet";
+import VerificationBottomSheet, {
+  VerificationBottomSheetHandle,
+} from "../../components/VerificationBottomSheet";
 import { useAlertModal } from "../../hooks/useAlertModal";
 import { AppDispatch, RootState } from "../../redux/store";
 import { fetchBusinessCategories } from "../../redux/slices/businessCategorySlice";
+import { fetchVerificationStatus } from "../../redux/slices/verificationSlice";
 import { BusinessCategory, ServiceCategory } from "../../interface/interfaces";
 import {
   createBusinessProfileApi,
@@ -33,6 +37,8 @@ import { IMAGE_BASE_URL } from "../../api/baseURL";
 
 const MAX_IMAGES = 5;
 const MAX_PROFILES = 3;
+const MAX_IMAGE_SIZE_BYTES = 8 * 1024 * 1024;
+const ALLOWED_IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "heic", "heif"];
 
 // Route params: when navigated with `mode: "edit"` and a `profile` payload
 // the screen flips into update mode — the form prefills, the submit calls
@@ -67,6 +73,8 @@ const AddBusinessProfileScreen = () => {
     useRoute<RouteProp<AddBusinessProfileRouteParams, "AddBusinessProfileScreen">>();
   const dispatch = useDispatch<AppDispatch>();
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
+  const verificationSheetRef = useRef<VerificationBottomSheetHandle>(null);
+  const { user } = useSelector((state: RootState) => state.auth);
 
   const isEditMode = route.params?.mode === "edit" && !!route.params?.profile;
   const editingProfile = route.params?.profile;
@@ -123,11 +131,25 @@ const AddBusinessProfileScreen = () => {
   }, [isEditMode, editingProfile]);
 
   const [submitting, setSubmitting] = useState(false);
+  const [precheckLoading, setPrecheckLoading] = useState(false);
+  const [precheckError, setPrecheckError] = useState<string | null>(null);
 
   // Fetch categories on mount.
   useEffect(() => {
     dispatch(fetchBusinessCategories());
-  }, [dispatch]);
+    if (!user?.isVerified) {
+      dispatch(fetchVerificationStatus());
+    }
+  }, [dispatch, user?.isVerified]);
+
+  useEffect(() => {
+    if (!isEditMode && user && !user.isVerified) {
+      const timer = setTimeout(() => {
+        verificationSheetRef.current?.open();
+      }, 250);
+      return () => clearTimeout(timer);
+    }
+  }, [isEditMode, user]);
 
   // Once categories arrive from the server, hydrate the selected category
   // with its display name (the route param may only carry an _id).
@@ -148,31 +170,52 @@ const AddBusinessProfileScreen = () => {
   // editing doesn't create a new profile.
   useEffect(() => {
     if (isEditMode) return;
+    if (user && !user.isVerified) return;
     let cancelled = false;
     (async () => {
+      setPrecheckLoading(true);
+      setPrecheckError(null);
       try {
         const res = await getMyBusinessProfilesApi();
         const total = res?.data?.total ?? 0;
         if (!cancelled && total >= MAX_PROFILES) {
           Toast.show({
             type: "info",
-            text1: `You already have ${MAX_PROFILES} business profiles`,
-            text2: "Delete one to add another.",
+            text1: "Maximum 3 profiles reached",
+            text2: "You can't create another business profile.",
           });
           (navigation as any).goBack();
         }
-      } catch {
-        // Non-fatal: if this fails the backend will still enforce the
-        // limit on submit and we surface that error there.
+      } catch (err: any) {
+        if (!cancelled) {
+          setPrecheckError(
+            err?.message ||
+              "Could not check profile limit. You can still try submitting."
+          );
+        }
+      } finally {
+        if (!cancelled) setPrecheckLoading(false);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [navigation, isEditMode]);
+  }, [navigation, isEditMode, user]);
 
   const showError = (message: string) =>
     showAlert({ title: "Error", message, type: "error" });
+
+  const validatePickedAsset = (asset: ImagePicker.ImagePickerAsset) => {
+    const fileName = asset.fileName || asset.uri.split("/").pop() || "";
+    const ext = fileName.split(".").pop()?.toLowerCase();
+    if (ext && !ALLOWED_IMAGE_EXTENSIONS.includes(ext)) {
+      return "Only JPG, PNG, WEBP, HEIC, and HEIF images are supported.";
+    }
+    if (asset.fileSize && asset.fileSize > MAX_IMAGE_SIZE_BYTES) {
+      return "Each image must be 8MB or smaller.";
+    }
+    return null;
+  };
 
   // ----- Image picker -------------------------------------------------------
   const handlePickImages = async () => {
@@ -196,14 +239,27 @@ const AddBusinessProfileScreen = () => {
       return;
     }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsMultipleSelection: true,
-      selectionLimit: remainingSlots,
-      quality: 0.7,
-    });
+    let result: ImagePicker.ImagePickerResult;
+    try {
+      result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsMultipleSelection: true,
+        selectionLimit: remainingSlots,
+        quality: 0.7,
+      });
+    } catch (err: any) {
+      showError(err?.message || "Could not open the image picker.");
+      return;
+    }
 
     if (!result.canceled) {
+      const invalidMessage = (result.assets ?? [])
+        .map(validatePickedAsset)
+        .find(Boolean);
+      if (invalidMessage) {
+        showError(invalidMessage);
+        return;
+      }
       const uris = (result.assets ?? [])
         .map((a) => a.uri)
         .filter(Boolean) as string[];
@@ -239,6 +295,11 @@ const AddBusinessProfileScreen = () => {
   };
 
   const handleSubmit = async () => {
+    if (!isEditMode && !user?.isVerified) {
+      verificationSheetRef.current?.open();
+      return;
+    }
+
     const error = validate();
     if (error) {
       showError(error);
@@ -366,9 +427,11 @@ const AddBusinessProfileScreen = () => {
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <Loader
-        visible={submitting}
+        visible={submitting || precheckLoading}
         message={
-          isEditMode
+          precheckLoading
+            ? "Checking profile limit..."
+            : isEditMode
             ? "Resubmitting business profile..."
             : "Submitting business profile..."
         }
@@ -411,6 +474,18 @@ const AddBusinessProfileScreen = () => {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {precheckError ? (
+            <View style={styles.warningBox}>
+              <Ionicons
+                name="alert-circle-outline"
+                size={17}
+                color={Colors.orange}
+                style={{ marginRight: 8 }}
+              />
+              <Text style={styles.warningText}>{precheckError}</Text>
+            </View>
+          ) : null}
+
           {/* Business Name */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>
@@ -639,7 +714,7 @@ const AddBusinessProfileScreen = () => {
                 : "Submit for review"
             }
             onPress={handleSubmit}
-            disabled={submitting}
+            disabled={submitting || precheckLoading}
           />
         </ScrollView>
       </KeyboardAvoidingView>
@@ -658,6 +733,8 @@ const AddBusinessProfileScreen = () => {
         title="Select a business category"
         subtitle="Choose what kind of business you run"
       />
+
+      <VerificationBottomSheet ref={verificationSheetRef} />
 
       {alertModal}
     </SafeAreaView>
@@ -716,6 +793,22 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#E11D48",
     marginTop: 6,
+  },
+  warningBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: "#FFF3E0",
+    borderWidth: 1,
+    borderColor: "#FFE0A8",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 16,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 13,
+    color: "#7A4A00",
+    lineHeight: 18,
   },
   dropdown: {
     borderWidth: 1,

@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -7,15 +7,25 @@ import {
   FlatList,
   RefreshControl,
   ActivityIndicator,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { Image } from "expo-image";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { useDispatch, useSelector } from "react-redux";
 import Toast from "react-native-toast-message";
 import { Colors } from "../../utils";
-import { getMyBusinessProfilesApi } from "../../api/businessProfileApis";
+import {
+  deleteBusinessProfileApi,
+  getMyBusinessProfilesApi,
+} from "../../api/businessProfileApis";
 import { IMAGE_BASE_URL } from "../../api/baseURL";
+import VerificationBottomSheet, {
+  VerificationBottomSheetHandle,
+} from "../../components/VerificationBottomSheet";
+import { AppDispatch, RootState } from "../../redux/store";
+import { fetchVerificationStatus } from "../../redux/slices/verificationSlice";
 
 const MAX_PROFILES = 3;
 
@@ -90,10 +100,16 @@ const STATUS_STYLES: Record<
  */
 const BusinessProfilesScreen = () => {
   const navigation = useNavigation();
+  const dispatch = useDispatch<AppDispatch>();
+  const verificationSheetRef = useRef<VerificationBottomSheetHandle>(null);
+  const { user } = useSelector((state: RootState) => state.auth);
   const [profiles, setProfiles] = useState<BusinessProfileItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [remainingSlots, setRemainingSlots] = useState<number | null>(null);
+  const [maxProfiles, setMaxProfiles] = useState(MAX_PROFILES);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const loadProfiles = useCallback(async (mode: "initial" | "refresh") => {
     if (mode === "initial") setLoading(true);
@@ -103,6 +119,16 @@ const BusinessProfilesScreen = () => {
       const res = await getMyBusinessProfilesApi();
       const list: BusinessProfileItem[] = res?.data?.profiles ?? [];
       setProfiles(list);
+      setRemainingSlots(
+        typeof res?.data?.remainingSlots === "number"
+          ? res.data.remainingSlots
+          : null
+      );
+      setMaxProfiles(
+        typeof res?.data?.maxProfiles === "number"
+          ? res.data.maxProfiles
+          : MAX_PROFILES
+      );
     } catch (e: any) {
       setError(e?.message || "Failed to load business profiles");
     } finally {
@@ -119,22 +145,30 @@ const BusinessProfilesScreen = () => {
       (async () => {
         if (cancelled) return;
         await loadProfiles("initial");
+        if (!user?.isVerified) {
+          dispatch(fetchVerificationStatus());
+        }
       })();
       return () => {
         cancelled = true;
       };
-    }, [loadProfiles])
+    }, [dispatch, loadProfiles, user?.isVerified])
   );
 
   const profileCount = profiles.length;
-  const atLimit = profileCount >= MAX_PROFILES;
+  const atLimit =
+    remainingSlots != null ? remainingSlots <= 0 : profileCount >= maxProfiles;
 
   const handleAddPress = () => {
+    if (!user?.isVerified) {
+      verificationSheetRef.current?.open();
+      return;
+    }
     if (atLimit) {
       Toast.show({
         type: "info",
-        text1: `You already have ${MAX_PROFILES} business profiles`,
-        text2: "Delete one to add another.",
+        text1: "Maximum 3 profiles reached",
+        text2: "You can't create another business profile.",
       });
       return;
     }
@@ -159,10 +193,57 @@ const BusinessProfilesScreen = () => {
     });
   };
 
+  const handleDeletePress = (profile: BusinessProfileItem) => {
+    if (profile.status === "pending") {
+      Toast.show({
+        type: "info",
+        text1: "Pending review",
+        text2: "You can delete this profile after admin review.",
+      });
+      return;
+    }
+
+    Alert.alert(
+      "Delete business profile?",
+      `Are you sure you want to delete "${profile.businessName}"? This action cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            setDeletingId(profile._id);
+            try {
+              await deleteBusinessProfileApi(profile._id);
+              setProfiles((prev) => prev.filter((p) => p._id !== profile._id));
+              setRemainingSlots((prev) =>
+                prev == null ? prev : Math.min(maxProfiles, prev + 1)
+              );
+              Toast.show({
+                type: "success",
+                text1: "Business profile deleted",
+              });
+            } catch (err: any) {
+              Toast.show({
+                type: "error",
+                text1: "Delete failed",
+                text2: err?.message || "Could not delete business profile.",
+              });
+            } finally {
+              setDeletingId(null);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const renderItem = ({ item }: { item: BusinessProfileItem }) => {
     const status = (item.status ?? "pending") as ProfileStatus;
     const statusStyle = STATUS_STYLES[status] ?? STATUS_STYLES.pending;
     const canEdit = status !== "pending";
+    const canDelete = status !== "pending";
+    const isDeleting = deletingId === item._id;
 
     const primary =
       item.images?.find((img) => img.isPrimary) ?? item.images?.[0];
@@ -269,6 +350,32 @@ const BusinessProfilesScreen = () => {
           </Text>
         </TouchableOpacity>
 
+        {canDelete ? (
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => handleDeletePress(item)}
+            activeOpacity={0.85}
+            disabled={isDeleting}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: isDeleting }}
+            accessibilityLabel="Delete business profile"
+          >
+            {isDeleting ? (
+              <ActivityIndicator size="small" color={Colors.red} />
+            ) : (
+              <>
+                <Ionicons
+                  name="trash-outline"
+                  size={16}
+                  color={Colors.red}
+                  style={{ marginRight: 6 }}
+                />
+                <Text style={styles.deleteButtonText}>Delete profile</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        ) : null}
+
         {!canEdit ? (
           <Text style={styles.pendingHint}>
             Under review, please wait for admin response.
@@ -289,7 +396,7 @@ const BusinessProfilesScreen = () => {
       </View>
       <Text style={styles.emptyTitle}>No business profiles yet</Text>
       <Text style={styles.emptyMessage}>
-        You can create up to {MAX_PROFILES} business profiles. Click{" "}
+        You can create up to {maxProfiles} business profiles. Click{" "}
         <Text style={styles.plusInline}>+</Text> to add your first business.
       </Text>
     </View>
@@ -313,12 +420,30 @@ const BusinessProfilesScreen = () => {
             style={[styles.addButton, atLimit && styles.addButtonDisabled]}
             onPress={handleAddPress}
             activeOpacity={0.8}
-            accessibilityLabel="Add business profile"
+            disabled={atLimit}
+            accessibilityLabel={
+              atLimit
+                ? "Maximum 3 profiles reached"
+                : "Add business profile"
+            }
             accessibilityRole="button"
+            accessibilityState={{ disabled: atLimit }}
           >
-            <Ionicons name="add" size={22} color={Colors.white} />
+            <Ionicons
+              name="add"
+              size={22}
+              color={atLimit ? "#7A8195" : Colors.white}
+            />
           </TouchableOpacity>
         </View>
+        {atLimit ? (
+          <View style={styles.limitMessage}>
+            <Ionicons name="information-circle-outline" size={16} color={Colors.orange} />
+            <Text style={styles.limitMessageText}>
+              Maximum 3 profiles reached
+            </Text>
+          </View>
+        ) : null}
       </View>
 
       {loading && profiles.length === 0 ? (
@@ -353,6 +478,7 @@ const BusinessProfilesScreen = () => {
           }
         />
       )}
+      <VerificationBottomSheet ref={verificationSheetRef} />
     </SafeAreaView>
   );
 };
@@ -400,9 +526,26 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   addButtonDisabled: {
-    backgroundColor: "#A8B0C2",
+    backgroundColor: "#E4E7EE",
     shadowOpacity: 0,
     elevation: 0,
+  },
+  limitMessage: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 10,
+    backgroundColor: "#FFF3E0",
+    borderWidth: 1,
+    borderColor: "#FFE0A8",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  limitMessageText: {
+    marginLeft: 6,
+    fontSize: 13,
+    fontWeight: "700",
+    color: Colors.orange,
   },
 
   // Loading state
@@ -537,6 +680,22 @@ const styles = StyleSheet.create({
     color: Colors.gray,
     fontStyle: "italic",
     textAlign: "center",
+  },
+  deleteButton: {
+    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#FFF5F5",
+    borderWidth: 1,
+    borderColor: "#FFD4D4",
+    borderRadius: 10,
+    paddingVertical: 10,
+  },
+  deleteButtonText: {
+    color: Colors.red,
+    fontSize: 14,
+    fontWeight: "700",
   },
 
   // Error
