@@ -8,7 +8,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../utils';
+import { Colors, getJobCategoryName } from '../utils';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import { getListedJobs, searchListedJobsPaginated } from '../redux/slices/jobSlice';
@@ -106,17 +106,22 @@ const ListedJobs: React.FC<ListedJobsProps> = ({ searchQuery = '', scrollEnabled
           )}
         </View>
         <View style={styles.jobInfo}>
-          <Text style={styles.jobTitle}>{item.title}</Text>
-          <Text style={styles.posterName}>{item.postedBy?.profile?.fullName || 'Unknown'}</Text>
+          <Text style={styles.jobTitle} numberOfLines={1} ellipsizeMode="tail">
+            {item.title}
+          </Text>
+          <Text style={styles.posterName} numberOfLines={1} ellipsizeMode="tail">
+            {item.postedBy?.profile?.fullName || 'Unknown'}
+          </Text>
         </View>
       </View>
 
-      {/* Right Side - Cost and Location */}
+      {/* Right Side - Cost · Type · Category (single line meta) */}
       <View style={styles.rightSection}>
         <View style={styles.rightTopGroup}>
           <Text style={styles.cost}>{item.cost}</Text>
-          <Text style={styles.location}>
+          <Text style={styles.location} numberOfLines={1} ellipsizeMode="tail">
             {item.jobType}
+            {getJobCategoryName(item) ? ` · ${getJobCategoryName(item)}` : ''}
           </Text>
         </View>
         <Text style={styles.dateTime}>
@@ -248,6 +253,7 @@ const styles = StyleSheet.create({
   },
   rightTopGroup: {
     alignItems: 'flex-end',
+    maxWidth: 180,
   },
   cost: {
     fontSize: 15,
@@ -259,6 +265,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.gray,
     fontWeight: '500',
+    textAlign: 'right',
   },
   dateTime: {
     fontSize: 12,

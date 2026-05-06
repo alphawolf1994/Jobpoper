@@ -12,7 +12,6 @@ import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { useDispatch, useSelector } from 'react-redux';
 import { createJob, updateJob } from '../../redux/slices/jobSlice';
-import { fetchVerificationStatus } from "../../redux/slices/verificationSlice";
 import { AppDispatch, RootState } from '../../redux/store';
 import { SavedLocation, clearLastAddedLocation } from '../../redux/slices/locationsSlice';
 import { fetchLocations } from '../../redux/slices/locationsSlice';
@@ -21,8 +20,7 @@ import { formatDateDDMMYYYY } from "../../utils";
 import { calculateDistanceKm, formatDistanceLabel } from "../../utils/geocode";
 import { Job, SavedLocationData, ServiceCategory } from '../../interface/interfaces';
 import { IMAGE_BASE_URL } from '../../api/baseURL';
-import VerificationBottomSheet, { VerificationBottomSheetHandle } from "../../components/VerificationBottomSheet";
-import CategoryPickerSheet from "../../components/CategoryPickerSheet";
+import CategoryPickerSheet, { getCategoryVisual } from "../../components/CategoryPickerSheet";
 import { fetchServiceCategories } from "../../redux/slices/serviceCategorySlice";
 
 const PostJobScreen = () => {
@@ -30,10 +28,8 @@ const PostJobScreen = () => {
   const route = useRoute();
   const dispatch = useDispatch<AppDispatch>();
   const { loading } = useSelector((state: RootState) => state.job);
-  const { user } = useSelector((state: RootState) => state.auth);
   const { items: savedLocations, loading: locationsLoading, lastAddedLocation } = useSelector((state: RootState) => state.locations);
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
-  const verificationSheetRef = useRef<VerificationBottomSheetHandle>(null);
 
   // Check if in edit mode
   const isEditMode = (route.params as any)?.isEditMode ?? false;
@@ -105,6 +101,7 @@ const PostJobScreen = () => {
 
   // Service category state
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | null>(null);
+  const selectedCategoryVisual = getCategoryVisual(selectedCategory);
   const [showCategorySheet, setShowCategorySheet] = useState(false);
   const {
     items: categoryItems,
@@ -139,9 +136,6 @@ const PostJobScreen = () => {
   useFocusEffect(
     React.useCallback(() => {
       dispatch(fetchLocations());
-      if (!user?.isVerified) {
-        dispatch(fetchVerificationStatus());
-      }
 
       // Check if a new location was added via Redux state
       if (lastAddedLocation) {
@@ -155,7 +149,7 @@ const PostJobScreen = () => {
         // Clear the last added location so it doesn't trigger again
         dispatch(clearLastAddedLocation());
       }
-    }, [dispatch, lastAddedLocation, locationModalType, user?.isVerified])
+    }, [dispatch, lastAddedLocation, locationModalType])
   );
 
   // Fetch service categories on mount (cached in redux)
@@ -413,12 +407,6 @@ const PostJobScreen = () => {
   };
 
   const handleSubmit = async () => {
-    // Block unverified users
-    if (!user?.isVerified) {
-      verificationSheetRef.current?.open();
-      return;
-    }
-
     // Validate form
     if (!formData.title.trim()) {
       showErrorAlert('Please enter a job title');
@@ -602,9 +590,9 @@ const PostJobScreen = () => {
               <View style={[styles.dropdown, styles.inputRow, styles.locationSelectable]}>
                 <View style={styles.categoryLeft}>
                   <Ionicons
-                    name="grid-outline"
+                    name={selectedCategory ? selectedCategoryVisual.icon : "grid-outline"}
                     size={20}
-                    color={selectedCategory ? Colors.primary : "#9AA0A6"}
+                    color={selectedCategory ? selectedCategoryVisual.color : "#9AA0A6"}
                     style={{ marginRight: 10 }}
                   />
                   <Text
@@ -980,7 +968,6 @@ const PostJobScreen = () => {
           <View style={styles.bottomSpacing} />
         </ScrollView>
         {alertModal}
-        <VerificationBottomSheet ref={verificationSheetRef} />
 
         {/* Category Picker Sheet */}
         <CategoryPickerSheet
@@ -1462,4 +1449,3 @@ const styles = StyleSheet.create({
     marginTop: 0,
   },
 });
-

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from "react-native";
-import { Colors } from "../../utils";
+import { Colors, getJobCategoryName } from "../../utils";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../components/Header";
 import { Ionicons } from "@expo/vector-icons";
@@ -159,7 +159,7 @@ const MyJobsScreen = () => {
           <Text style={styles.statusText}>{getStatusText(item.status)}</Text>
         </View>
         </View>
-        
+
       </View>
 
       {/* Description */}
@@ -167,12 +167,22 @@ const MyJobsScreen = () => {
         {item.description}
       </Text>
 
-      {/* Info Row - Cost, Location, Date */}
+      {/* Cost · Type · Category — single-line meta row */}
+      <View style={styles.metaRow}>
+        <Ionicons name="cash-outline" size={14} color={Colors.primary} />
+        <Text
+          style={styles.metaRowText}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {item.cost}
+          {item.jobType ? ` · ${item.jobType}` : ''}
+          {getJobCategoryName(item) ? ` · ${getJobCategoryName(item)}` : ''}
+        </Text>
+      </View>
+
+      {/* Info Row - Date, Time */}
       <View style={styles.infoRow}>
-        <View style={styles.infoItem}>
-          <Ionicons name="cash-outline" size={16} color={Colors.primary} />
-          <Text style={styles.infoText}>{item.cost}</Text>
-        </View>
         <View style={styles.infoItem}>
           <Ionicons name="calendar-outline" size={16} color={Colors.primary} />
           <Text style={styles.infoText} numberOfLines={1}>{formatDateDDMMYYYY(item.formattedScheduledDate || item.scheduledDate)}</Text>
@@ -225,12 +235,22 @@ const MyJobsScreen = () => {
         {item.description}
       </Text>
 
-      {/* Info Row - Cost, Location, Date */}
+      {/* Cost · Type · Category — single-line meta row */}
+      <View style={styles.metaRow}>
+        <Ionicons name="cash-outline" size={14} color={Colors.primary} />
+        <Text
+          style={styles.metaRowText}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {item.cost}
+          {item.jobType ? ` · ${item.jobType}` : ''}
+          {getJobCategoryName(item) ? ` · ${getJobCategoryName(item)}` : ''}
+        </Text>
+      </View>
+
+      {/* Info Row - Date, Time */}
       <View style={styles.infoRow}>
-        <View style={styles.infoItem}>
-          <Ionicons name="cash-outline" size={16} color={Colors.primary} />
-          <Text style={styles.infoText}>{item.cost}</Text>
-        </View>
         <View style={styles.infoItem}>
           <Ionicons name="calendar-outline" size={16} color={Colors.primary} />
           <Text style={styles.infoText} numberOfLines={1}>{formatDateDDMMYYYY(item.formattedScheduledDate || item.scheduledDate)}</Text>
@@ -475,7 +495,19 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.gray,
     lineHeight: 20,
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+  },
+  metaRowText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.black,
   },
   infoRow: {
     flexDirection: 'row',

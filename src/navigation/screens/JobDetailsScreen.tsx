@@ -25,8 +25,9 @@ import { Image } from 'expo-image';
 import { IMAGE_BASE_URL } from '../../api/baseURL';
 import { showInterestOnJobApi } from '../../api/jobApis';
 import { useAlertModal } from "../../hooks/useAlertModal";
-import { formatDateDDMMYYYY } from "../../utils";
+import { formatDateDDMMYYYY, getJobCategoryName } from "../../utils";
 import VerificationBottomSheet, { VerificationBottomSheetHandle } from "../../components/VerificationBottomSheet";
+import PickupPreferencesBottomSheet, { PickupPreferencesBottomSheetHandle } from "../../components/PickupPreferencesBottomSheet";
 import { fetchVerificationStatus } from "../../redux/slices/verificationSlice";
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -40,6 +41,7 @@ const JobDetailsScreen = () => {
   const { user } = useSelector((state: RootState) => state.auth);
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
   const verificationSheetRef = useRef<VerificationBottomSheetHandle>(null);
+  const pickupPrefSheetRef = useRef<PickupPreferencesBottomSheetHandle>(null);
 
   // Get jobId from route params
   const jobId = (route.params as any)?.jobId;
@@ -49,9 +51,16 @@ const JobDetailsScreen = () => {
   const [imageModalUri, setImageModalUri] = useState<string | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
+  // Optimistic flag so the Show Interest button flips to "Showed Interest"
+  // immediately on success, before the re-fetch resolves.
+  const [optimisticInterested, setOptimisticInterested] = useState(false);
+
   useEffect(() => {
     if (jobId) {
       dispatch(getJobById(jobId));
+      // Reset optimistic interest flag when navigating to a different job —
+      // the backend response is the source of truth for that job.
+      setOptimisticInterested(false);
     }
   }, [dispatch, jobId]);
 
@@ -160,6 +169,22 @@ const JobDetailsScreen = () => {
       return;
     }
 
+    // For pickup jobs, require the user to have set their pickup preferences
+    // (specifically `pricePerKm`) before they can show interest. If preferences
+    // are missing, open the bottom sheet and bail out — the user must save and
+    // then explicitly tap Show Interest again.
+    const isPickupJob = currentJob.jobType === 'Pickup';
+    const pricePerKm = user?.vehiclePreference?.pricePerKm;
+    const hasPickupPrefs =
+      !!user?.vehiclePreference?.isSet &&
+      pricePerKm !== null &&
+      pricePerKm !== undefined;
+
+    if (isPickupJob && !hasPickupPrefs) {
+      pickupPrefSheetRef.current?.open();
+      return;
+    }
+
     showAlert({
       title: "Show Interest",
       message: `Show interest in "${currentJob.title}"?`,
@@ -174,6 +199,7 @@ const JobDetailsScreen = () => {
           onPress: async () => {
             try {
               const res = await showInterestOnJobApi(currentJob._id);
+              setOptimisticInterested(true);
               showAlert({
                 title: "Success",
                 message: res?.message || "Interest recorded successfully",
@@ -310,6 +336,47 @@ const JobDetailsScreen = () => {
     }
   };
 
+  // Try to detect a currency symbol from the job's `cost` string (e.g. "₹500", "$50").
+  // Falls back to "₹" — matches the example in the spec.
+  const getCurrencySymbol = (cost?: string): string => {
+    if (!cost) return '₹';
+    const match = cost.trim().match(/^[^\d.,\s]+/);
+    return match?.[0] || '₹';
+  };
+
+  // Render-friendly label for the stored vehicleType enum.
+  const formatVehicleType = (type?: string | null): string => {
+    switch (type) {
+      case '2_wheeler':
+        return '2 Wheeler';
+      case '3_wheeler':
+        return '3 Wheeler';
+      case '4_wheeler':
+        return '4 Wheeler';
+      default:
+        return '—';
+    }
+  };
+
+  // Format the estimated price for the current pickup job using the user's
+  // saved pricePerKm. Returns null when prerequisites are missing.
+  const computeEstimatedPrice = (): { value: number; symbol: string } | null => {
+    if (!currentJob || currentJob.jobType !== 'Pickup') return null;
+    const distanceKm = currentJob.distanceKm;
+    const pricePerKm = user?.vehiclePreference?.pricePerKm;
+    if (
+      typeof distanceKm !== 'number' ||
+      typeof pricePerKm !== 'number' ||
+      !user?.vehiclePreference?.isSet
+    ) {
+      return null;
+    }
+    return {
+      value: Math.round(pricePerKm * distanceKm * 100) / 100,
+      symbol: getCurrencySymbol(currentJob.cost),
+    };
+  };
+
   const renderLocationSection = () => {
     if (!currentJob || !currentJob.location) return null;
 
@@ -317,7 +384,13 @@ const JobDetailsScreen = () => {
       const pickupLocation = currentJob.location as { source: SavedLocationData; destination: SavedLocationData };
       const hasPickupCoordinates = pickupLocation.source?.latitude && pickupLocation.source?.longitude;
       const hasDestinationCoordinates = pickupLocation.destination?.latitude && pickupLocation.destination?.longitude;
-      
+      const hasDistance = typeof currentJob.distanceKm === 'number';
+      const estimated = computeEstimatedPrice();
+      const hasPickupPrefs =
+        !!user?.vehiclePreference?.isSet &&
+        user?.vehiclePreference?.pricePerKm !== null &&
+        user?.vehiclePreference?.pricePerKm !== undefined;
+
       return (
         <View style={styles.locationSection}>
           <Text style={styles.sectionTitle}>Pickup Details</Text>
@@ -354,6 +427,62 @@ const JobDetailsScreen = () => {
               </View>
             </View>
 
+            {/* Distance + Estimated price (pickup-only) */}
+            {(hasDistance || hasPickupPrefs || estimated) && (
+              <View style={styles.pickupMetaContainer}>
+                {hasDistance && (
+                  <View style={styles.pickupMetaRow}>
+                    <Ionicons
+                      name="speedometer-outline"
+                      size={16}
+                      color={Colors.primary}
+                    />
+                    <Text style={styles.pickupMetaLabel}>Distance</Text>
+                    <Text style={styles.pickupMetaValue}>
+                      {currentJob.distanceKm} km
+                    </Text>
+                  </View>
+                )}
+
+                {estimated ? (
+                  <View style={styles.pickupMetaRow}>
+                    <Ionicons
+                      name="cash-outline"
+                      size={16}
+                      color={Colors.primary}
+                    />
+                    <Text style={styles.pickupMetaLabel}>
+                      Your estimated price
+                    </Text>
+                    <Text style={styles.pickupMetaValueStrong}>
+                      {estimated.symbol}
+                      {estimated.value}
+                    </Text>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.setPrefsRow}
+                    activeOpacity={0.7}
+                    onPress={() => pickupPrefSheetRef.current?.open()}
+                  >
+                    <Ionicons
+                      name="information-circle-outline"
+                      size={16}
+                      color={Colors.primary}
+                    />
+                    <Text style={styles.setPrefsText}>
+                      Set preferences to see price
+                    </Text>
+                    <Ionicons
+                      name="chevron-forward"
+                      size={16}
+                      color={Colors.primary}
+                    />
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
+
             {/* Two direction buttons */}
             <View style={styles.directionsButtonsContainer}>
               {hasPickupCoordinates && (
@@ -366,7 +495,7 @@ const JobDetailsScreen = () => {
                   <Text style={styles.directionButtonText}>To Pickup</Text>
                 </TouchableOpacity>
               )}
-              
+
               {hasPickupCoordinates && hasDestinationCoordinates && (
                 <TouchableOpacity
                   style={styles.directionButton}
@@ -469,6 +598,18 @@ const JobDetailsScreen = () => {
             <Ionicons name="cash-outline" size={20} color={Colors.primary} />
             <Text style={styles.detailText}>{currentJob.cost}</Text>
           </View>
+          {getJobCategoryName(currentJob) && (
+            <View style={styles.detailRow}>
+              <Ionicons name="pricetag-outline" size={20} color={Colors.primary} />
+              <Text
+                style={[styles.detailText, { flex: 1 }]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {getJobCategoryName(currentJob)}
+              </Text>
+            </View>
+          )}
         </View>
         {renderLocationSection()}
 
@@ -556,6 +697,14 @@ const JobDetailsScreen = () => {
   const isDirectContact = currentJob.responsePreference === 'direct_contact' || !currentJob.responsePreference;
   const isMyJob = !!user && currentJob.postedBy?._id === user.id;
   const interestedUsers: InterestedUserEntry[] = currentJob.interestedUsers || [];
+
+  // Has the current user already shown interest in this job?
+  // Hydrated from backend on every fetch, plus an optimistic flag for the
+  // moment between API success and re-fetch.
+  const hasShownInterest =
+    optimisticInterested ||
+    (!!user?.id &&
+      interestedUsers.some((entry) => entry.user?._id === user.id));
 
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
@@ -763,73 +912,138 @@ const JobDetailsScreen = () => {
             </View>
           ) : (
             <View style={{ gap: 12 }}>
-              {interestedUsers.map((entry) => (
-                <View key={entry._id} style={styles.interestCard}>
-                  <View style={styles.interestLeft}>
-                    <View style={styles.interestAvatar}>
-                      {entry.user.profile.profileImage ? (
-                        <Image
-                          source={{ uri: `${IMAGE_BASE_URL}${entry.user.profile.profileImage.startsWith('/') ? entry.user.profile.profileImage : `/${entry.user.profile.profileImage}`}` }}
-                          style={styles.interestAvatarImage}
-                          contentFit="cover"
-                        />
+              {interestedUsers.map((entry) => {
+                const pref = entry.user.vehiclePreference;
+                const hasPrefs =
+                  !!pref?.isSet &&
+                  pref.pricePerKm !== null &&
+                  pref.pricePerKm !== undefined;
+                const isPickupJob = currentJob.jobType === 'Pickup';
+                const distanceKm = currentJob.distanceKm;
+                const symbol = getCurrencySymbol(currentJob.cost);
+                const estimatedForEntry =
+                  isPickupJob &&
+                  hasPrefs &&
+                  typeof distanceKm === 'number' &&
+                  typeof pref?.pricePerKm === 'number'
+                    ? Math.round(pref.pricePerKm * distanceKm * 100) / 100
+                    : null;
+
+                return (
+                  <View key={entry._id} style={styles.interestCard}>
+                    <View style={styles.interestTopRow}>
+                      <View style={styles.interestLeft}>
+                        <View style={styles.interestAvatar}>
+                          {entry.user.profile.profileImage ? (
+                            <Image
+                              source={{ uri: `${IMAGE_BASE_URL}${entry.user.profile.profileImage.startsWith('/') ? entry.user.profile.profileImage : `/${entry.user.profile.profileImage}`}` }}
+                              style={styles.interestAvatarImage}
+                              contentFit="cover"
+                            />
+                          ) : (
+                            <Text style={styles.interestAvatarText}>
+                              {(entry.user.profile.fullName || 'U').split(' ').map(n => n[0]).join('').toUpperCase()}
+                            </Text>
+                          )}
+                        </View>
+                        <View style={styles.interestInfo}>
+                          <Text style={styles.interestName}>{entry.user.profile.fullName}</Text>
+                          <Text style={styles.interestEmail}>{entry.user.profile.email}</Text>
+                          <Text style={styles.interestNotedAt}>Noted at {new Date(entry.notedAt).toLocaleString()}</Text>
+                        </View>
+                      </View>
+                      <TouchableOpacity
+                        style={styles.contactSmallButton}
+                        onPress={() => {
+                          if (entry.user.phoneNumber) {
+                            showAlert({
+                              title: "Contact",
+                              message: `Phone: ${entry.user.phoneNumber}`,
+                              type: "info",
+                              buttons: [
+                                {
+                                  label: "Cancel",
+                                  variant: "secondary",
+                                },
+                                {
+                                  label: "Call",
+                                  onPress: () => {
+                                    if (!entry.user.phoneNumber) return;
+                                    // Format phone number for tel: URL (remove spaces, dashes, etc.)
+                                    const phoneNumber = entry.user.phoneNumber.replace(/[\s\-\(\)]/g, '');
+                                    const telUrl = `tel:${phoneNumber}`;
+
+                                    Linking.openURL(telUrl).catch((err) => {
+                                      showAlert({
+                                        title: "Error",
+                                        message: "Could not open phone dialer. Please check if the phone number is valid.",
+                                        type: "error",
+                                      });
+                                    });
+                                  },
+                                },
+                              ],
+                            });
+                          } else {
+                            showAlert({
+                              title: "Contact",
+                              message: "No phone number available",
+                              type: "error",
+                            });
+                          }
+                        }}
+                      >
+                        <Text style={styles.contactSmallButtonText}>Contact</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* Pickup service preferences panel */}
+                    <View style={styles.prefsPanel}>
+                      <View style={styles.prefsHeaderRow}>
+                        <Ionicons name="car-outline" size={14} color={Colors.primary} />
+                        <Text style={styles.prefsHeaderText}>Pickup Service Preferences</Text>
+                      </View>
+
+                      {hasPrefs ? (
+                        <View style={styles.prefsGrid}>
+                          <View style={styles.prefRow}>
+                            <Text style={styles.prefLabel}>Vehicle</Text>
+                            <Text style={styles.prefValue}>
+                              {formatVehicleType(pref?.vehicleType)}
+                            </Text>
+                          </View>
+                          <View style={styles.prefRow}>
+                            <Text style={styles.prefLabel}>Number</Text>
+                            <Text style={styles.prefValue}>
+                              {pref?.vehicleNumber || '—'}
+                            </Text>
+                          </View>
+                          <View style={styles.prefRow}>
+                            <Text style={styles.prefLabel}>Rate / km</Text>
+                            <Text style={styles.prefValue}>
+                              {symbol}{pref?.pricePerKm}
+                            </Text>
+                          </View>
+                          {isPickupJob && (
+                            <View style={[styles.prefRow, styles.prefRowHighlight]}>
+                              <Text style={styles.prefLabelHighlight}>Estimated price</Text>
+                              <Text style={styles.prefValueHighlight}>
+                                {estimatedForEntry !== null
+                                  ? `${symbol}${estimatedForEntry}`
+                                  : '—'}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
                       ) : (
-                        <Text style={styles.interestAvatarText}>
-                          {(entry.user.profile.fullName || 'U').split(' ').map(n => n[0]).join('').toUpperCase()}
+                        <Text style={styles.prefsMissing}>
+                          Pickup preferences not set
                         </Text>
                       )}
                     </View>
-                    <View style={styles.interestInfo}>
-                      <Text style={styles.interestName}>{entry.user.profile.fullName}</Text>
-                      <Text style={styles.interestEmail}>{entry.user.profile.email}</Text>
-                      <Text style={styles.interestNotedAt}>Noted at {new Date(entry.notedAt).toLocaleString()}</Text>
-                    </View>
                   </View>
-                  <TouchableOpacity
-                    style={styles.contactSmallButton}
-                    onPress={() => {
-                      if (entry.user.phoneNumber) {
-                        showAlert({
-                          title: "Contact",
-                          message: `Phone: ${entry.user.phoneNumber}`,
-                          type: "info",
-                          buttons: [
-                            {
-                              label: "Cancel",
-                              variant: "secondary",
-                            },
-                            {
-                              label: "Call",
-                              onPress: () => {
-                                if (!entry.user.phoneNumber) return;
-                                // Format phone number for tel: URL (remove spaces, dashes, etc.)
-                                const phoneNumber = entry.user.phoneNumber.replace(/[\s\-\(\)]/g, '');
-                                const telUrl = `tel:${phoneNumber}`;
-                                
-                                Linking.openURL(telUrl).catch((err) => {
-                                  showAlert({
-                                    title: "Error",
-                                    message: "Could not open phone dialer. Please check if the phone number is valid.",
-                                    type: "error",
-                                  });
-                                });
-                              },
-                            },
-                          ],
-                        });
-                      } else {
-                        showAlert({
-                          title: "Contact",
-                          message: "No phone number available",
-                          type: "error",
-                        });
-                      }
-                    }}
-                  >
-                    <Text style={styles.contactSmallButtonText}>Contact</Text>
-                  </TouchableOpacity>
-                </View>
-              ))}
+                );
+              })}
             </View>
           )}
         </ScrollView>
@@ -839,16 +1053,30 @@ const JobDetailsScreen = () => {
       {!isMyJob && (
         <View style={styles.contactButtonContainer}>
           <TouchableOpacity
-            style={styles.contactButton}
+            style={[
+              styles.contactButton,
+              !isDirectContact && hasShownInterest && styles.contactButtonDisabled,
+            ]}
             onPress={isDirectContact ? handleContact : handleShowInterest}
+            disabled={!isDirectContact && hasShownInterest}
+            activeOpacity={!isDirectContact && hasShownInterest ? 1 : 0.7}
           >
             <Text style={styles.contactButtonText}>
-              {isDirectContact ? 'Contact' : 'Show Interest'}
+              {isDirectContact
+                ? 'Contact'
+                : hasShownInterest
+                ? 'Showed Interest'
+                : 'Show Interest'}
             </Text>
           </TouchableOpacity>
         </View>
       )}
       <VerificationBottomSheet ref={verificationSheetRef} />
+      <PickupPreferencesBottomSheet
+        ref={pickupPrefSheetRef}
+        // Per spec: after saving preferences, do NOT auto-show interest.
+        // The user must explicitly tap Show Interest again.
+      />
       {alertModal}
     </SafeAreaView>
   );
@@ -1070,6 +1298,49 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 16,
   },
+  pickupMetaContainer: {
+    marginTop: 16,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+    gap: 8,
+  },
+  pickupMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  pickupMetaLabel: {
+    flex: 1,
+    fontSize: 14,
+    color: Colors.gray,
+    fontWeight: '600',
+  },
+  pickupMetaValue: {
+    fontSize: 14,
+    color: '#121826',
+    fontWeight: '600',
+  },
+  pickupMetaValueStrong: {
+    fontSize: 15,
+    color: Colors.primary,
+    fontWeight: '800',
+  },
+  setPrefsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    backgroundColor: '#EAF2FF',
+  },
+  setPrefsText: {
+    flex: 1,
+    fontSize: 13,
+    color: Colors.primary,
+    fontWeight: '600',
+  },
   directionButton: {
     flex: 1,
     backgroundColor: Colors.primary,
@@ -1272,6 +1543,11 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.white,
   },
+  contactButtonDisabled: {
+    backgroundColor: '#9CA3AF',
+    shadowOpacity: 0,
+    elevation: 0,
+  },
   // Interests tab styles
   emptyInterestsContainer: {
     alignItems: 'center',
@@ -1284,17 +1560,81 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   interestCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     backgroundColor: Colors.lightGray,
     borderRadius: 12,
     padding: 12,
+    gap: 12,
+  },
+  interestTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   interestLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     flex: 1,
+  },
+  prefsPanel: {
+    backgroundColor: Colors.white,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  prefsHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  prefsHeaderText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.primary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+  },
+  prefsGrid: {
+    gap: 6,
+  },
+  prefRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 4,
+  },
+  prefRowHighlight: {
+    marginTop: 4,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  prefLabel: {
+    fontSize: 12,
+    color: Colors.gray,
+    fontWeight: '600',
+  },
+  prefValue: {
+    fontSize: 13,
+    color: '#121826',
+    fontWeight: '600',
+  },
+  prefLabelHighlight: {
+    fontSize: 13,
+    color: Colors.primary,
+    fontWeight: '700',
+  },
+  prefValueHighlight: {
+    fontSize: 14,
+    color: Colors.primary,
+    fontWeight: '800',
+  },
+  prefsMissing: {
+    fontSize: 12,
+    color: Colors.gray,
+    fontStyle: 'italic',
   },
   interestAvatar: {
     width: 40,

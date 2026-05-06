@@ -45,7 +45,19 @@ const JobRow: React.FC<JobRowProps> = ({ job, onPress }) => {
         <Text style={styles.rowTitle} numberOfLines={1}>{job.title}</Text>
         <Text style={styles.rowSub} numberOfLines={1}>
           {/* postedBy.fullName is FLAT - NOT profile.fullName */}
-          By: {job.postedBy?.fullName || "Unknown"} · {job.jobType || "OnSite"}
+          By: {job.postedBy?.fullName || "Unknown"}
+        </Text>
+        {/* Cost · Type · Category — single-line meta row */}
+        <Text
+          style={styles.rowMeta}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
+          {job.cost || "—"}
+          {` · ${job.jobType || "OnSite"}`}
+          {job.category && typeof job.category === "object" && job.category.name
+            ? ` · ${job.category.name}`
+            : ""}
         </Text>
       </View>
 
@@ -171,6 +183,12 @@ const styles = StyleSheet.create({
   rowInfo:   { flex: 1, marginRight: 8 },
   rowTitle:  { fontSize: 15, fontWeight: "600", color: Colors.black },
   rowSub:    { fontSize: 12, color: Colors.gray, marginTop: 2 },
+  rowMeta: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: Colors.primary,
+    marginTop: 2,
+  },
   rowBadges: { alignItems: "flex-end", marginRight: 8 },
   badge:     { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
   badgeText: { fontSize: 10, fontWeight: "600", textTransform: "capitalize" },

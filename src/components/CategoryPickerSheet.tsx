@@ -16,6 +16,74 @@ import { Ionicons } from "@expo/vector-icons";
 import { Colors } from "../utils";
 import { ServiceCategory } from "../interface/interfaces";
 
+type IoniconName = keyof typeof Ionicons.glyphMap;
+
+interface CategoryVisual {
+  icon: IoniconName;
+  color: string;
+  backgroundColor: string;
+}
+
+const CATEGORY_VISUALS: {
+  keywords: string[];
+  icon: IoniconName;
+  color: string;
+  backgroundColor: string;
+}[] = [
+  { keywords: ["plumb", "pipe", "water", "leak"], icon: "water-outline", color: "#0EA5E9", backgroundColor: "#E0F2FE" },
+  { keywords: ["electric", "wire", "light", "power"], icon: "flash-outline", color: "#F59E0B", backgroundColor: "#FEF3C7" },
+  { keywords: ["clean", "maid", "housekeep", "sanitize"], icon: "sparkles-outline", color: "#14B8A6", backgroundColor: "#CCFBF1" },
+  { keywords: ["paint", "decor", "interior"], icon: "color-palette-outline", color: "#A855F7", backgroundColor: "#F3E8FF" },
+  { keywords: ["carpent", "wood", "furniture"], icon: "hammer-outline", color: "#B45309", backgroundColor: "#FEF3C7" },
+  { keywords: ["garden", "lawn", "landscap", "plant"], icon: "leaf-outline", color: "#16A34A", backgroundColor: "#DCFCE7" },
+  { keywords: ["move", "moving", "shift", "transport"], icon: "car-outline", color: "#2563EB", backgroundColor: "#DBEAFE" },
+  { keywords: ["deliver", "courier", "parcel", "package"], icon: "cube-outline", color: "#EA580C", backgroundColor: "#FFEDD5" },
+  { keywords: ["appliance", "ac", "hvac", "fridge", "washer"], icon: "hardware-chip-outline", color: "#475569", backgroundColor: "#E2E8F0" },
+  { keywords: ["repair", "fix", "maintenance"], icon: "build-outline", color: "#4F46E5", backgroundColor: "#E0E7FF" },
+  { keywords: ["beauty", "salon", "hair", "makeup"], icon: "cut-outline", color: "#DB2777", backgroundColor: "#FCE7F3" },
+  { keywords: ["teach", "tutor", "school", "class"], icon: "school-outline", color: "#7C3AED", backgroundColor: "#EDE9FE" },
+  { keywords: ["pet", "dog", "cat"], icon: "paw-outline", color: "#D97706", backgroundColor: "#FEF3C7" },
+  { keywords: ["health", "medical", "care", "nurse"], icon: "medkit-outline", color: "#DC2626", backgroundColor: "#FEE2E2" },
+  { keywords: ["food", "cook", "chef", "cater"], icon: "fast-food-outline", color: "#F97316", backgroundColor: "#FFEDD5" },
+  { keywords: ["security", "guard", "safe"], icon: "shield-checkmark-outline", color: "#0F766E", backgroundColor: "#CCFBF1" },
+  { keywords: ["computer", "tech", "software", "laptop"], icon: "laptop-outline", color: "#0284C7", backgroundColor: "#E0F2FE" },
+  { keywords: ["photo", "video", "camera"], icon: "camera-outline", color: "#6D28D9", backgroundColor: "#EDE9FE" },
+  { keywords: ["fitness", "gym", "trainer"], icon: "barbell-outline", color: "#BE123C", backgroundColor: "#FFE4E6" },
+  { keywords: ["legal", "law", "document"], icon: "document-text-outline", color: "#334155", backgroundColor: "#E2E8F0" },
+  { keywords: ["account", "tax", "bookkeep"], icon: "calculator-outline", color: "#047857", backgroundColor: "#D1FAE5" },
+  { keywords: ["child", "baby", "caregiver"], icon: "happy-outline", color: "#CA8A04", backgroundColor: "#FEF9C3" },
+];
+
+const FALLBACK_VISUALS: CategoryVisual[] = [
+  { icon: "briefcase-outline", color: "#2563EB", backgroundColor: "#DBEAFE" },
+  { icon: "construct-outline", color: "#4F46E5", backgroundColor: "#E0E7FF" },
+  { icon: "home-outline", color: "#0891B2", backgroundColor: "#CFFAFE" },
+  { icon: "options-outline", color: "#64748B", backgroundColor: "#E2E8F0" },
+];
+
+export const getCategoryVisual = (category?: Partial<ServiceCategory> | null): CategoryVisual => {
+  const rawIcon = category?.icon?.trim();
+  if (rawIcon && rawIcon in Ionicons.glyphMap) {
+    return { ...FALLBACK_VISUALS[0], icon: rawIcon as IoniconName };
+  }
+
+  const haystack = `${category?.name ?? ""} ${category?.slug ?? ""} ${category?.description ?? ""}`.toLowerCase();
+  const match = CATEGORY_VISUALS.find((visual) =>
+    visual.keywords.some((keyword) => haystack.includes(keyword))
+  );
+
+  if (match) {
+    return {
+      icon: match.icon,
+      color: match.color,
+      backgroundColor: match.backgroundColor,
+    };
+  }
+
+  const stableIndex = (category?._id ?? category?.slug ?? category?.name ?? "").length % FALLBACK_VISUALS.length;
+  return FALLBACK_VISUALS[stableIndex];
+};
+
 interface CategoryPickerSheetProps {
   visible: boolean;
   onClose: () => void;
@@ -169,7 +237,7 @@ const CategoryPickerSheet: React.FC<CategoryPickerSheetProps> = ({
               <View style={styles.stateWrap}>
                 <Ionicons name="search-outline" size={26} color="#8B95A6" />
                 <Text style={styles.stateText}>
-                  No categories match "{query}"
+                  {`No categories match "${query}"`}
                 </Text>
               </View>
             ) : (
@@ -181,6 +249,7 @@ const CategoryPickerSheet: React.FC<CategoryPickerSheetProps> = ({
                 contentContainerStyle={{ paddingBottom: 12 }}
                 renderItem={({ item }) => {
                   const selected = selectedId === item._id;
+                  const categoryVisual = getCategoryVisual(item);
                   return (
                     <TouchableOpacity
                       style={[styles.row, selected && styles.rowSelected]}
@@ -190,11 +259,16 @@ const CategoryPickerSheet: React.FC<CategoryPickerSheetProps> = ({
                         onClose();
                       }}
                     >
-                      <View style={styles.rowIconWrap}>
+                      <View
+                        style={[
+                          styles.rowIconWrap,
+                          { backgroundColor: categoryVisual.backgroundColor },
+                        ]}
+                      >
                         <Ionicons
-                          name="construct-outline"
+                          name={categoryVisual.icon}
                           size={20}
-                          color={Colors.primary}
+                          color={categoryVisual.color}
                         />
                       </View>
                       <View style={{ flex: 1 }}>

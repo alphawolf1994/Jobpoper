@@ -62,6 +62,12 @@ export interface AdminJob {
     phoneNumber: string;
     fullName: string;     // flat, from profile.fullName
   };
+  category?: {
+    id: string;
+    name: string;
+    slug: string;
+    icon?: string;
+  } | null;
   interestedCount: number;
   createdAt: string;
   // Detail-only fields (buildAdminJobDetail)

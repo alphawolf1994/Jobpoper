@@ -783,6 +783,7 @@ export interface InterestedUserEntry {
       email: string;
       profileImage?: string;
     };
+    vehiclePreference?: VehiclePreference;
   };
   notedAt: string;
   _id: string;

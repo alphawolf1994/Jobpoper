@@ -8,15 +8,23 @@
     "scheme": "jobpoper",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "backgroundColor": "#3B6FF8",
+      "resizeMode": "cover"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.anonymous.jobpoper",
+      "icon": "./assets/images/icon.png",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We use your location to place the delivery pin and find your address.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "We use your location to place the delivery pin and find your address."
       }
     },
     "android": {
+      "package": "com.anonymous.Jobpoper",
+      "icon": "./assets/images/icon.png",
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION"
@@ -28,41 +36,41 @@
       },
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundImage": "./assets/images/adaptive-icon.png",
-        "monochromeImage": "./assets/images/adaptive-icon.png"
+        "backgroundColor": "#3B6FF8",
+        "foregroundImage": "./assets/images/android-icon-foreground.png",
+        "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.Jobpoper"
+      "predictiveBackGestureEnabled": false
     },
     "web": {
       "output": "static",
       "favicon": "./assets/images/icon.png"
     },
     "plugins": [
-      [
-        "expo-location"
-      ],
+      ["expo-location"],
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#FFFFFF",
+          "backgroundColor": "#3B6FF8",
           "image": "./assets/images/splash.png",
-          "imageWidth": 200,
-          "resizeMode": "contain"
+          "resizeMode": "cover",
+          "ios": {
+            "backgroundColor": "#3B6FF8",
+            "image": "./assets/images/splash.png",
+            "resizeMode": "cover"
+          },
+          "android": {
+            "backgroundColor": "#3B6FF8",
+            "image": "./assets/images/splash.png",
+            "resizeMode": "cover"
+          }
         }
       ]
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    },
-    "splash": {
-      "image": "./assets/images/splash.png",
-      "backgroundColor": "#FFFFFF",
-      "resizeMode": "contain"
     }
   }
 }

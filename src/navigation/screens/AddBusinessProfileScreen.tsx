@@ -7,9 +7,11 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  Modal,
+  FlatList,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import { useFocusEffect, useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons, AntDesign } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { Image } from "expo-image";
@@ -17,9 +19,9 @@ import { useDispatch, useSelector } from "react-redux";
 import Toast from "react-native-toast-message";
 
 import { Colors } from "../../utils";
-import { Button, MyTextInput, PhoneNumberInput, LocationAutocomplete } from "../../components";
+import { Button, MyTextInput, PhoneNumberInput } from "../../components";
 import Loader from "../../components/Loader";
-import CategoryPickerSheet from "../../components/CategoryPickerSheet";
+import CategoryPickerSheet, { getCategoryVisual } from "../../components/CategoryPickerSheet";
 import VerificationBottomSheet, {
   VerificationBottomSheetHandle,
 } from "../../components/VerificationBottomSheet";
@@ -27,6 +29,11 @@ import { useAlertModal } from "../../hooks/useAlertModal";
 import { AppDispatch, RootState } from "../../redux/store";
 import { fetchBusinessCategories } from "../../redux/slices/businessCategorySlice";
 import { fetchVerificationStatus } from "../../redux/slices/verificationSlice";
+import {
+  SavedLocation,
+  clearLastAddedLocation,
+  fetchLocations,
+} from "../../redux/slices/locationsSlice";
 import { BusinessCategory, ServiceCategory } from "../../interface/interfaces";
 import {
   createBusinessProfileApi,
@@ -75,6 +82,9 @@ const AddBusinessProfileScreen = () => {
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
   const verificationSheetRef = useRef<VerificationBottomSheetHandle>(null);
   const { user } = useSelector((state: RootState) => state.auth);
+  const { items: savedLocations, lastAddedLocation } = useSelector(
+    (state: RootState) => state.locations
+  );
 
   const isEditMode = route.params?.mode === "edit" && !!route.params?.profile;
   const editingProfile = route.params?.profile;
@@ -100,6 +110,7 @@ const AddBusinessProfileScreen = () => {
   }, [isEditMode, editingProfile]);
   const [selectedCategory, setSelectedCategory] =
     useState<BusinessCategory | null>(initialCategoryFromProfile);
+  const selectedCategoryVisual = getCategoryVisual(selectedCategory);
   const [showCategorySheet, setShowCategorySheet] = useState(false);
 
   const [address, setAddress] = useState(
@@ -107,6 +118,8 @@ const AddBusinessProfileScreen = () => {
   );
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<SavedLocation | null>(null);
+  const [showLocationModal, setShowLocationModal] = useState(false);
 
   const [phoneNumber, setPhoneNumber] = useState(
     isEditMode ? editingProfile?.phoneNumber ?? "" : ""
@@ -141,6 +154,20 @@ const AddBusinessProfileScreen = () => {
       dispatch(fetchVerificationStatus());
     }
   }, [dispatch, user?.isVerified]);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      dispatch(fetchLocations());
+
+      if (lastAddedLocation) {
+        setSelectedLocation(lastAddedLocation);
+        setAddress(lastAddedLocation.fullAddress);
+        setLatitude(lastAddedLocation.latitude);
+        setLongitude(lastAddedLocation.longitude);
+        dispatch(clearLastAddedLocation());
+      }
+    }, [dispatch, lastAddedLocation])
+  );
 
   useEffect(() => {
     if (!isEditMode && user && !user.isVerified) {
@@ -279,6 +306,19 @@ const AddBusinessProfileScreen = () => {
 
   const markPrimary = (index: number) => {
     setPrimaryIndex(index);
+  };
+
+  const handleLocationSelect = (location: SavedLocation) => {
+    setSelectedLocation(location);
+    setAddress(location.fullAddress);
+    setLatitude(location.latitude);
+    setLongitude(location.longitude);
+    setShowLocationModal(false);
+  };
+
+  const handleAddNewLocation = () => {
+    setShowLocationModal(false);
+    (navigation as any).navigate("AddLocationScreen");
   };
 
   // ----- Validation + submit ------------------------------------------------
@@ -508,18 +548,26 @@ const AddBusinessProfileScreen = () => {
               onPress={() => setShowCategorySheet(true)}
               style={[styles.dropdown, styles.inputRow]}
             >
-              <Text
-                style={
-                  selectedCategory ? styles.dropdownText : styles.placeholder
-                }
-                numberOfLines={1}
-              >
-                {selectedCategory
-                  ? selectedCategory.name
-                  : categoriesLoading
-                  ? "Loading categories..."
-                  : "Select a business category"}
-              </Text>
+              <View style={styles.categoryValueWrap}>
+                <Ionicons
+                  name={selectedCategory ? selectedCategoryVisual.icon : "grid-outline"}
+                  size={20}
+                  color={selectedCategory ? selectedCategoryVisual.color : "#9AA0A6"}
+                  style={styles.categoryIcon}
+                />
+                <Text
+                  style={
+                    selectedCategory ? styles.dropdownText : styles.placeholder
+                  }
+                  numberOfLines={1}
+                >
+                  {selectedCategory
+                    ? selectedCategory.name
+                    : categoriesLoading
+                    ? "Loading categories..."
+                    : "Select a business category"}
+                </Text>
+              </View>
               <Ionicons name="chevron-down" size={18} color="#9AA0A6" />
             </TouchableOpacity>
             {categoriesError ? (
@@ -527,36 +575,29 @@ const AddBusinessProfileScreen = () => {
             ) : null}
           </View>
 
-          {/* Address (autocomplete-backed text/map picker) */}
+          {/* Address */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>
               Address <Text style={styles.required}>*</Text>
             </Text>
-            <LocationAutocomplete
-              placeholder="Search for your business address"
-              value={address}
-              mode="full"
-              onLocationSelect={(loc) => {
-                setAddress(loc.fullAddress || "");
-                setLatitude(loc.latitude ?? null);
-                setLongitude(loc.longitude ?? null);
-              }}
-            />
-            <Text style={styles.hint}>
-              Pick from suggestions to attach map coordinates, or type a
-              custom address below.
-            </Text>
-            <MyTextInput
-              placeholder="Or type the address manually"
-              value={address}
-              onChange={(text: string) => {
-                setAddress(text);
-                // user typed manually — clear coordinates so we don't send
-                // mismatched lat/lng with a different address.
-                setLatitude(null);
-                setLongitude(null);
-              }}
-            />
+            <TouchableOpacity
+              onPress={() => setShowLocationModal(true)}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.dropdown, styles.inputRow, styles.locationSelectable]}>
+                <View style={styles.locationValueWrap}>
+                  <Text
+                    style={address ? styles.dropdownText : styles.placeholder}
+                    numberOfLines={2}
+                  >
+                    {selectedLocation
+                      ? `${selectedLocation.name} - ${selectedLocation.fullAddress}`
+                      : address || "Select location..."}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-down" size={20} color="#9AA0A6" />
+              </View>
+            </TouchableOpacity>
           </View>
 
           {/* Phone */}
@@ -575,7 +616,7 @@ const AddBusinessProfileScreen = () => {
           {/* Images */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>
-              Photos{" "}
+            Add the images of your services/products/ Menu{" "}
               {!isEditMode ? <Text style={styles.required}>*</Text> : null}
               <Text style={styles.labelSub}>
                 {"  "}
@@ -737,6 +778,78 @@ const AddBusinessProfileScreen = () => {
       <VerificationBottomSheet ref={verificationSheetRef} />
 
       {alertModal}
+
+      <Modal
+        visible={showLocationModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowLocationModal(false)}
+      >
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity
+              onPress={() => setShowLocationModal(false)}
+              style={styles.modalCloseButton}
+            >
+              <Ionicons name="close" size={24} color={Colors.black} />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Select Location</Text>
+            <View style={{ width: 24 }} />
+          </View>
+
+          <View style={styles.modalContent}>
+            {savedLocations.length === 0 ? (
+              <View style={styles.emptyLocationsContainer}>
+                <Ionicons name="location-outline" size={64} color={Colors.lightGray} />
+                <Text style={styles.emptyLocationsText}>No saved locations</Text>
+                <Text style={styles.emptyLocationsSubtext}>
+                  Add your first location to get started
+                </Text>
+              </View>
+            ) : (
+              <FlatList
+                data={savedLocations}
+                keyExtractor={(item) => item.id}
+                renderItem={({ item }) => (
+                  <TouchableOpacity
+                    style={styles.locationItem}
+                    onPress={() => handleLocationSelect(item)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.locationItemContent}>
+                      <View style={[styles.locationTypeIcon, { backgroundColor: Colors.lightGray }]}>
+                        <Ionicons name="location-outline" size={18} color={Colors.primary} />
+                      </View>
+                      <View style={styles.locationTextContainer}>
+                        <Text style={styles.locationItemName}>{item.name}</Text>
+                        <Text style={styles.locationItemAddress} numberOfLines={2}>
+                          {item.fullAddress}
+                        </Text>
+                        {item.addressDetails ? (
+                          <Text style={styles.locationItemDetails} numberOfLines={1}>
+                            {item.addressDetails}
+                          </Text>
+                        ) : null}
+                      </View>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={Colors.gray} />
+                  </TouchableOpacity>
+                )}
+              />
+            )}
+
+            <View style={styles.modalFooter}>
+              <Button
+                label="Add New Location"
+                onPress={handleAddNewLocation}
+                icon={<Ionicons name="add" size={20} color={Colors.white} />}
+                style={styles.addLocationButton}
+                textStyle={{ fontSize: 16 }}
+              />
+            </View>
+          </View>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -823,6 +936,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
+  categoryValueWrap: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    minWidth: 0,
+  },
+  categoryIcon: {
+    marginRight: 10,
+  },
+  locationValueWrap: {
+    flex: 1,
+    minWidth: 0,
+  },
+  locationSelectable: {
+    backgroundColor: "#f8f9fa",
+    borderWidth: 1,
+    borderColor: "#e9ecef",
+  },
   dropdownText: {
     fontSize: 15,
     color: Colors.black,
@@ -894,5 +1025,100 @@ const styles = StyleSheet.create({
     color: "#7A4A00",
     fontWeight: "600",
     flex: 1,
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: Colors.white,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGray,
+  },
+  modalCloseButton: {
+    width: 40,
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    color: Colors.black,
+  },
+  modalContent: {
+    flex: 1,
+  },
+  emptyLocationsContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+  },
+  emptyLocationsText: {
+    fontSize: 18,
+    fontWeight: "600",
+    color: Colors.black,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptyLocationsSubtext: {
+    fontSize: 14,
+    color: Colors.gray,
+    textAlign: "center",
+  },
+  locationItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGray,
+  },
+  locationItemContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+  },
+  locationTypeIcon: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+  locationTextContainer: {
+    flex: 1,
+  },
+  locationItemName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: Colors.black,
+    marginBottom: 4,
+  },
+  locationItemAddress: {
+    fontSize: 13,
+    color: Colors.gray,
+    marginBottom: 2,
+  },
+  locationItemDetails: {
+    fontSize: 12,
+    color: Colors.gray,
+    fontStyle: "italic",
+  },
+  modalFooter: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: Colors.lightGray,
+  },
+  addLocationButton: {
+    marginTop: 0,
   },
 });

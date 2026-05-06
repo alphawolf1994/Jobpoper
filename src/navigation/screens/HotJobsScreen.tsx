@@ -10,7 +10,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../../utils';
+import { Colors, getJobCategoryName } from '../../utils';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
 import MyTextInput from '../../components/MyTextInput';
@@ -223,11 +223,16 @@ const HotJobsScreen = () => {
         ))}
       </View>
 
-      {/* Bottom Row - Cost and Job Type */}
+      {/* Bottom Row - Cost · Type · Category (single line) */}
       <View style={styles.bottomRow}>
-        <Text style={styles.cost}>{job.cost}</Text>
-        <Text style={styles.cost} numberOfLines={1}>
+        <Text style={styles.cost} numberOfLines={1}>{job.cost}</Text>
+        <Text
+          style={styles.metaText}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
           {job.jobType}
+          {getJobCategoryName(job) ? ` · ${getJobCategoryName(job)}` : ''}
         </Text>
       </View>
     </TouchableOpacity>
@@ -549,11 +554,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 20,
+    gap: 10,
   },
   cost: {
     fontSize: 16,
     fontWeight: 'bold',
     color: Colors.white,
+    flexShrink: 0,
+  },
+  metaText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.white,
+    opacity: 0.95,
+    textAlign: 'right',
   },
   loadingContainer: {
     flex: 1,

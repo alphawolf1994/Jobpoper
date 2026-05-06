@@ -8,7 +8,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../utils';
+import { Colors, getJobCategoryName } from '../utils';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import { getHotJobs, searchHotJobsPaginated } from '../redux/slices/jobSlice';
@@ -133,11 +133,16 @@ const HotJobs: React.FC<HotJobsProps> = ({ searchQuery = '' }) => {
         ))}
       </View>
 
-      {/* Bottom Row - Cost and Location */}
+      {/* Bottom Row - Cost · Type · Category (single line) */}
       <View style={styles.bottomRow}>
-        <Text style={styles.cost}>{job.cost}</Text>
-        <Text style={styles.cost} numberOfLines={1}>
+        <Text style={styles.cost} numberOfLines={1}>{job.cost}</Text>
+        <Text
+          style={styles.metaText}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+        >
           {job.jobType}
+          {getJobCategoryName(job) ? ` · ${getJobCategoryName(job)}` : ''}
         </Text>
       </View>
     </TouchableOpacity>
@@ -309,11 +314,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 20,
+    gap: 10,
   },
   cost: {
     fontSize: 16,
     fontWeight: 'bold',
     color: Colors.white,
+    flexShrink: 0,
+  },
+  metaText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '600',
+    color: Colors.white,
+    opacity: 0.95,
+    textAlign: 'right',
   },
   location: {
     fontSize: 14,
