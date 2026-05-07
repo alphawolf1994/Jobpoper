@@ -34,13 +34,6 @@ const OTPScreen = () => {
       message,
       type: "error",
     });
-
-  const showSuccessAlert = (message: string) =>
-    showAlert({
-      title: "Success",
-      message,
-      type: "success",
-    });
   
   // Get route params to determine if this is a new user
   const { isNewUser = false } = (route.params as any) || {};
@@ -110,7 +103,6 @@ const OTPScreen = () => {
     setOtp(['', '', '', '', '', '']);
     inputRefs.current[0]?.focus();
     // Here you would typically call your resend OTP API
-    showSuccessAlert('OTP has been resent to your phone number');
   };
 
   return (

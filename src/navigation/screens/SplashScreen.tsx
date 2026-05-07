@@ -69,7 +69,7 @@ const SplashScreen = () => {
      >
         <View style={styles.logoContainer}>
           <Image source={ImagePath.newLogo} style={styles.logo} />
-          <Text style={styles.brandText}>JobPoper</Text>
+          <Text style={styles.brandText}>Job Poper</Text>
         </View>
      </LinearGradient>
   );
@@ -91,7 +91,6 @@ const styles = StyleSheet.create({
     width: widthToDp(24),
     height: heightToDp(12),
     resizeMode: "contain",
-    tintColor: Colors.white,
   },
   brandText: {
     marginTop: heightToDp(0),

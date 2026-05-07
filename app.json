@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "JobPoper",
+    "name": "Job Poper",
     "slug": "jobpoper",
     "version": "1.0.1",
     "orientation": "portrait",
@@ -10,8 +10,9 @@
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/images/splash.png",
-      "backgroundColor": "#3B6FF8",
-      "resizeMode": "cover"
+      "backgroundColor": "#4268F2",
+      "resizeMode": "contain",
+      "imageWidth": 250
     },
     "ios": {
       "supportsTablet": true,
@@ -36,7 +37,7 @@
       },
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
-        "backgroundColor": "#3B6FF8",
+        "backgroundColor": "#4268F2",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
@@ -52,18 +53,21 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#3B6FF8",
+          "backgroundColor": "#4268F2",
           "image": "./assets/images/splash.png",
-          "resizeMode": "cover",
+          "imageWidth": 250,
+          "resizeMode": "contain",
           "ios": {
-            "backgroundColor": "#3B6FF8",
+            "backgroundColor": "#4268F2",
             "image": "./assets/images/splash.png",
-            "resizeMode": "cover"
+            "imageWidth": 250,
+            "resizeMode": "contain"
           },
           "android": {
-            "backgroundColor": "#3B6FF8",
+            "backgroundColor": "#4268F2",
             "image": "./assets/images/splash.png",
-            "resizeMode": "cover"
+            "imageWidth": 250,
+            "resizeMode": "contain"
           }
         }
       ]

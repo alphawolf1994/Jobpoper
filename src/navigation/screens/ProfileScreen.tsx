@@ -66,11 +66,6 @@ const ProfileScreen = () => {
               dispatch(clearAuth());
               dispatch(setCurrentLocation(''));
               dispatch(setCurrentLocationCoordinates(null));
-              showAlert({
-                title: "Success",
-                message: "Logged out successfully!",
-                type: "success",
-              });
             }
           },
         },
@@ -104,12 +99,6 @@ const ProfileScreen = () => {
               dispatch(setCurrentLocationCoordinates(null));
 
               (navigation as any).navigate("LoginScreen");
-
-              showAlert({
-                title: "Account Deleted",
-                message: "Your account has been deleted successfully.",
-                type: "success",
-              });
             } catch (error: any) {
               showAlert({
                 title: "Error",

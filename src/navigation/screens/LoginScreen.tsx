@@ -421,7 +421,6 @@ const styles = StyleSheet.create({
     width: 92,
     height: 92,
     resizeMode: "contain",
-    tintColor: Colors.primary,
     marginBottom: 2,
   },
   brandText: {

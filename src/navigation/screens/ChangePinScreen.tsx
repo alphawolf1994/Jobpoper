@@ -42,19 +42,6 @@ const ChangePinScreen = () => {
             type: "error",
         });
 
-    const showSuccessAlert = (message: string, onConfirm: () => void) =>
-        showAlert({
-            title: "Success",
-            message,
-            type: "success",
-            buttons: [
-                {
-                    label: "OK",
-                    onPress: onConfirm,
-                },
-            ],
-        });
-
     const handlePinChange = (value: string, index: number, pinType: 'new' | 'confirm') => {
         if (value.length > 1) return; // Prevent multiple characters
 
@@ -132,10 +119,7 @@ const ChangePinScreen = () => {
             const result = await dispatch(changePin(newPinString)).unwrap();
 
             if (result.status === 'success') {
-                showSuccessAlert(
-                    result.message || 'PIN changed successfully!',
-                    () => navigation.goBack()
-                );
+                navigation.goBack();
             }
         } catch (error: any) {
             showErrorAlert(error || 'Failed to change PIN. Please try again.');

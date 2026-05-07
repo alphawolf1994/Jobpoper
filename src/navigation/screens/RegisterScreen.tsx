@@ -116,11 +116,10 @@ const styles = StyleSheet.create({
     zIndex: 1 
   },
   logoWrap: { alignItems: "center", marginTop: 40, marginBottom: 30 },
-  logo: { 
+  logo: {
     width: widthToDp(24),
     height: heightToDp(12),
     resizeMode: "contain",
-    tintColor: Colors.primary, 
   },
   brandText: {
     marginTop: heightToDp(1),
