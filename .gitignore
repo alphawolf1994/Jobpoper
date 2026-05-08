@@ -23,6 +23,10 @@ my-upload-key.keystore
 *.key
 *.mobileprovision
 
+# Local signing credentials — never commit
+android-keystore.properties
+!android-keystore.properties.example
+
 # Metro
 .metro-health-check*
 

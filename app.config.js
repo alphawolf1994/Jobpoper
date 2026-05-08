@@ -4,6 +4,7 @@
  */
 const withFirebaseConfig = require("./plugins/withFirebaseConfig");
 const withAndroidCleartext = require("./plugins/withAndroidCleartext");
+const withAndroidReleaseSigning = require("./plugins/withAndroidReleaseSigning");
 const appJson = require("./app.json");
 
 module.exports = {
@@ -46,6 +47,7 @@ module.exports = {
       ["expo-build-properties", { ios: { useFrameworks: "static" } }],
       withFirebaseConfig,
       withAndroidCleartext,
+      withAndroidReleaseSigning,
     ],
   },
 };

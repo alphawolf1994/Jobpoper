@@ -2,7 +2,7 @@
   "expo": {
     "name": "Job Poper",
     "slug": "jobpoper",
-    "version": "1.0.1",
+    "version": "1.3.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "jobpoper",
@@ -15,8 +15,9 @@
       "imageWidth": 250
     },
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.jobpoper",
+      "supportsTablet": false,
+      "bundleIdentifier": "com.appcrafters.jobpoper",
+      "buildNumber": "1.0.10",
       "icon": "./assets/images/icon.png",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We use your location to place the delivery pin and find your address.",
@@ -25,6 +26,7 @@
     },
     "android": {
       "package": "com.anonymous.Jobpoper",
+      "versionCode": 9,
       "icon": "./assets/images/icon.png",
       "permissions": [
         "ACCESS_COARSE_LOCATION",
