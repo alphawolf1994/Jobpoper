@@ -158,9 +158,9 @@ const ListedJobs: React.FC<ListedJobsProps> = ({ searchQuery = '', scrollEnabled
         />
       ) : (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>
-            {searchQuery.trim() 
-              ? `No listed jobs found for "${searchQuery}"` 
+          <Text style={styles.emptyText} numberOfLines={3} ellipsizeMode="tail">
+            {searchQuery.trim()
+              ? `No listed jobs found for "${searchQuery}"`
               : 'No listed jobs available in your area'}
           </Text>
         </View>
@@ -285,12 +285,16 @@ const styles = StyleSheet.create({
   emptyContainer: {
     height: 200,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'stretch',
+    paddingHorizontal: 16,
   },
   emptyText: {
     fontSize: 16,
     color: Colors.gray,
     textAlign: 'center',
+    width: '100%',
+    flexWrap: 'wrap',
+    includeFontPadding: false,
   },
 });
 

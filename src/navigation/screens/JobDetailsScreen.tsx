@@ -697,6 +697,11 @@ const JobDetailsScreen = () => {
   const isDirectContact = currentJob.responsePreference === 'direct_contact' || !currentJob.responsePreference;
   const isMyJob = !!user && currentJob.postedBy?._id === user.id;
   const interestedUsers: InterestedUserEntry[] = currentJob.interestedUsers || [];
+  // When a job has been cancelled there is nothing actionable left for a
+  // non-owner viewer — hide the contact / show-interest CTA entirely.
+  const isJobCancelled =
+    typeof currentJob.status === 'string' &&
+    currentJob.status.toLowerCase() === 'cancelled';
 
   // Has the current user already shown interest in this job?
   // Hydrated from backend on every fetch, plus an optimistic flag for the
@@ -1049,8 +1054,8 @@ const JobDetailsScreen = () => {
         </ScrollView>
       )}
 
-      {/* Action Button */}
-      {!isMyJob && (
+      {/* Action Button — hidden when the job has been cancelled */}
+      {!isMyJob && !isJobCancelled && (
         <View style={styles.contactButtonContainer}>
           <TouchableOpacity
             style={[

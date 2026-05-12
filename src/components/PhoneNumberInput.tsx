@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   Platform,
+  StatusBar,
   ViewStyle,
   Dimensions,
 } from "react-native";
@@ -12,6 +13,12 @@ import { Colors } from "../utils";
 import ErrorText from "./ErrorText";
 
 const COUNTRY_LIST_MAX_HEIGHT = Dimensions.get("window").height * 0.62;
+
+// Account for status bar + extra breathing room so the search input / close
+// button never sit underneath the system status bar on Android devices that
+// render edge-to-edge (e.g. Motorola Edge 60 Pro with punch-hole camera).
+const ANDROID_STATUS_BAR_OFFSET =
+  (StatusBar.currentHeight ?? 24) + 12;
 
 interface PhoneNumberInputProps {
   label?: string;
@@ -69,12 +76,17 @@ const PhoneNumberInput = ({
           }}
           countryPickerProps={{
             modalProps: {
+              // Keep the OS status bar visible above the picker modal so
+              // the search bar and close button do not overlap it on
+              // Android edge-to-edge devices.
               statusBarTranslucent: false,
+              hardwareAccelerated: true,
             },
             flatListProps: {
               style: styles.countryList,
             },
             closeButtonStyle: styles.countryCloseButton,
+            closeButtonImageStyle: styles.countryCloseButtonImage,
           }}
           renderDropdownImage={
             <Text style={styles.dropdownArrow}>▼</Text>
@@ -140,15 +152,27 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   countryFilterInput: {
-    marginTop: Platform.OS === "android" ? 10 : 6,
+    marginTop: Platform.OS === "android" ? ANDROID_STATUS_BAR_OFFSET : 6,
     marginLeft: 12,
-    width: "72%",
+    width: "70%",
+    fontSize: 16,
+    color: Colors.black,
   },
   countryList: {
     maxHeight: COUNTRY_LIST_MAX_HEIGHT,
   },
   countryCloseButton: {
-    marginTop: Platform.OS === "android" ? 10 : 6,
+    marginTop: Platform.OS === "android" ? ANDROID_STATUS_BAR_OFFSET : 6,
+    marginLeft: 8,
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  countryCloseButtonImage: {
+    width: 20,
+    height: 20,
+    resizeMode: "contain",
   },
   label: {
     fontSize: 14,

@@ -176,9 +176,9 @@ const HotJobs: React.FC<HotJobsProps> = ({ searchQuery = '' }) => {
         </ScrollView>
       ) : (
         <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>
-            {searchQuery.trim() 
-              ? `No hot jobs found for "${searchQuery}"` 
+          <Text style={styles.emptyText} numberOfLines={3} ellipsizeMode="tail">
+            {searchQuery.trim()
+              ? `No hot jobs found for "${searchQuery}"`
               : 'No hot jobs available in your area'}
           </Text>
         </View>
@@ -348,12 +348,16 @@ const styles = StyleSheet.create({
   emptyContainer: {
     height: 185,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'stretch',
+    paddingHorizontal: 16,
   },
   emptyText: {
     fontSize: 16,
     color: Colors.gray,
     textAlign: 'center',
+    width: '100%',
+    flexWrap: 'wrap',
+    includeFontPadding: false,
   },
 });
 

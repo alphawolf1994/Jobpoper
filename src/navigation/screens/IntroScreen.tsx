@@ -1,5 +1,5 @@
 import * as React from "react";
-import { Dimensions, Image, Text, TouchableOpacity, View } from "react-native";
+import { Dimensions, Image, Platform, Text, TouchableOpacity, View } from "react-native";
 import { useSharedValue } from "react-native-reanimated";
 import Carousel, { ICarouselInstance } from "react-native-reanimated-carousel";
 import { Colors, heightToDp, widthToDp } from "../../utils";
@@ -51,7 +51,7 @@ function IntroScreen() {
   };
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: Colors.white }}>
+    <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={{ flex: 1, backgroundColor: Colors.white }}>
       <Carousel
         ref={ref}
         width={width}
@@ -72,7 +72,11 @@ function IntroScreen() {
                   flex: 1,
                   justifyContent: "space-between",
                   alignItems: "center",
-                  paddingBottom: heightToDp(12),
+                  // Keep iOS at the original spacing so the bottom buttons sit
+                  // safely above the home indicator. Use a smaller, fixed value
+                  // on Android so tall devices (Motorola Edge 60 Pro) don't
+                  // push the button row into the gesture bar.
+                  paddingBottom: Platform.OS === 'android' ? 32 : heightToDp(12),
                   paddingHorizontal: 24,
                 }}
               >
@@ -114,7 +118,7 @@ function IntroScreen() {
                     </Text>
                   ) : null}
                 </View>
-                <View style={{ width: '100%', paddingHorizontal: 16 }}>
+                <View style={{ width: '100%', paddingHorizontal: 8 }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'center', marginBottom: 16 }}>
                     {data.map((_, dotIndex) => (
                       <TouchableOpacity
@@ -133,14 +137,27 @@ function IntroScreen() {
                       />
                     ))}
                   </View>
-                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                     <TouchableOpacity
                       onPress={() => {
                         (navigation as any).navigate('LoginScreen');
                       }}
-                      style={{ paddingVertical: 14, paddingHorizontal: 16 }}
+                      style={{
+                        paddingVertical: 14,
+                        paddingHorizontal: 16,
+                        minWidth: 72,
+                        alignItems: 'flex-start',
+                        flexShrink: 0,
+                      }}
+                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     >
-                      <Text style={{ color: Colors.SlateGray, fontSize: 16 }}>Skip</Text>
+                      <Text
+                        allowFontScaling={false}
+                        numberOfLines={1}
+                        style={{ color: Colors.SlateGray, fontSize: 16, includeFontPadding: false }}
+                      >
+                        Skip
+                      </Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => {
@@ -155,9 +172,16 @@ function IntroScreen() {
                         paddingVertical: 14,
                         paddingHorizontal: 28,
                         borderRadius: 12,
+                        minWidth: 110,
+                        alignItems: 'center',
+                        flexShrink: 0,
                       }}
                     >
-                      <Text style={{ color: Colors.white, fontSize: 16, fontWeight: '600' }}>
+                      <Text
+                        allowFontScaling={false}
+                        numberOfLines={1}
+                        style={{ color: Colors.white, fontSize: 16, fontWeight: '600', includeFontPadding: false }}
+                      >
                         {index === data.length - 1 ? 'Explore' : 'Next'}
                       </Text>
                     </TouchableOpacity>

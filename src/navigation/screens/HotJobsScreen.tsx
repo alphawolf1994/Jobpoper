@@ -253,9 +253,9 @@ const HotJobsScreen = () => {
     return (
       <View style={styles.emptyContainer}>
         <Ionicons name="flame-outline" size={64} color={Colors.gray} />
-        <Text style={styles.emptyText}>
-          {searchQuery.trim() 
-            ? `No jobs found for "${searchQuery}"` 
+        <Text style={styles.emptyText} numberOfLines={3} ellipsizeMode="tail">
+          {searchQuery.trim()
+            ? `No jobs found for "${searchQuery}"`
             : 'No hot jobs available in your area'}
         </Text>
       </View>
@@ -595,12 +595,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 60,
+    paddingHorizontal: 16,
   },
   emptyText: {
     fontSize: 16,
     color: Colors.gray,
     textAlign: 'center',
     marginTop: 16,
+    width: '100%',
+    flexWrap: 'wrap',
+    includeFontPadding: false,
   },
 });
 
