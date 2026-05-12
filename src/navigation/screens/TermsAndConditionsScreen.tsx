@@ -39,27 +39,27 @@ const TermsAndConditionsScreen = () => {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.contentSection}>
           <Text style={styles.introText}>
-            Welcome to JobPoper! These Terms and Conditions govern your use of our mobile application and services. By using JobPoper, you agree to be bound by these terms.
+            Welcome to JobPopper! These Terms and Conditions govern your use of our mobile application and services. By using JobPopper, you agree to be bound by these terms.
           </Text>
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>1. Acceptance of Terms</Text>
             <Text style={styles.sectionText}>
-              By accessing or using JobPoper, you agree to comply with and be bound by these Terms and Conditions. If you do not agree with any part of these terms, you may not use our services.
+              By accessing or using JobPopper, you agree to comply with and be bound by these Terms and Conditions. If you do not agree with any part of these terms, you may not use our services.
             </Text>
           </View>
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>2. Description of Service</Text>
             <Text style={styles.sectionText}>
-              JobPoper is a platform that connects job seekers with job providers. We facilitate the posting of job opportunities, job applications, and communication between users. We do not guarantee employment or job placement.
+              JobPopper is a platform that connects job seekers with job providers. We facilitate the posting of job opportunities, job applications, and communication between users. We do not guarantee employment or job placement.
             </Text>
           </View>
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>3. User Accounts</Text>
             <Text style={styles.sectionText}>
-              To use certain features of JobPoper, you must create an account. You agree to:
+              To use certain features of JobPopper, you must create an account. You agree to:
             </Text>
             <Text style={styles.bulletPoint}>• Provide accurate, current, and complete information</Text>
             <Text style={styles.bulletPoint}>• Maintain and update your account information</Text>
@@ -84,28 +84,28 @@ const TermsAndConditionsScreen = () => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>5. Job Postings and Applications</Text>
             <Text style={styles.sectionText}>
-              Job providers are responsible for the accuracy of their job postings. Job seekers are responsible for the accuracy of their applications. JobPoper is not responsible for the outcome of any job application or hiring decision.
+              Job providers are responsible for the accuracy of their job postings. Job seekers are responsible for the accuracy of their applications. JobPopper is not responsible for the outcome of any job application or hiring decision.
             </Text>
           </View>
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>6. Payment Terms</Text>
             <Text style={styles.sectionText}>
-              Some features of JobPoper may require payment. All fees are non-refundable unless otherwise stated. You agree to pay all charges associated with your use of paid features.
+              Some features of JobPopper may require payment. All fees are non-refundable unless otherwise stated. You agree to pay all charges associated with your use of paid features.
             </Text>
           </View>
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>7. Intellectual Property</Text>
             <Text style={styles.sectionText}>
-              All content, features, and functionality of JobPoper are owned by us and are protected by copyright, trademark, and other intellectual property laws. You may not reproduce, distribute, or create derivative works without our permission.
+              All content, features, and functionality of JobPopper are owned by us and are protected by copyright, trademark, and other intellectual property laws. You may not reproduce, distribute, or create derivative works without our permission.
             </Text>
           </View>
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>8. Limitation of Liability</Text>
             <Text style={styles.sectionText}>
-              JobPoper is provided "as is" without warranties of any kind. We are not liable for any damages arising from your use of the service, including but not limited to direct, indirect, incidental, or consequential damages.
+              JobPopper is provided "as is" without warranties of any kind. We are not liable for any damages arising from your use of the service, including but not limited to direct, indirect, incidental, or consequential damages.
             </Text>
           </View>
 
@@ -126,7 +126,7 @@ const TermsAndConditionsScreen = () => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>11. Dispute Resolution</Text>
             <Text style={styles.sectionText}>
-              Any disputes arising from these terms or your use of JobPoper shall be resolved through binding arbitration in accordance with applicable laws, except where prohibited by law.
+              Any disputes arising from these terms or your use of JobPopper shall be resolved through binding arbitration in accordance with applicable laws, except where prohibited by law.
             </Text>
           </View>
 

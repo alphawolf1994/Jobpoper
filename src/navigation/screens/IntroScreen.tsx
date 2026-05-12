@@ -26,7 +26,7 @@ const data = [
   {
     title: "Work. Earn. Repeat. 💸",
     subtitle:
-      "Complete gigs, get paid quickly, and grow your income anytime, anywhere — because with Jobpoper, every task pays.",
+      "Complete gigs, get paid quickly, and grow your income anytime, anywhere — because with Jobpopper, every task pays.",
     image: ImagePath.Image3,
     bgColor: Colors.white,
   },

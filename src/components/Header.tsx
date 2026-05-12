@@ -234,7 +234,7 @@ const Header: React.FC = () => {
       <View style={styles.titleRow}>
         <View>
           <Text style={styles.titleText}>
-            JobPoper
+            JobPopper
           </Text>
           <TouchableOpacity 
             style={styles.locationRow} 
