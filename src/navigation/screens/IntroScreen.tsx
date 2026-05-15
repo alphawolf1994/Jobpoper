@@ -1,13 +1,11 @@
 import * as React from "react";
-import { Dimensions, Image, Platform, Text, TouchableOpacity, View } from "react-native";
+import { Image, Platform, Text, TouchableOpacity, useWindowDimensions, View } from "react-native";
 import { useSharedValue } from "react-native-reanimated";
 import Carousel, { ICarouselInstance } from "react-native-reanimated-carousel";
-import { Colors, heightToDp, widthToDp } from "../../utils";
+import { Colors, heightToDp } from "../../utils";
 import ImagePath from "../../assets/images/ImagePath";
-import { height } from "../../utils/responsive";
-import { Feather, MaterialIcons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 // import AsyncStorage from '@react-native-async-storage/async-storage';
 const data = [
   {
@@ -31,10 +29,12 @@ const data = [
     bgColor: Colors.white,
   },
 ];
-const width = Dimensions.get("window").width;
 
 function IntroScreen() {
   const navigation = useNavigation();
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
+  const carouselHeight = Math.max(1, height - insets.top - insets.bottom);
 
   const ref = React.useRef<ICarouselInstance>(null);
   const progress = useSharedValue<number>(0);
@@ -51,11 +51,20 @@ function IntroScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={{ flex: 1, backgroundColor: Colors.white }}>
+    <View
+      style={{
+        flex: 1,
+        backgroundColor: Colors.white,
+        paddingTop: insets.top,
+        paddingBottom: insets.bottom,
+        paddingLeft: insets.left,
+        paddingRight: insets.right,
+      }}
+    >
       <Carousel
         ref={ref}
         width={width}
-        height={heightToDp(100)}
+        height={carouselHeight}
         data={data}
         onProgressChange={progress}
         renderItem={({ item, index }) => (
@@ -63,7 +72,7 @@ function IntroScreen() {
             <View
               style={{
                 flex: 1,
-                height: heightToDp(100),
+                height: carouselHeight,
                 backgroundColor: item?.bgColor,
               }}
             >
@@ -72,17 +81,13 @@ function IntroScreen() {
                   flex: 1,
                   justifyContent: "space-between",
                   alignItems: "center",
-                  // Keep iOS at the original spacing so the bottom buttons sit
-                  // safely above the home indicator. Use a smaller, fixed value
-                  // on Android so tall devices (Motorola Edge 60 Pro) don't
-                  // push the button row into the gesture bar.
-                  paddingBottom: Platform.OS === 'android' ? 32 : heightToDp(12),
+                  paddingBottom: Platform.OS === 'android' ? 28 : heightToDp(12),
                   paddingHorizontal: 24,
                 }}
               >
                 <Image
                   style={{
-                    width: widthToDp(100),
+                    width,
                     height: heightToDp(45),
                     resizeMode: "cover",
                     // marginTop: 20,
@@ -192,7 +197,7 @@ function IntroScreen() {
           </>
         )}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 

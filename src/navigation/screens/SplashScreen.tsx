@@ -5,13 +5,13 @@ import ImagePath from "../../assets/images/ImagePath";
 import { Colors, heightToDp, widthToDp } from "../../utils";
 import { useNavigation } from "@react-navigation/native";
 import { useDispatch, useSelector } from "react-redux";
-import { getCurrentUser } from "../../redux/slices/authSlice";
+import { clearAuth, getCurrentUser } from "../../redux/slices/authSlice";
 import { RootState, AppDispatch } from "../../redux/store";
 
 const SplashScreen = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch<AppDispatch>();
-  const { accessToken, user, loading } = useSelector((state: RootState) => state.auth);
+  const { accessToken } = useSelector((state: RootState) => state.auth);
 
   useEffect(() => {
     const checkAuthAndNavigate = async () => {
@@ -44,6 +44,7 @@ const SplashScreen = () => {
         } catch (error) {
           // Token is invalid or expired, navigate to IntroScreen
           console.log('Auth check failed:', error);
+          dispatch(clearAuth());
           (navigation as any).navigate('IntroScreen');
         }
       } else {

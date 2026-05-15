@@ -41,6 +41,10 @@ const LoginScreen = () => {
 
   const pinInputRefs = useRef<(TextInput | null)[]>([null, null, null, null]);
 
+  React.useEffect(() => {
+    dispatch(clearError());
+  }, [dispatch]);
+
   const handlePinChange = (value: string, index: number) => {
     if (value.length > 1) return; // Prevent multiple characters
 

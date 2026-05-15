@@ -6,13 +6,10 @@ import {
   Platform,
   StatusBar,
   ViewStyle,
-  Dimensions,
 } from "react-native";
 import PhoneInput from "react-native-phone-number-input";
 import { Colors } from "../utils";
 import ErrorText from "./ErrorText";
-
-const COUNTRY_LIST_MAX_HEIGHT = Dimensions.get("window").height * 0.62;
 
 // Account for status bar + extra breathing room so the search input / close
 // button never sit underneath the system status bar on Android devices that
@@ -84,6 +81,7 @@ const PhoneNumberInput = ({
             },
             flatListProps: {
               style: styles.countryList,
+              contentContainerStyle: styles.countryListContent,
             },
             closeButtonStyle: styles.countryCloseButton,
             closeButtonImageStyle: styles.countryCloseButtonImage,
@@ -159,7 +157,10 @@ const styles = StyleSheet.create({
     color: Colors.black,
   },
   countryList: {
-    maxHeight: COUNTRY_LIST_MAX_HEIGHT,
+    flex: 1,
+  },
+  countryListContent: {
+    paddingBottom: Platform.OS === "android" ? 24 : 0,
   },
   countryCloseButton: {
     marginTop: Platform.OS === "android" ? ANDROID_STATUS_BAR_OFFSET : 6,

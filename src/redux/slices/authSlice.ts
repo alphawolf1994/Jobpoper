@@ -14,7 +14,7 @@ import {
   updateVehiclePreferenceApi
 } from "../../api/authApis";
 import { setAuthToken } from "../../api/axiosInstance";
-import { JobPoperUser, AuthResponse, VehiclePreference, VehicleType } from "../../interface/interfaces";
+import { JobPoperUser, VehicleType } from "../../interface/interfaces";
 
 interface AuthState {
   user: JobPoperUser | null;
@@ -357,6 +357,9 @@ const authSlice = createSlice({
         state.error = action.payload as string;
         state.loading = false;
         state.isAuthenticated = false;
+        state.user = null;
+        state.accessToken = null;
+        setAuthToken(null);
       })
       .addCase(getCurrentUser.fulfilled, (state, action) => {
         const response = action.payload;
