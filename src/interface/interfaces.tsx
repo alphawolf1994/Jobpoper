@@ -55,6 +55,12 @@ export interface UserProfile {
   fullName: string;
   email: string;
   location?: string;
+  currentLocation?: {
+    fullAddress?: string;
+    latitude?: number;
+    longitude?: number;
+    updatedAt?: string;
+  };
   dateOfBirth?: string;
   profileImage?: string;
   isProfileComplete: boolean;

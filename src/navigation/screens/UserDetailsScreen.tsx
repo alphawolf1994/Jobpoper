@@ -23,6 +23,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
 import { getCurrentUser, completeProfile } from "../../redux/slices/authSlice";
+import { setCurrentLocation, setCurrentLocationCoordinates } from "../../redux/slices/jobSlice";
 import { RootState, AppDispatch } from "../../redux/store";
 import { useNavigation } from "@react-navigation/native";
 import { useAlertModal } from "../../hooks/useAlertModal";
@@ -37,11 +38,18 @@ const UserDetailsScreen = () => {
     const [fullName, setFullName] = useState("");
     const [email, setEmail] = useState("");
     const [phone, setPhone] = useState("");
-    const [location, setLocation] = useState({
+    const [location, setLocation] = useState<{
+        city: string;
+        state: string;
+        country: string;
+        fullAddress: string;
+        latitude?: number;
+        longitude?: number;
+    }>({
         city: "",
         state: "",
         country: "",
-        fullAddress: ""
+        fullAddress: "",
     });
     const [dob, setDob] = useState<Date | null>(null);
     const [showPicker, setShowPicker] = useState(false);
@@ -57,13 +65,16 @@ const UserDetailsScreen = () => {
             setPhone(user.phoneNumber || "");
 
             // Parse location from user profile
-            if (user.profile?.location) {
-                const locationParts = user.profile.location.split(',');
+            const savedLocation = user.profile?.currentLocation?.fullAddress || user.profile?.location;
+            if (savedLocation) {
+                const locationParts = savedLocation.split(',');
                 setLocation({
                     city: locationParts[0]?.trim() || "",
                     state: locationParts[1]?.trim() || "",
                     country: locationParts[2]?.trim() || "",
-                    fullAddress: user.profile.location
+                    fullAddress: savedLocation,
+                    latitude: user.profile?.currentLocation?.latitude,
+                    longitude: user.profile?.currentLocation?.longitude,
                 });
             }
 
@@ -117,11 +128,22 @@ const UserDetailsScreen = () => {
             return;
         }
 
+        if (location.latitude == null || location.longitude == null) {
+            showAlert({
+                title: "Error",
+                message: "Please select a listed location so nearby jobs and notifications can use it.",
+                type: "error",
+            });
+            return;
+        }
+
         try {
             const profileData = {
                 fullName: fullName.trim(),
                 email: email.trim(),
                 location: location.fullAddress || `${location.city}, ${location.state}, ${location.country}`.trim(),
+                latitude: location.latitude,
+                longitude: location.longitude,
                 dateOfBirth: dob ? dob.toISOString().split('T')[0] : undefined,
                 profileImage: profileImage || undefined,
             };
@@ -129,6 +151,13 @@ const UserDetailsScreen = () => {
             const result = await dispatch(completeProfile(profileData)).unwrap();
 
             if (result.status === 'success') {
+                dispatch(setCurrentLocation(profileData.location));
+                if (location.latitude != null && location.longitude != null) {
+                    dispatch(setCurrentLocationCoordinates({
+                        latitude: location.latitude,
+                        longitude: location.longitude,
+                    }));
+                }
                 showAlert({
                     title: "Success",
                     message: "Profile updated successfully!",

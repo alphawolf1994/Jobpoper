@@ -59,8 +59,19 @@ interface JobState {
 async function resolveCoordinates(state: RootState): Promise<{ latitude: number; longitude: number }> {
   const coords = state.job.currentLocationCoordinates;
   if (coords) return coords;
+  const profileCurrentLocation = state.auth?.user?.profile?.currentLocation;
+  if (
+    profileCurrentLocation?.latitude != null &&
+    profileCurrentLocation?.longitude != null
+  ) {
+    return {
+      latitude: profileCurrentLocation.latitude,
+      longitude: profileCurrentLocation.longitude,
+    };
+  }
   const locationString =
     state.job.currentLocation ||
+    profileCurrentLocation?.fullAddress ||
     state.auth?.user?.profile?.location ||
     "New York, NY, USA";
   const geocoded = await geocodeAddressToCoordinates(locationString);

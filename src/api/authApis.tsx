@@ -78,6 +78,8 @@ export const completeProfileApi = async (profileData: {
     fullName: string;
     email: string;
     location?: string;
+    latitude?: number;
+    longitude?: number;
     dateOfBirth?: string;
     profileImage?: string;
 }) => {
@@ -87,6 +89,8 @@ export const completeProfileApi = async (profileData: {
         formData.append("fullName", profileData.fullName);
         formData.append("email", profileData.email);
         if (profileData.location) formData.append("location", profileData.location);
+        if (profileData.latitude != null) formData.append("latitude", String(profileData.latitude));
+        if (profileData.longitude != null) formData.append("longitude", String(profileData.longitude));
         if (profileData.dateOfBirth) formData.append("dateOfBirth", profileData.dateOfBirth);
 
         // Append image if provided (React Native file object)
@@ -105,6 +109,19 @@ export const completeProfileApi = async (profileData: {
         return res.data;
     } catch (error: any) {
         throw new Error(error.response?.data?.message || "Profile completion failed");
+    }
+};
+
+export const updateCurrentLocationApi = async (locationData: {
+    fullAddress: string;
+    latitude: number;
+    longitude: number;
+}) => {
+    try {
+        const res = await axiosInstance.put("/auth/current-location", locationData);
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Failed to update current location");
     }
 };
 

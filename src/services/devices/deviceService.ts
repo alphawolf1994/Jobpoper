@@ -53,8 +53,64 @@ function isTransientFcmError(error: unknown): boolean {
     message.includes("java.util.concurrent") ||
     message.includes("TIMEOUT") ||
     message.includes("Network") ||
-    message.includes("unavailable")
+    message.includes("unavailable") ||
+    // iOS race: APNs handshake hasn't delivered the device token yet.
+    // Retrying after a short delay normally resolves it once registerDeviceForRemoteMessages completes.
+    message.includes("No APNS token specified") ||
+    message.includes("APNS token") ||
+    message.toLowerCase().includes("apns")
   );
+}
+
+/**
+ * Wait for iOS to deliver the APNs device token after registerDeviceForRemoteMessages().
+ * On a real device this normally completes in <1s. On the iOS Simulator it requires:
+ *   • Apple-Silicon Mac, macOS 13+, Xcode 14+, Simulator running iOS 16+
+ *   • A signed-in Apple ID in the Simulator's Settings app
+ *   • Internet connectivity from the Mac to APNs
+ * If the token never arrives we return null so the caller can skip cleanly.
+ */
+async function waitForApnsToken(
+  getAPNSToken: (m: any) => Promise<string | null>,
+  messaging: any,
+  totalTimeoutMs = 15000,
+  pollMs = 500
+): Promise<string | null> {
+  const start = Date.now();
+  let lastLogAt = 0;
+  while (Date.now() - start < totalTimeoutMs) {
+    try {
+      const t = await getAPNSToken(messaging);
+      if (t) {
+        const elapsed = Date.now() - start;
+        console.log(
+          `[FCM] APNs device token acquired after ${elapsed}ms:`,
+          `${t.slice(0, 8)}…${t.slice(-6)} (len=${t.length})`
+        );
+        return t;
+      }
+    } catch (e) {
+      // getAPNSToken can throw "No APNS token" on some RNFB versions — treat as "not ready yet"
+      const msg = e instanceof Error ? e.message : String(e);
+      const now = Date.now();
+      if (now - lastLogAt > 2000) {
+        console.log("[FCM] Waiting for APNs token… last error:", msg);
+        lastLogAt = now;
+      }
+    }
+    await delay(pollMs);
+  }
+  console.warn(
+    "[FCM] APNs token never arrived within " +
+      totalTimeoutMs +
+      "ms. Most common causes:\n" +
+      "  • iOS Simulator on Intel Mac, macOS <13, Xcode <14, or iOS <16 — APNs not supported.\n" +
+      "  • Simulator has no Apple ID signed in (Settings → Sign in to your iPhone).\n" +
+      "  • Wrong aps-environment for the build (dev profile + production entitlement, or vice versa).\n" +
+      "  • App ID missing 'Push Notifications' capability in Apple Developer.\n" +
+      "  • No network access from the Mac to APNs (api.push.apple.com)."
+  );
+  return null;
 }
 
 /**
@@ -110,32 +166,63 @@ async function getFcmToken(): Promise<string> {
     );
     return "";
   }
-  // iOS Simulator has no APNs device token — Firebase FCM will fail with "No APNS token specified".
-  if (Platform.OS === "ios" && !Device.isDevice) {
-    console.warn(
-      "[FCM] iOS Simulator cannot get an APNs/FCM token. Push only works on a real iPhone (and usually needs a dev build on device)."
-    );
-    return "";
-  }
   try {
     const m = loadMessaging();
     if (Platform.OS === "android" && typeof Platform.Version === "number" && Platform.Version >= 33) {
       const status = await PermissionsAndroid.request(
         PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS
       );
+      console.log("[FCM] Android POST_NOTIFICATIONS request result:", status);
       if (status !== PermissionsAndroid.RESULTS.GRANTED) {
         console.warn("[FCM] Token not obtained: POST_NOTIFICATIONS permission was denied", status);
         return "";
       }
     }
     if (Platform.OS === "ios") {
-      const { getMessaging, requestPermission, getToken, AuthorizationStatus } = m;
+      const {
+        getMessaging,
+        requestPermission,
+        registerDeviceForRemoteMessages,
+        getAPNSToken,
+        getToken,
+        AuthorizationStatus,
+      } = m;
       const messaging = getMessaging();
       const status = await requestPermission(messaging);
+      console.log("[FCM] iOS requestPermission result:", status);
       const ok =
         status === AuthorizationStatus.AUTHORIZED || status === AuthorizationStatus.PROVISIONAL;
       if (!ok) {
         console.warn("[FCM] Token not obtained: iOS notification permission not granted", status);
+        return "";
+      }
+      // Kick off the APNs handshake. With RNFirebase's auto-register enabled this is a no-op
+      // (you'll see the harmless "Usage of registerDeviceForRemoteMessages is not required"
+      // warning), but calling it explicitly is safe and idempotent.
+      try {
+        await registerDeviceForRemoteMessages(messaging);
+        console.log("[FCM] iOS registerDeviceForRemoteMessages OK");
+      } catch (e) {
+        console.warn(
+          "[FCM] iOS registerDeviceForRemoteMessages failed (continuing — token call may still work):",
+          e instanceof Error ? e.message : e
+        );
+      }
+      if (!Device.isDevice) {
+        console.log(
+          "[FCM] iOS Simulator detected — waiting for APNs token. " +
+            "Requires iOS 16+ Simulator on macOS 13+ Apple Silicon (Xcode 14+)."
+        );
+      }
+      // CRITICAL: wait for the OS to actually deliver the APNs device token via
+      // application(_:didRegisterForRemoteNotificationsWithDeviceToken:). Without this,
+      // getToken() races the handshake and throws "No APNS token specified before fetching FCM Token".
+      const apns = await waitForApnsToken(getAPNSToken, messaging);
+      if (!apns) {
+        console.warn(
+          "[FCM] Skipping getToken() — no APNs device token. App-triggered push will not work " +
+            "on this build until APNs is available. In-app notifications still work."
+        );
         return "";
       }
       return await fetchFcmTokenWithRetry(getToken, messaging, "iOS");
@@ -200,6 +287,17 @@ export async function shouldRegisterDevice(
   }
 }
 
+// Single in-flight retry timer for "token wasn't ready yet" so we don't pile up retries
+// when registerDevice is called multiple times before the first attempt resolves.
+let pendingTokenRetryHandle: ReturnType<typeof setTimeout> | null = null;
+
+function maskToken(t: string | undefined | null): string {
+  if (!t) return "(empty)";
+  if (t === "pending") return "pending";
+  if (t.length <= 12) return t;
+  return `${t.slice(0, 6)}…${t.slice(-6)} (len=${t.length})`;
+}
+
 export async function registerDevice(
   force = false
 ): Promise<{ success: boolean; error?: string }> {
@@ -209,19 +307,57 @@ export async function registerDevice(
   try {
     const metadata = await getDeviceMetadata();
     if (!metadata) {
+      console.warn("[DeviceService] No device metadata — skipping register");
       return { success: false, error: "No device metadata" };
     }
+
+    const tokenReady =
+      !!metadata.pushNotificationToken && metadata.pushNotificationToken !== "pending";
+
+    console.log("[DeviceService] registerDevice attempt:", {
+      force,
+      deviceId: metadata.deviceId,
+      platform: metadata.platform,
+      tokenReady,
+      tokenPreview: maskToken(metadata.pushNotificationToken),
+    });
+
+    // If the FCM token isn't ready yet (first launch / slow Play Services / Simulator) DO NOT POST
+    // — the backend would store "" and the recipient filter (`pushNotificationToken != ""`) would
+    // exclude this device. Schedule one delayed retry so the first login still gets through quickly,
+    // and rely on onTokenRefresh to push the real token later.
+    if (!tokenReady) {
+      console.warn(
+        "[DeviceService] Push token not ready (=" +
+          maskToken(metadata.pushNotificationToken) +
+          ") — skipping POST and scheduling a single retry in 5s."
+      );
+      if (pendingTokenRetryHandle) clearTimeout(pendingTokenRetryHandle);
+      pendingTokenRetryHandle = setTimeout(() => {
+        pendingTokenRetryHandle = null;
+        registerDevice(true)
+          .then((r) => console.log("[DeviceService] Delayed retry result:", r))
+          .catch((e) => console.warn("[DeviceService] Delayed retry failed:", e));
+      }, 5000);
+      return { success: false, error: "Token not ready" };
+    }
+
     if (!force) {
       const need = await shouldRegisterDevice(metadata);
-      if (!need) return { success: true };
+      if (!need) {
+        console.log("[DeviceService] Cache unchanged — not re-registering.");
+        return { success: true };
+      }
     }
-    await axiosInstance.post(DEVICES_PATH, metadata);
+
+    const response = await axiosInstance.post(DEVICES_PATH, metadata);
     await AsyncStorage.setItem(DEVICE_CACHE_KEY, JSON.stringify(metadata));
-    if (metadata.pushNotificationToken && metadata.pushNotificationToken !== "pending") {
-      console.log("[DeviceService] Device registered with backend; FCM token sent.");
-    } else {
-      console.warn("[DeviceService] Device registered but FCM token is missing or pending");
-    }
+    console.log(
+      "[DeviceService] Device registered OK (HTTP " +
+        (response?.status ?? "?") +
+        ") token=" +
+        maskToken(metadata.pushNotificationToken)
+    );
     return { success: true };
   } catch (e: unknown) {
     const err = e as {
@@ -236,7 +372,11 @@ export async function registerDevice(
     }
     const message =
       err?.response?.data?.message || err?.message || "Device registration failed";
-    console.error("[DeviceService] registerDevice API failed:", e);
+    console.error("[DeviceService] registerDevice API failed:", {
+      status,
+      message,
+      data: err?.response?.data,
+    });
     return { success: false, error: message };
   }
 }

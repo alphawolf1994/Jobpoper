@@ -17,6 +17,9 @@ export function handleNotificationOpened(
 
 export function registerBackgroundHandler(): void {
   if (Platform.OS === "web" || !isFirebaseAvailable()) {
+    console.warn(
+      "[FCM] Background handler not registered (web platform or Firebase missing)."
+    );
     return;
   }
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -25,8 +28,15 @@ export function registerBackgroundHandler(): void {
   );
   const messaging = getMessaging();
   setBackgroundMessageHandler(messaging, async (msg: RemoteMessage) => {
-    if (__DEV__) {
-      console.log("[FCM] background", msg.data);
-    }
+    // Visible (notification+data) pushes are still drawn by the OS — this handler is mainly
+    // for data-only messages and lets us verify delivery in `adb logcat` / iOS Console.
+    console.log("[FCM] Background message received", {
+      title: msg.notification?.title,
+      body: msg.notification?.body,
+      data: msg.data,
+      messageId: msg.messageId,
+      sentTime: msg.sentTime,
+    });
   });
+  console.log("[FCM] Background message handler registered.");
 }

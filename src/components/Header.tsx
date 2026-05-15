@@ -11,6 +11,7 @@ import LocationAutocomplete from "./LocationAutocomplete";
 import Button from "./Button";
 import { RootState, AppDispatch } from "../redux/store";
 import { setCurrentLocation, setCurrentLocationCoordinates } from "../redux/slices/jobSlice";
+import { updateCurrentLocation } from "../redux/slices/authSlice";
 import { IMAGE_BASE_URL } from "../api/baseURL";
 import {
   getAllNotifications,
@@ -34,6 +35,9 @@ const Header: React.FC = () => {
   
   // Get location from user profile or use default
   const getDefaultLocation = () => {
+    if (user?.profile?.currentLocation?.fullAddress) {
+      return user.profile.currentLocation.fullAddress;
+    }
     if (user?.profile?.location) {
       return user.profile.location;
     }
@@ -59,8 +63,26 @@ const Header: React.FC = () => {
     dispatch(setCurrentLocation(locationData.fullAddress));
     if (locationData.latitude != null && locationData.longitude != null) {
       dispatch(setCurrentLocationCoordinates({ latitude: locationData.latitude, longitude: locationData.longitude }));
+      dispatch(updateCurrentLocation({
+        fullAddress: locationData.fullAddress,
+        latitude: locationData.latitude,
+        longitude: locationData.longitude,
+      }))
+        .unwrap()
+        .catch((error) => {
+          Toast.show({
+            type: "error",
+            text1: "Location saved only on this device",
+            text2: error?.message || "Could not update your profile location.",
+          });
+        });
     } else {
       dispatch(setCurrentLocationCoordinates(null));
+      Toast.show({
+        type: "error",
+        text1: "Please select a listed location",
+        text2: "Coordinates are required for nearby jobs and notifications.",
+      });
     }
     setIsLocationModalVisible(false);
   };

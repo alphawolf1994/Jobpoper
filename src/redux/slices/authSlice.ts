@@ -6,6 +6,7 @@ import {
   registerUserApi,
   loginUserApi,
   completeProfileApi,
+  updateCurrentLocationApi,
   getCurrentUserApi,
   logoutUserApi,
   changePinApi,
@@ -122,6 +123,8 @@ export const completeProfile = createAsyncThunk(
     fullName: string;
     email: string;
     location?: string;
+    latitude?: number;
+    longitude?: number;
     dateOfBirth?: string;
     profileImage?: string;
   }, { rejectWithValue }) => {
@@ -130,6 +133,22 @@ export const completeProfile = createAsyncThunk(
       return response;
     } catch (error: any) {
       return rejectWithValue(error?.message || "Profile completion failed");
+    }
+  }
+);
+
+export const updateCurrentLocation = createAsyncThunk(
+  "auth/updateCurrentLocation",
+  async (locationData: {
+    fullAddress: string;
+    latitude: number;
+    longitude: number;
+  }, { rejectWithValue }) => {
+    try {
+      const response = await updateCurrentLocationApi(locationData);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "Failed to update current location");
     }
   }
 );
@@ -347,6 +366,16 @@ const authSlice = createSlice({
         }
         state.loading = false;
         state.error = null;
+      })
+      .addCase(updateCurrentLocation.fulfilled, (state, action) => {
+        const response = action.payload;
+        if (response.status === 'success' && response.data?.user) {
+          state.user = response.data.user;
+        }
+        state.error = null;
+      })
+      .addCase(updateCurrentLocation.rejected, (state, action) => {
+        state.error = action.payload as string;
       })
       // Get Current User
       .addCase(getCurrentUser.pending, (state) => {

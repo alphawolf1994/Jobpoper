@@ -22,6 +22,7 @@ import { useNavigation } from "@react-navigation/native";
 import { AntDesign, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
 import { completeProfile, getCurrentUser } from "../../redux/slices/authSlice";
+import { setCurrentLocation, setCurrentLocationCoordinates } from "../../redux/slices/jobSlice";
 import { RootState, AppDispatch } from "../../redux/store";
 import { useAlertModal } from "../../hooks/useAlertModal";
 
@@ -33,7 +34,14 @@ const BasicProfileScreen = () => {
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [location, setLocation] = useState({
+  const [location, setLocation] = useState<{
+    city: string;
+    state: string;
+    country: string;
+    fullAddress: string;
+    latitude?: number;
+    longitude?: number;
+  }>({
     city: "",
     state: "",
     country: "",
@@ -83,6 +91,15 @@ const BasicProfileScreen = () => {
       return;
     }
 
+    if (location.latitude == null || location.longitude == null) {
+      showAlert({
+        title: "Error",
+        message: "Please select a listed location so nearby jobs and notifications can use it.",
+        type: "error",
+      });
+      return;
+    }
+
     // if (!agree) {
     //   showAlert({ title: 'Error', message: 'Please agree to the terms and conditions.', type: 'error' });
     //   return;
@@ -96,12 +113,21 @@ const BasicProfileScreen = () => {
         location:
           location.fullAddress ||
           `${location.city}, ${location.state}, ${location.country}`.trim(),
+        latitude: location.latitude,
+        longitude: location.longitude,
         dateOfBirth: dob ? dob.toISOString().split("T")[0] : undefined,
       };
 
       const result = await dispatch(completeProfile(profileData)).unwrap();
 
       if (result.status === "success") {
+        dispatch(setCurrentLocation(profileData.location));
+        if (location.latitude != null && location.longitude != null) {
+          dispatch(setCurrentLocationCoordinates({
+            latitude: location.latitude,
+            longitude: location.longitude,
+          }));
+        }
         try {
           await dispatch(getCurrentUser()).unwrap();
           console.log("Complete profile success, navigating to HomeTabs");

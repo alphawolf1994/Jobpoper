@@ -4,18 +4,29 @@
  *
  * APNs environment:
  *   `aps-environment` MUST be `production` for App Store / TestFlight builds, otherwise
- *   iOS push notifications silently fail in production. The default below is `production`.
- *   For a local debug build that needs notifications, run with:
- *     APS_ENVIRONMENT=development npx expo prebuild --clean
- *   then `expo run:ios`. Re-prebuild without the env var before shipping to the store.
+ *   iOS push notifications silently fail in production. For Xcode debug runs (development
+ *   provisioning profile) it MUST be `development` or APNs registration will silently fail
+ *   on the device. Default rules (override any time with APS_ENVIRONMENT=production|development):
+ *     - APS_ENVIRONMENT set explicitly  → that value
+ *     - EAS / NODE_ENV=production       → "production"
+ *     - everything else (dev / debug)   → "development"
+ *   Re-run `npx expo prebuild --clean` after changing this so the .entitlements file picks it up.
  */
 const withFirebaseConfig = require("./plugins/withFirebaseConfig");
 const withAndroidCleartext = require("./plugins/withAndroidCleartext");
 const withAndroidReleaseSigning = require("./plugins/withAndroidReleaseSigning");
+const withFcmAndroidDefaults = require("./plugins/withFcmAndroidDefaults");
 const appJson = require("./app.json");
 
-const APS_ENVIRONMENT =
-  process.env.APS_ENVIRONMENT === "development" ? "development" : "production";
+const APS_ENVIRONMENT = (() => {
+  const explicit = process.env.APS_ENVIRONMENT;
+  if (explicit === "production" || explicit === "development") return explicit;
+  if (process.env.NODE_ENV === "production" || process.env.EAS_BUILD_PROFILE === "production") {
+    return "production";
+  }
+  return "development";
+})();
+console.log(`[app.config] aps-environment = ${APS_ENVIRONMENT}`);
 
 module.exports = {
   expo: {
@@ -66,6 +77,7 @@ module.exports = {
       withFirebaseConfig,
       withAndroidCleartext,
       withAndroidReleaseSigning,
+      withFcmAndroidDefaults,
     ],
   },
 };
