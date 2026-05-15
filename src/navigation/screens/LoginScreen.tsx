@@ -20,7 +20,14 @@ import PhoneNumberInput from "../../components/PhoneNumberInput";
 import { useNavigation } from "@react-navigation/native";
 import { AntDesign, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
-import { loginUser, clearError, getCurrentUser, checkPhone } from "../../redux/slices/authSlice";
+import {
+  loginUser,
+  clearError,
+  getCurrentUser,
+  checkPhone,
+  sendPhoneVerification,
+  setPhoneNumber as setAuthPhoneNumber,
+} from "../../redux/slices/authSlice";
 import { RootState, AppDispatch } from "../../redux/store";
 import { useAlertModal } from "../../hooks/useAlertModal";
 import ImagePath from "../../assets/images/ImagePath";
@@ -38,6 +45,7 @@ const LoginScreen = () => {
   const [pin, setPin] = useState(['', '', '', '']);
   const [step, setStep] = useState(1); // 1 = phone, 2 = PIN
   const [isCheckingPhone, setIsCheckingPhone] = useState(false);
+  const [isSendingResetCode, setIsSendingResetCode] = useState(false);
 
   const pinInputRefs = useRef<(TextInput | null)[]>([null, null, null, null]);
 
@@ -215,6 +223,19 @@ const LoginScreen = () => {
     setPin(['', '', '', '']);
   };
 
+  const handleForgotPin = () => {
+    // Hand off to the dedicated Forgot-PIN flow (ForgotPinScreen ->
+    // VerifyOtpScreen -> CreateNewPinScreen). That flow calls the proper
+    // /auth/forgot-password/* endpoints — the previous implementation here
+    // called the signup `/auth/send-verification` endpoint and relied on
+    // catching its "already registered" error, which was brittle.
+    setPin(['', '', '', '']);
+    dispatch(setAuthPhoneNumber(formattedPhoneNumber.trim()));
+    (navigation as any).navigate("ForgotPinScreen", {
+      initialPhone: phoneNumber, // raw national digits; ForgotPinScreen will re-format
+    });
+  };
+
   const renderPinInputs = () => {
     return pin.map((digit, index) => (
       <TextInput
@@ -344,6 +365,13 @@ const LoginScreen = () => {
                 {error && (
                   <Text style={styles.errorText}>{error}</Text>
                 )}
+                <TouchableOpacity
+                  style={styles.forgotPinButton}
+                  onPress={handleForgotPin}
+                  disabled={isSendingResetCode}
+                >
+                  <Text style={styles.forgotPinText}>Forgot PIN?</Text>
+                </TouchableOpacity>
                 <Button
                   label={loading ? "Logging in..." : "Login"}
                   onPress={handleLogin}
@@ -373,7 +401,13 @@ const LoginScreen = () => {
         </LinearGradient>
         <Loader
           visible={loading || isCheckingPhone}
-          message={isCheckingPhone ? "Checking account..." : "Logging you in..."}
+          message={
+            isCheckingPhone
+              ? "Checking account..."
+              : isSendingResetCode
+              ? "Sending verification code..."
+              : "Logging you in..."
+          }
         />
         {alertModal}
       </SafeAreaView>
@@ -499,10 +533,20 @@ const styles = StyleSheet.create({
     backgroundColor: "#EAF2FF",
   },
   loginButton: {
-    marginTop: 24,
+    marginTop: 14,
     borderRadius: 18,
     backgroundColor: Colors.primary,
     paddingVertical: 16,
+  },
+  forgotPinButton: {
+    alignSelf: "center",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  forgotPinText: {
+    color: Colors.primary,
+    fontSize: 15,
+    fontWeight: "700",
   },
   disabledActionButton: {
     backgroundColor: "#A9B6D6",

@@ -31,10 +31,12 @@ const PhoneVerificationScreen = () => {
   
   // Check if this is part of signup flow
   const isSignup = (route.params as any)?.isSignup || false;
+  const isResetPin = (route.params as any)?.isResetPin || false;
+  const didSendCode = (route.params as any)?.isCodeSent || false;
   const passedPhoneNumber = (route.params as any)?.phoneNumber || phoneNumber;
   
   const [verificationCode, setVerificationCode] = useState(['', '', '', '', '', '']);
-  const [isCodeSent, setIsCodeSent] = useState(isSignup); // If coming from signup, code is already sent
+  const [isCodeSent, setIsCodeSent] = useState(isSignup || didSendCode); // If coming from signup/reset, code is already sent
   const [countdown, setCountdown] = useState(0);
   
   const codeInputRefs = useRef<(TextInput | null)[]>([null, null, null, null, null, null]);
@@ -46,6 +48,9 @@ const PhoneVerificationScreen = () => {
       message,
       type: "error",
     });
+
+  const getErrorMessage = (error: any, fallback: string) =>
+    typeof error === "string" ? error : error?.message || fallback;
 
   const handleCodeChange = (value: string, index: number) => {
     if (value.length > 1) return; // Prevent multiple characters
@@ -94,13 +99,12 @@ const PhoneVerificationScreen = () => {
     }, 1000);
   };
 
-  // Initialize countdown if coming from signup (code already sent)
+  // Initialize countdown if a previous screen already sent the code.
   useEffect(() => {
-    if (isSignup) {
-      // Code was already sent in SignupPhoneScreen, so start countdown immediately
+    if (isSignup || didSendCode) {
       startCountdown();
     }
-  }, [isSignup]);
+  }, [didSendCode, isSignup]);
 
   // Clear countdown timer on unmount
   useEffect(() => {
@@ -132,7 +136,7 @@ const PhoneVerificationScreen = () => {
         });
       }
     } catch (error: any) {
-      showErrorAlert(error.message || 'Failed to send verification code. Please try again.');
+      showErrorAlert(getErrorMessage(error, 'Failed to send verification code. Please try again.'));
     }
   };
 
@@ -159,7 +163,7 @@ const PhoneVerificationScreen = () => {
         });
       }
     } catch (error: any) {
-      showErrorAlert(error.message || 'Failed to resend verification code. Please try again.');
+      showErrorAlert(getErrorMessage(error, 'Failed to resend verification code. Please try again.'));
     }
   };
 
@@ -192,10 +196,12 @@ const PhoneVerificationScreen = () => {
 
         dispatch(setPhoneNumber(currentPhoneNumber));
         console.log("Verify phone success, navigating to CreatePinScreen");
-        (navigation as any).navigate('CreatePinScreen');
+        (navigation as any).navigate('CreatePinScreen', {
+          isResetPin,
+        });
       }
     } catch (error: any) {
-      showErrorAlert(error.message || 'Phone verification failed. Please try again.');
+      showErrorAlert(getErrorMessage(error, 'Phone verification failed. Please try again.'));
       setVerificationCode(['', '', '', '', '', '']);
       codeInputRefs.current[0]?.focus();
     }
@@ -250,16 +256,18 @@ const PhoneVerificationScreen = () => {
 
             <View style={styles.badge}>
               <MaterialCommunityIcons name="cellphone-check" size={18} color={Colors.primary} />
-              <Text style={styles.badgeText}>Step 2 of 3</Text>
+              <Text style={styles.badgeText}>{isResetPin ? "Reset PIN" : "Step 2 of 3"}</Text>
             </View>
 
             <View style={styles.logoWrap}>
               <View style={styles.iconBubble}>
                 <Feather name="shield" size={30} color={Colors.primary} />
               </View>
-              <Text style={styles.title}>Verify your phone</Text>
+              <Text style={styles.title}>{isResetPin ? "Verify to reset PIN" : "Verify your phone"}</Text>
               <Text style={styles.subtitle}>
-                Enter the 6-digit code sent to your number so we can secure your account.
+                {isResetPin
+                  ? "Enter the 6-digit code sent to your number before creating a new PIN."
+                  : "Enter the 6-digit code sent to your number so we can secure your account."}
               </Text>
               <Text style={styles.phoneNumber}>{passedPhoneNumber || phoneNumber}</Text>
             </View>

@@ -1,10 +1,24 @@
 import { axiosInstance } from "./axiosInstance";
 
+type SendVerificationPurpose = "signup" | "reset-pin";
+
 // Send Phone Verification Code
-export const sendPhoneVerificationApi = async (phoneNumber: string) => {
+export const sendPhoneVerificationApi = async (
+    phoneNumber: string,
+    purpose?: SendVerificationPurpose
+) => {
     try {
         const payload = {
-            phoneNumber: phoneNumber
+            phoneNumber: phoneNumber,
+            ...(purpose ? { purpose } : {}),
+            ...(purpose === "reset-pin"
+                ? {
+                    isResetPin: true,
+                    isForgotPin: true,
+                    flow: "forgot-pin",
+                    type: "forgot-pin",
+                }
+                : {}),
         };
 
         const res = await axiosInstance.post("/auth/send-verification", payload);

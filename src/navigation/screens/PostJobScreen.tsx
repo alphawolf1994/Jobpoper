@@ -136,6 +136,7 @@ const PostJobScreen = () => {
   useFocusEffect(
     React.useCallback(() => {
       dispatch(fetchLocations());
+      dispatch(fetchServiceCategories());
 
       // Check if a new location was added via Redux state
       if (lastAddedLocation) {

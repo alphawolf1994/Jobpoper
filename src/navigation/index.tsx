@@ -25,6 +25,9 @@ import RegisterScreen from "./screens/RegisterScreen";
 import CreatePinScreen from "./screens/CreatePinScreen";
 import SplashScreen from "./screens/SplashScreen";
 import SignupPhoneScreen from "./screens/SignupPhoneScreen";
+import ForgotPinScreen from "./screens/ForgotPinScreen";
+import VerifyOtpScreen from "./screens/VerifyOtpScreen";
+import CreateNewPinScreen from "./screens/CreateNewPinScreen";
 
 import IntroScreen from "./screens/IntroScreen";
 import BasicProfileScreen from "./screens/BasicProfileScreen"
@@ -228,6 +231,19 @@ const RootStack = createNativeStackNavigator({
     },
     CreatePinScreen: {
       screen: CreatePinScreen,
+      options: { headerShown: false },
+    },
+    // ── Forgot-PIN flow ────────────────────────────────────────────────────
+    ForgotPinScreen: {
+      screen: ForgotPinScreen,
+      options: { headerShown: false },
+    },
+    VerifyOtpScreen: {
+      screen: VerifyOtpScreen,
+      options: { headerShown: false },
+    },
+    CreateNewPinScreen: {
+      screen: CreateNewPinScreen,
       options: { headerShown: false },
     },
     BasicProfileScreen: {

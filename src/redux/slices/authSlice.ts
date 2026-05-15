@@ -41,9 +41,14 @@ const initialState: AuthState = {
 // Send phone verification code
 export const sendPhoneVerification = createAsyncThunk(
   "auth/sendPhoneVerification",
-  async (phoneNumber: string, { rejectWithValue }) => {
+  async (
+    payload: string | { phoneNumber: string; purpose?: "signup" | "reset-pin" },
+    { rejectWithValue }
+  ) => {
     try {
-      const response = await sendPhoneVerificationApi(phoneNumber);
+      const phoneNumber = typeof payload === "string" ? payload : payload.phoneNumber;
+      const purpose = typeof payload === "string" ? undefined : payload.purpose;
+      const response = await sendPhoneVerificationApi(phoneNumber, purpose);
       return response;
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to send verification code");
@@ -305,7 +310,12 @@ const authSlice = createSlice({
         state.loading = false;
       })
       .addCase(verifyPhone.fulfilled, (state, action) => {
+        const response = action.payload;
         state.isPhoneVerified = true;
+        if (response?.data?.token) {
+          state.accessToken = response.data.token;
+          setAuthToken(response.data.token);
+        }
         state.loading = false;
         state.error = null;
       })

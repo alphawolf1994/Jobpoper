@@ -15,20 +15,22 @@ import { StatusBar } from "expo-status-bar";
 import { Colors } from "../../utils";
 import Button from "../../components/Button";
 import Loader from "../../components/Loader";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { AntDesign, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
-import { registerUser, clearError, getCurrentUser } from "../../redux/slices/authSlice";
+import { registerUser, clearError, getCurrentUser, changePin } from "../../redux/slices/authSlice";
 import { RootState, AppDispatch } from "../../redux/store";
 import { useAlertModal } from "../../hooks/useAlertModal";
 
 const CreatePinScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute();
   const dispatch = useDispatch<AppDispatch>();
   const authState = useSelector((state: RootState) => state?.auth);
   const loading = authState?.loading || false;
   const error = authState?.error || null;
   const phoneNumber = authState?.phoneNumber || "";
+  const isResetPin = (route.params as any)?.isResetPin || false;
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
   
   const [pin, setPin] = useState(['', '', '', '']);
@@ -125,6 +127,25 @@ const CreatePinScreen = () => {
     }
 
     try {
+      if (isResetPin) {
+        const result = await dispatch(changePin(pinString)).unwrap();
+
+        if (result.status === 'success') {
+          showAlert({
+            title: "PIN Reset",
+            message: "Your PIN has been updated. Please login with your new PIN.",
+            type: "success",
+            buttons: [
+              {
+                label: "Login",
+                onPress: () => (navigation as any).navigate('LoginScreen'),
+              },
+            ],
+          });
+        }
+        return;
+      }
+
       const result = await dispatch(registerUser({ 
         phoneNumber: phoneNumber.trim(), 
         pin: pinString 
@@ -158,7 +179,7 @@ const CreatePinScreen = () => {
         }
       }
     } catch (error: any) {
-      showErrorAlert(error.message || 'Registration failed. Please try again.');
+      showErrorAlert(error.message || (isResetPin ? 'Failed to reset PIN. Please try again.' : 'Registration failed. Please try again.'));
       setPin(['', '', '', '']);
       setConfirmPin(['', '', '', '']);
       setStep(1);
@@ -171,7 +192,11 @@ const CreatePinScreen = () => {
     setConfirmPin(['', '', '', '']);
   };
 
-  const renderPinInputs = (pinArray: string[], refs: React.RefObject<TextInput>[], isConfirm = false) => {
+  const renderPinInputs = (
+    pinArray: string[],
+    refs: React.MutableRefObject<(TextInput | null)[]>,
+    isConfirm = false
+  ) => {
     return pinArray.map((digit, index) => (
       <TextInput
         key={index}
@@ -236,7 +261,9 @@ const CreatePinScreen = () => {
 
             <View style={styles.badge}>
               <MaterialCommunityIcons name="form-textbox-password" size={18} color={Colors.primary} />
-              <Text style={styles.badgeText}>{step === 1 ? "Step 3 of 3" : "Final step"}</Text>
+              <Text style={styles.badgeText}>
+                {isResetPin ? (step === 1 ? "New PIN" : "Confirm PIN") : (step === 1 ? "Step 3 of 3" : "Final step")}
+              </Text>
             </View>
 
             <View style={styles.logoWrap}>
@@ -247,9 +274,13 @@ const CreatePinScreen = () => {
                 {step === 1 ? 'Create your PIN' : 'Confirm your PIN'}
               </Text>
               <Text style={styles.subtitle}>
-                {step === 1 
-                  ? 'Create a secure 4-digit PIN for quick login next time.'
-                  : 'Re-enter the same 4-digit PIN to finish creating your account.'
+                {step === 1
+                  ? isResetPin
+                    ? 'Create a new secure 4-digit PIN for your account.'
+                    : 'Create a secure 4-digit PIN for quick login next time.'
+                  : isResetPin
+                    ? 'Re-enter the same 4-digit PIN to finish resetting your PIN.'
+                    : 'Re-enter the same 4-digit PIN to finish creating your account.'
                 }
               </Text>
             </View>
@@ -276,7 +307,7 @@ const CreatePinScreen = () => {
               </View>
             ) : (
               <View style={styles.confirmSection}>
-                <Text style={styles.phoneLabel}>Creating account for</Text>
+                <Text style={styles.phoneLabel}>{isResetPin ? "Resetting PIN for" : "Creating account for"}</Text>
                 <Text style={styles.phoneDisplay}>{phoneNumber}</Text>
                 <View style={styles.pinContainer}>
                   {renderPinInputs(confirmPin, confirmPinInputRefs, true)}
@@ -285,7 +316,7 @@ const CreatePinScreen = () => {
                   <Text style={styles.errorText}>{error}</Text>
                 )}
                 <Button
-                  label={loading ? "Creating Account..." : "Create Account"}
+                  label={loading ? (isResetPin ? "Resetting PIN..." : "Creating Account...") : (isResetPin ? "Reset PIN" : "Create Account")}
                   onPress={() => handleConfirmPin()}
                   style={[
                     styles.createButton,
@@ -297,7 +328,7 @@ const CreatePinScreen = () => {
             )}
           </ScrollView>
         </LinearGradient>
-        <Loader visible={loading} message="Creating your account..." />
+        <Loader visible={loading} message={isResetPin ? "Resetting your PIN..." : "Creating your account..."} />
         {alertModal}
       </SafeAreaView>
     </KeyboardAvoidingView>

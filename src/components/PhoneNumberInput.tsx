@@ -23,6 +23,15 @@ interface PhoneNumberInputProps {
   value?: string;
   onChangeText?: (text: string) => void;
   onChangeFormattedText?: (text: string) => void;
+  /**
+   * Fires whenever the calling code changes (initial mount + country switch).
+   * Value is the dial code WITHOUT a leading "+" (e.g. "91"). Consumers should
+   * pair this with the raw `onChangeText` and pass both to `toE164(...)` from
+   * `utils/phoneFormat.ts` — that produces a reliable E.164 number, sidestepping
+   * the bugs in `onChangeFormattedText` for users whose typed digits overlap
+   * the dial code.
+   */
+  onChangeCallingCode?: (callingCode: string) => void;
   error?: string | null | undefined;
   containerStyle?: ViewStyle;
   firstContainerStyle?: ViewStyle;
@@ -36,6 +45,7 @@ const PhoneNumberInput = ({
   value,
   onChangeText,
   onChangeFormattedText,
+  onChangeCallingCode,
   error,
   containerStyle,
   firstContainerStyle,
@@ -43,6 +53,18 @@ const PhoneNumberInput = ({
   disabled = false,
 }: PhoneNumberInputProps) => {
   const phoneInput = useRef<PhoneInput>(null);
+
+  // Push the initial calling code up to the parent after mount so consumers
+  // don't have to wait for the first country change to know which code is
+  // active. The lib's ref methods are only available after a render.
+  React.useEffect(() => {
+    if (!onChangeCallingCode) return;
+    const code = phoneInput.current?.getCallingCode?.();
+    if (code) onChangeCallingCode(code);
+    // We intentionally only run this once; subsequent updates come through
+    // the country picker's onChangeCountry callback below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <View style={[firstContainerStyle]}>
@@ -55,6 +77,13 @@ const PhoneNumberInput = ({
           layout="first"
           onChangeText={onChangeText}
           onChangeFormattedText={onChangeFormattedText}
+          onChangeCountry={(country) => {
+            // `country.callingCode` is a string[] like ["91"] in v2.x
+            const code = Array.isArray(country?.callingCode)
+              ? country.callingCode[0]
+              : (country as any)?.callingCode;
+            if (code && onChangeCallingCode) onChangeCallingCode(String(code));
+          }}
           withDarkTheme={false}
           withShadow={false}
           autoFocus={false}
