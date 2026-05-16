@@ -17,6 +17,10 @@ import {
   getUnreadNotificationsCount,
   incrementUnreadCount,
 } from "@/src/redux/slices/notificationSlice";
+import {
+  getUnreadOrdersCount,
+  incrementUnreadOrders,
+} from "@/src/redux/slices/orderSlice";
 import type { Notification } from "@/src/interface/interfaces";
 import type { AppDispatch, RootState } from "@/src/redux/store";
 import {
@@ -48,9 +52,18 @@ function makeNotification(
 ): Notification | null {
   if (!data?.notificationId) return null;
   const t = (data.type as Notification["type"]) || "job_created";
+  // Fallback chain: explicit relatedEntityType from push payload wins.
+  // Otherwise infer from `type` so we don't mis-shelf entities.
+  const inferredEntityType =
+    t === "verification_review"
+      ? "User"
+      : t === "order_received"
+      ? "Order"
+      : t === "business_profile_review"
+      ? "BusinessProfile"
+      : "Job";
   const relatedEntityType =
-    data.relatedEntityType ||
-    (t === "verification_review" ? "User" : "Job");
+    data.relatedEntityType || inferredEntityType;
   return {
     _id: data.notificationId,
     recipient: "",
@@ -77,6 +90,15 @@ function syncFromMessage(dispatch: AppDispatch, remote: RemoteMessage) {
     void dispatch(getUnreadNotificationsCount());
   } else {
     dispatch(incrementUnreadCount());
+  }
+  // For order_received pushes, also bump the order badge so the header
+  // counter updates in real time. We refresh from the server to stay in
+  // sync; the optimistic increment is just there for snappiness on slow
+  // networks.
+  const type = String(d?.type || "").toLowerCase();
+  if (type === "order_received") {
+    dispatch(incrementUnreadOrders());
+    void dispatch(getUnreadOrdersCount());
   }
   Toast.show({
     type: "info",

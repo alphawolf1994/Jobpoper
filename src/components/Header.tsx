@@ -19,6 +19,10 @@ import {
   markNotificationAsRead,
   markAllNotificationsAsRead,
 } from "../redux/slices/notificationSlice";
+import {
+  getUnreadOrdersCount,
+  refreshHasApprovedBusiness,
+} from "../redux/slices/orderSlice";
 import { Notification } from "../interface/interfaces";
 import Toast from "react-native-toast-message";
 
@@ -32,6 +36,10 @@ const Header: React.FC = () => {
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
   const { currentLocation } = useSelector((state: RootState) => state.job);
   const { notifications, unreadCount, loading } = useSelector((state: RootState) => state.notification);
+  const {
+    unreadCount: unreadOrders,
+    hasApprovedBusiness,
+  } = useSelector((state: RootState) => state.order);
   
   // Get location from user profile or use default
   const getDefaultLocation = () => {
@@ -105,6 +113,11 @@ const Header: React.FC = () => {
       // Fetch both unread count and latest notifications
       dispatch(getUnreadNotificationsCount());
       dispatch(getAllNotifications({ page: 1, limit: 10, sortBy: "createdAt", sortOrder: "desc" }));
+      // Order-side polling: unread orders badge + business-owner check.
+      // These are no-ops on the server for non-business users (count = 0,
+      // hasApprovedBusiness = false) so they cost very little.
+      dispatch(getUnreadOrdersCount());
+      dispatch(refreshHasApprovedBusiness());
     }
   }, [dispatch, isAuthenticated]);
 
@@ -281,6 +294,29 @@ const Header: React.FC = () => {
       </View>
 
       <View style={styles.actions}>
+        {hasApprovedBusiness ? (
+          <TouchableOpacity
+            style={styles.bellWrapper}
+            activeOpacity={0.7}
+            onPress={() => {
+              // Navigation will dispatch markAllOrdersAsRead inside the screen
+              // so the badge clears the moment the screen opens. We don't
+              // optimistically clear here in case the navigation fails.
+              navigation.navigate("OrdersScreen");
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="View received orders"
+          >
+            <Ionicons name="receipt-outline" size={28} color={Colors.black} />
+            {unreadOrders > 0 && (
+              <View style={styles.redDot}>
+                <Text style={styles.badgeText}>
+                  {unreadOrders > 9 ? "9+" : unreadOrders}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        ) : null}
         <TouchableOpacity
           style={styles.bellWrapper}
           activeOpacity={0.7}

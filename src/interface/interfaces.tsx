@@ -910,7 +910,7 @@ export interface ListedJobsResponse {
 export interface Notification {
   _id: string;
   recipient: string;
-  type: 'job_created' | 'job_interest' | 'verification_review' | 'business_profile_review';
+  type: 'job_created' | 'job_interest' | 'verification_review' | 'business_profile_review' | 'order_received';
   title: string;
   message: string;
   relatedEntityType: string;
@@ -921,6 +921,57 @@ export interface Notification {
   createdAt: string;
   updatedAt: string;
   __v?: number;
+}
+
+// Order (Raise-an-Order feature) interfaces
+export interface OrderBusinessImageRef {
+  _id: string;
+  url: string;
+  isPrimary?: boolean;
+}
+
+export interface OrderBusinessProfileSummary {
+  _id: string;
+  businessName: string;
+  status?: 'pending' | 'approved' | 'rejected';
+  images?: OrderBusinessImageRef[];
+}
+
+export interface Order {
+  _id: string;
+  businessProfile: OrderBusinessProfileSummary | string;
+  businessOwner: string;
+  customer: string;
+  customerName: string;
+  customerPhone: string;
+  customerLocation?: string;
+  serviceDetail?: string;
+  isRead: boolean;
+  readAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReceivedOrdersResponse {
+  status: 'success' | 'error';
+  message?: string;
+  data?: {
+    orders: Order[];
+    unreadCount: number;
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalOrders: number;
+      hasNextPage: boolean;
+      hasPrevPage: boolean;
+    };
+  };
+}
+
+export interface UnreadOrdersCountResponse {
+  status: 'success' | 'error';
+  message?: string;
+  data?: { unreadCount: number };
 }
 
 export interface NotificationsResponse {

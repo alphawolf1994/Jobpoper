@@ -17,6 +17,17 @@ export function navigateToNotificationScreen(): void {
   }
 }
 
+export function navigateToOrdersScreen(): void {
+  if (!navigationRef.isReady()) return;
+  try {
+    navigationRef.dispatch(
+      CommonActions.navigate({ name: "OrdersScreen" } as any)
+    );
+  } catch {
+    // no-op
+  }
+}
+
 /** Deep link from FCM `data` when user taps a notification. */
 export function navigateFromPushPayload(
   data: Record<string, string> | undefined
@@ -33,6 +44,11 @@ export function navigateFromPushPayload(
     } catch {
       // fall through
     }
+  }
+  // Order push notification → Orders Screen per the Raise-an-Order spec.
+  if (type === "order_received" || navId.startsWith("order:")) {
+    navigateToOrdersScreen();
+    return;
   }
   navigateToNotificationScreen();
 }

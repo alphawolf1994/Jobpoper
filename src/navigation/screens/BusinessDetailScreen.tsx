@@ -18,6 +18,7 @@ import { useNavigation, useRoute } from "@react-navigation/native";
 
 import { IMAGE_BASE_URL } from "../../api/baseURL";
 import { Colors } from "../../utils";
+import RaiseOrderModal from "../../components/RaiseOrderModal";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const GALLERY_WIDTH = SCREEN_WIDTH;
@@ -59,6 +60,7 @@ const BusinessDetailScreen = () => {
   const [activeIndex, setActiveIndex] = useState(0);
   const [imageModalVisible, setImageModalVisible] = useState(false);
   const [modalImageIndex, setModalImageIndex] = useState(0);
+  const [raiseOrderVisible, setRaiseOrderVisible] = useState(false);
 
   const images = useMemo(
     () =>
@@ -228,23 +230,40 @@ const BusinessDetailScreen = () => {
         </View>
       </ScrollView>
 
-      {profile.phoneNumber ? (
-        <View
-          style={[
-            styles.footer,
-            { paddingBottom: Math.max(18, insets.bottom + 12) },
-          ]}
-        >
+      <View
+        style={[
+          styles.footer,
+          { paddingBottom: Math.max(18, insets.bottom + 12) },
+        ]}
+      >
+        <View style={styles.footerRow}>
+          {profile.phoneNumber ? (
+            <TouchableOpacity
+              style={[styles.actionButton, styles.contactButton]}
+              activeOpacity={0.9}
+              onPress={handleCall}
+            >
+              <Ionicons name="call" size={18} color={Colors.white} />
+              <Text style={styles.actionButtonText}>Contact</Text>
+            </TouchableOpacity>
+          ) : null}
           <TouchableOpacity
-            style={styles.contactButton}
+            style={[styles.actionButton, styles.raiseOrderButton]}
             activeOpacity={0.9}
-            onPress={handleCall}
+            onPress={() => setRaiseOrderVisible(true)}
           >
-            <Ionicons name="call" size={20} color={Colors.white} />
-            <Text style={styles.contactButtonText}>Contact</Text>
+            <Ionicons name="cart" size={18} color={Colors.white} />
+            <Text style={styles.actionButtonText}>Raise an Order</Text>
           </TouchableOpacity>
         </View>
-      ) : null}
+      </View>
+
+      <RaiseOrderModal
+        visible={raiseOrderVisible}
+        onClose={() => setRaiseOrderVisible(false)}
+        businessProfileId={profile._id}
+        businessName={profile.businessName}
+      />
 
       <Modal
         visible={imageModalVisible}
@@ -464,17 +483,28 @@ const styles = StyleSheet.create({
     borderTopColor: Colors.lightGray,
   },
   contactButton: {
+    backgroundColor: Colors.primary,
+  },
+  raiseOrderButton: {
+    backgroundColor: Colors.secondary,
+  },
+  footerRow: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
     height: 52,
     borderRadius: 14,
-    backgroundColor: Colors.primary,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
   },
-  contactButtonText: {
+  actionButtonText: {
     marginLeft: 8,
     color: Colors.white,
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "800",
   },
   zoomOverlay: {
