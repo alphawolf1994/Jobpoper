@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Image,
+  Modal,
+  Dimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -19,6 +21,7 @@ import { IMAGE_BASE_URL } from "../../../api/baseURL";
 
 const ADMIN_ACCENT = "#1E40AF";
 const ADMIN_LIGHT  = "#EFF6FF";
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
 // ─── Helper Components ────────────────────────────────────────────────────────
 interface InfoRowProps { label: string; value: string; }
@@ -39,6 +42,58 @@ const getVerificationColor = (status: string) => {
 };
 const getBoolColor = (val: boolean) => (val ? Colors.green : Colors.Red);
 
+const resolveImage = (uri?: string | null) => {
+  if (!uri) return null;
+  if (uri.startsWith("http") || uri.startsWith("file:")) return uri;
+  return `${IMAGE_BASE_URL}${uri.startsWith("/") ? uri : `/${uri}`}`;
+};
+
+interface ImageViewerProps {
+  uri: string;
+  onClose: () => void;
+}
+
+const ImageViewer: React.FC<ImageViewerProps> = ({ uri, onClose }) => (
+  <Modal transparent animationType="fade" onRequestClose={onClose}>
+    <View style={styles.imageViewerBg}>
+      <TouchableOpacity style={styles.imageViewerClose} onPress={onClose}>
+        <Ionicons name="close" size={28} color={Colors.white} />
+      </TouchableOpacity>
+      <Image source={{ uri }} style={styles.imageViewerImg} resizeMode="contain" />
+    </View>
+  </Modal>
+);
+
+interface DocCardProps {
+  label: string;
+  uri: string | null | undefined;
+  onPress: (uri: string) => void;
+}
+
+const DocCard: React.FC<DocCardProps> = ({ label, uri, onPress }) => {
+  const resolvedUri = resolveImage(uri);
+
+  return (
+    <View style={styles.docCard}>
+      <Text style={styles.docLabel}>{label}</Text>
+      {resolvedUri ? (
+        <TouchableOpacity onPress={() => onPress(resolvedUri)} activeOpacity={0.8}>
+          <Image source={{ uri: resolvedUri }} style={styles.docThumb} resizeMode="cover" />
+          <View style={styles.docTapHint}>
+            <Ionicons name="expand-outline" size={16} color={Colors.white} />
+            <Text style={styles.docTapText}>Tap to expand</Text>
+          </View>
+        </TouchableOpacity>
+      ) : (
+        <View style={styles.docPlaceholder}>
+          <Ionicons name="image-outline" size={32} color={Colors.gray} />
+          <Text style={styles.docPlaceholderText}>Not uploaded</Text>
+        </View>
+      )}
+    </View>
+  );
+};
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 // Detail API returns: { ...buildAdminUser(), profile: user.profile, verification: buildVerificationPayload() }
 // So we have FLAT top-level fields (fullName, verificationStatus, id) AND nested profile/verification
@@ -47,6 +102,7 @@ const AdminUserDetailScreen = () => {
   const route      = useRoute();
   const dispatch   = useDispatch<AppDispatch>();
   const { userId } = (route.params as any) || {};
+  const [viewingImage, setViewingImage] = useState<string | null>(null);
 
   const { selectedUser, usersLoading, usersError } = useSelector(
     (state: RootState) => state.admin
@@ -56,12 +112,6 @@ const AdminUserDetailScreen = () => {
     if (userId) dispatch(fetchAdminUserById(userId));
     return () => { dispatch(clearSelectedUser()); };
   }, [userId, dispatch]);
-
-  const resolveImage = (uri?: string | null) => {
-    if (!uri) return null;
-    if (uri.startsWith("http") || uri.startsWith("file:")) return uri;
-    return `${IMAGE_BASE_URL}${uri.startsWith("/") ? uri : `/${uri}`}`;
-  };
 
   if (usersLoading || !selectedUser) {
     return (
@@ -177,19 +227,41 @@ const AdminUserDetailScreen = () => {
 
         {/* Verification Info */}
         {u.verification && verStatus !== "not_submitted" && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Verification Details</Text>
-            <View style={styles.card}>
-              <InfoRow label="Status"    value={verStatus.replace(/_/g, " ")} />
-              <InfoRow label="Submitted" value={u.verification.submittedAt ? new Date(u.verification.submittedAt).toLocaleDateString() : ""} />
-              <InfoRow label="Reviewed"  value={u.verification.reviewedAt ? new Date(u.verification.reviewedAt).toLocaleDateString() : "Pending"} />
-              {u.verification.reviewNotes ? (
-                <InfoRow label="Review Notes" value={u.verification.reviewNotes} />
-              ) : null}
+          <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Verification Details</Text>
+              <View style={styles.card}>
+                <InfoRow label="Status"    value={verStatus.replace(/_/g, " ")} />
+                <InfoRow label="Submitted" value={u.verification.submittedAt ? new Date(u.verification.submittedAt).toLocaleDateString() : ""} />
+                <InfoRow label="Reviewed"  value={u.verification.reviewedAt ? new Date(u.verification.reviewedAt).toLocaleDateString() : "Pending"} />
+                {u.verification.reviewNotes ? (
+                  <InfoRow label="Review Notes" value={u.verification.reviewNotes} />
+                ) : null}
+              </View>
             </View>
-          </View>
+
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Verification Documents</Text>
+              <View style={styles.docsRow}>
+                <DocCard
+                  label="Selfie Photo"
+                  uri={u.verification.selfieImage}
+                  onPress={setViewingImage}
+                />
+                <DocCard
+                  label="ID Document"
+                  uri={u.verification.idPhotoImage}
+                  onPress={setViewingImage}
+                />
+              </View>
+            </View>
+          </>
         )}
       </ScrollView>
+
+      {viewingImage && (
+        <ImageViewer uri={viewingImage} onClose={() => setViewingImage(null)} />
+      )}
     </SafeAreaView>
   );
 };
@@ -259,6 +331,57 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     elevation: 1,
   },
+  docsRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  docCard: {
+    flex: 1,
+    backgroundColor: Colors.white,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.lightGray,
+    overflow: "hidden",
+  },
+  docLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: Colors.black,
+    padding: 12,
+    paddingBottom: 8,
+  },
+  docThumb: {
+    width: "100%",
+    height: 140,
+  },
+  docTapHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+    padding: 8,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+  },
+  docTapText: {
+    fontSize: 11,
+    color: Colors.white,
+    fontWeight: "500",
+  },
+  docPlaceholder: {
+    height: 140,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: Colors.lightGray,
+    gap: 8,
+  },
+  docPlaceholderText: {
+    fontSize: 12,
+    color: Colors.gray,
+  },
   infoRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -282,4 +405,21 @@ const styles = StyleSheet.create({
     borderColor: Colors.lightGray,
   },
   statusLabel: { fontSize: 12, color: Colors.gray, fontWeight: "500", textAlign: "center" },
+  imageViewerBg: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.92)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  imageViewerClose: {
+    position: "absolute",
+    top: 50,
+    right: 20,
+    zIndex: 10,
+    padding: 8,
+  },
+  imageViewerImg: {
+    width: SCREEN_WIDTH,
+    height: SCREEN_HEIGHT * 0.8,
+  },
 });

@@ -69,6 +69,25 @@ export const getAdminBusinessApprovalRequestsApi = async (
   }
 };
 
+// Fetch approved business profiles. The backend reuses the same controller as
+// the pending-requests endpoint; the `?status=` query param selects which set
+// gets returned. See adminController.getPendingBusinessProfileRequests.
+export const getAdminApprovedBusinessProfilesApi = async (
+  limit: number = 100
+) => {
+  try {
+    const res = await axiosInstance.get("/admin/business-profiles/pending", {
+      params: { limit, status: "approved" },
+    });
+    return res.data;
+  } catch (error: any) {
+    throw new Error(
+      error.response?.data?.message ||
+        "Failed to fetch approved business profiles"
+    );
+  }
+};
+
 export const reviewBusinessProfileApi = async (
   profileId: string,
   data: { status: "approved" | "rejected"; rejectionReason?: string }

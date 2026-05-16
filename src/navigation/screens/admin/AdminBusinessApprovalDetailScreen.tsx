@@ -51,6 +51,27 @@ const formatDate = (value?: string) => {
   });
 };
 
+const STATUS_META = {
+  pending: {
+    label: "Pending",
+    color: Colors.orange,
+    backgroundColor: "#FFF3E0",
+    headerTitle: "Business Review",
+  },
+  approved: {
+    label: "Approved",
+    color: "#047857",
+    backgroundColor: "#DCFCE7",
+    headerTitle: "Approved Business",
+  },
+  rejected: {
+    label: "Rejected",
+    color: Colors.Red,
+    backgroundColor: "#FEE2E2",
+    headerTitle: "Rejected Business",
+  },
+} as const;
+
 const AdminBusinessApprovalDetailScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute();
@@ -58,11 +79,16 @@ const AdminBusinessApprovalDetailScreen = () => {
   const routeProfile = (route.params as any)?.profile as
     | AdminBusinessApprovalRequest
     | undefined;
-  const { businessApprovalRequests, businessReviewLoading } = useSelector(
+  const {
+    businessApprovalRequests,
+    approvedBusinessProfiles,
+    businessReviewLoading,
+  } = useSelector(
     (state: RootState) => state.admin
   );
   const profile =
     (businessApprovalRequests ?? []).find((item) => item.id === routeProfile?.id) ||
+    (approvedBusinessProfiles ?? []).find((item) => item.id === routeProfile?.id) ||
     routeProfile;
 
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -84,6 +110,9 @@ const AdminBusinessApprovalDetailScreen = () => {
       : undefined;
   const userName =
     profile?.user?.fullName || profile?.user?.phoneNumber || "Unknown user";
+  const status = profile?.status ?? "pending";
+  const statusMeta = STATUS_META[status] ?? STATUS_META.pending;
+  const canReview = status === "pending";
 
   const handleApprove = async () => {
     if (!profile) return;
@@ -144,11 +173,16 @@ const AdminBusinessApprovalDetailScreen = () => {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={22} color={ADMIN_ACCENT} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Business Review</Text>
+        <Text style={styles.headerTitle}>{statusMeta.headerTitle}</Text>
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.scroll,
+          canReview && styles.scrollWithFooter,
+        ]}
+      >
         <View style={styles.galleryWrap}>
           {imageUrls.length > 0 ? (
             <FlatList
@@ -194,8 +228,15 @@ const AdminBusinessApprovalDetailScreen = () => {
                 <Text style={styles.categoryText}>{categoryName}</Text>
               ) : null}
             </View>
-            <View style={styles.pendingBadge}>
-              <Text style={styles.pendingBadgeText}>Pending</Text>
+            <View
+              style={[
+                styles.statusBadge,
+                { backgroundColor: statusMeta.backgroundColor },
+              ]}
+            >
+              <Text style={[styles.statusBadgeText, { color: statusMeta.color }]}>
+                {statusMeta.label}
+              </Text>
             </View>
           </View>
 
@@ -220,6 +261,13 @@ const AdminBusinessApprovalDetailScreen = () => {
             label="Submitted"
             value={formatDate(profile.submittedAt)}
           />
+          {status === "approved" ? (
+            <InfoRow
+              icon="checkmark-circle-outline"
+              label="Approved"
+              value={formatDate(profile.updatedAt || profile.submittedAt)}
+            />
+          ) : null}
         </View>
 
         {localError ? (
@@ -230,44 +278,46 @@ const AdminBusinessApprovalDetailScreen = () => {
         ) : null}
       </ScrollView>
 
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.rejectButton]}
-          activeOpacity={0.85}
-          disabled={businessReviewLoading}
-          onPress={() => {
-            setLocalError(null);
-            setRejectVisible(true);
-          }}
-        >
-          {businessReviewLoading ? (
-            <ActivityIndicator size="small" color={Colors.white} />
-          ) : (
-            <>
-              <Ionicons name="close-circle" size={20} color={Colors.white} />
-              <Text style={styles.actionText}>Reject</Text>
-            </>
-          )}
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.actionButton, styles.approveButton]}
-          activeOpacity={0.85}
-          disabled={businessReviewLoading}
-          onPress={handleApprove}
-        >
-          {businessReviewLoading ? (
-            <ActivityIndicator size="small" color={Colors.white} />
-          ) : (
-            <>
-              <Ionicons name="checkmark-circle" size={20} color={Colors.white} />
-              <Text style={styles.actionText}>Approve</Text>
-            </>
-          )}
-        </TouchableOpacity>
-      </View>
+      {canReview ? (
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.rejectButton]}
+            activeOpacity={0.85}
+            disabled={businessReviewLoading}
+            onPress={() => {
+              setLocalError(null);
+              setRejectVisible(true);
+            }}
+          >
+            {businessReviewLoading ? (
+              <ActivityIndicator size="small" color={Colors.white} />
+            ) : (
+              <>
+                <Ionicons name="close-circle" size={20} color={Colors.white} />
+                <Text style={styles.actionText}>Reject</Text>
+              </>
+            )}
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.approveButton]}
+            activeOpacity={0.85}
+            disabled={businessReviewLoading}
+            onPress={handleApprove}
+          >
+            {businessReviewLoading ? (
+              <ActivityIndicator size="small" color={Colors.white} />
+            ) : (
+              <>
+                <Ionicons name="checkmark-circle" size={20} color={Colors.white} />
+                <Text style={styles.actionText}>Approve</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+      ) : null}
 
       <Modal
-        visible={rejectVisible}
+        visible={canReview && rejectVisible}
         transparent
         animationType="fade"
         onRequestClose={() => setRejectVisible(false)}
@@ -368,7 +418,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   headerTitle: { fontSize: 18, fontWeight: "800", color: ADMIN_ACCENT },
-  scroll: { paddingBottom: 118 },
+  scroll: { paddingBottom: 28 },
+  scrollWithFooter: { paddingBottom: 118 },
   galleryWrap: {
     width: SCREEN_WIDTH,
     height: GALLERY_HEIGHT,
@@ -420,14 +471,13 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: ADMIN_ACCENT,
   },
-  pendingBadge: {
-    backgroundColor: "#FFF3E0",
+  statusBadge: {
     borderRadius: 16,
     paddingHorizontal: 10,
     paddingVertical: 5,
     marginLeft: 10,
   },
-  pendingBadgeText: { color: Colors.orange, fontSize: 11, fontWeight: "800" },
+  statusBadgeText: { fontSize: 11, fontWeight: "800" },
   infoRow: {
     flexDirection: "row",
     alignItems: "flex-start",

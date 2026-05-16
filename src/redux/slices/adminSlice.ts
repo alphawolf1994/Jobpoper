@@ -6,6 +6,7 @@ import {
   getAdminJobsApi,
   getAdminJobByIdApi,
   getAdminBusinessApprovalRequestsApi,
+  getAdminApprovedBusinessProfilesApi,
   reviewBusinessProfileApi,
   getAdminVerificationsApi,
   reviewVerificationApi,
@@ -76,12 +77,12 @@ export interface AdminJob {
   attachments?: string[];
   location?: any;
   updatedAt?: string;
-  interestedUsers?: Array<{
+  interestedUsers?: {
     id: string;
     phoneNumber: string;
     fullName: string;   // flat
     notedAt: string;
-  }>;
+  }[];
 }
 
 export interface AdminBusinessApprovalRequest {
@@ -139,6 +140,13 @@ interface AdminState {
   businessApprovalsError: string | null;
   businessReviewLoading: boolean;
 
+  // Approved business profiles (the "Approved" tab on the admin screen). Kept
+  // separate from `businessApprovalRequests` so each tab can show its own
+  // loading/error state and refresh independently.
+  approvedBusinessProfiles: AdminBusinessApprovalRequest[];
+  approvedBusinessProfilesLoading: boolean;
+  approvedBusinessProfilesError: string | null;
+
   verifications: AdminUser[];
   verificationsLoading: boolean;
   verificationsError: string | null;
@@ -166,6 +174,10 @@ const initialState: AdminState = {
   businessApprovalsLoading: false,
   businessApprovalsError: null,
   businessReviewLoading: false,
+
+  approvedBusinessProfiles: [],
+  approvedBusinessProfilesLoading: false,
+  approvedBusinessProfilesError: null,
 
   verifications: [],
   verificationsLoading: false,
@@ -220,6 +232,14 @@ export const fetchAdminBusinessApprovalRequests = createAsyncThunk(
   async (limit: number = 100, { rejectWithValue }) => {
     try { return await getAdminBusinessApprovalRequestsApi(limit); }
     catch (e: any) { return rejectWithValue(e?.message || "Failed to fetch business approval requests"); }
+  }
+);
+
+export const fetchAdminApprovedBusinessProfiles = createAsyncThunk(
+  "admin/fetchApprovedBusinessProfiles",
+  async (limit: number = 100, { rejectWithValue }) => {
+    try { return await getAdminApprovedBusinessProfilesApi(limit); }
+    catch (e: any) { return rejectWithValue(e?.message || "Failed to fetch approved business profiles"); }
   }
 );
 
@@ -280,6 +300,7 @@ const adminSlice = createSlice({
       state.usersError = null;
       state.jobsError = null;
       state.businessApprovalsError = null;
+      state.approvedBusinessProfilesError = null;
       state.verificationsError = null;
     },
     clearSelectedUser: (state) => { state.selectedUser = null; },
@@ -400,11 +421,34 @@ const adminSlice = createSlice({
       })
       .addCase(reviewBusinessProfile.fulfilled, (state, action) => {
         state.businessReviewLoading = false;
-        const reviewedId = action.payload?.data?.profile?.id;
+        const reviewedProfile = action.payload?.data?.profile;
+        const reviewedId = reviewedProfile?.id;
         if (reviewedId) {
+          // Always pull it out of the pending list (whether it was approved or
+          // rejected).
           state.businessApprovalRequests = (
             state.businessApprovalRequests ?? []
           ).filter((p) => p.id !== reviewedId);
+
+          // If it was approved, drop it into the front of the approved list so
+          // the Approved tab shows it without a refetch. If the approved list
+          // hasn't been loaded yet, leave it empty — the next tab activation
+          // will fetch from the server and pick up the change.
+          if (
+            reviewedProfile?.status === "approved" &&
+            state.approvedBusinessProfiles
+          ) {
+            const alreadyThere = state.approvedBusinessProfiles.some(
+              (p) => p.id === reviewedId
+            );
+            if (!alreadyThere) {
+              state.approvedBusinessProfiles = [
+                reviewedProfile,
+                ...state.approvedBusinessProfiles,
+              ];
+            }
+          }
+
           if (state.dashboardStats?.pendingBusinessApprovals) {
             state.dashboardStats.pendingBusinessApprovals = Math.max(
               0,
@@ -416,6 +460,22 @@ const adminSlice = createSlice({
       .addCase(reviewBusinessProfile.rejected, (state, action) => {
         state.businessReviewLoading = false;
         state.businessApprovalsError = action.payload as string;
+      });
+
+    // ── Approved business profiles ───────────────────────────────────────────
+    builder
+      .addCase(fetchAdminApprovedBusinessProfiles.pending, (state) => {
+        state.approvedBusinessProfilesLoading = true;
+        state.approvedBusinessProfilesError = null;
+      })
+      .addCase(fetchAdminApprovedBusinessProfiles.fulfilled, (state, action) => {
+        state.approvedBusinessProfilesLoading = false;
+        state.approvedBusinessProfiles =
+          action.payload?.data?.requests ?? [];
+      })
+      .addCase(fetchAdminApprovedBusinessProfiles.rejected, (state, action) => {
+        state.approvedBusinessProfilesLoading = false;
+        state.approvedBusinessProfilesError = action.payload as string;
       });
 
     // ── Verifications list ─────────────────────────────────────────────────────
