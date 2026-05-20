@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -15,10 +15,13 @@ import { Image } from "expo-image";
 import { Ionicons } from "@expo/vector-icons";
 import Carousel from "react-native-reanimated-carousel";
 import { useNavigation, useRoute } from "@react-navigation/native";
+import { useSelector } from "react-redux";
 
 import { IMAGE_BASE_URL } from "../../api/baseURL";
+import { getMyBusinessProfilesApi } from "../../api/businessProfileApis";
 import { Colors } from "../../utils";
 import RaiseOrderModal from "../../components/RaiseOrderModal";
+import { RootState } from "../../redux/store";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const GALLERY_WIDTH = SCREEN_WIDTH;
@@ -45,15 +48,30 @@ interface BusinessProfileDetail {
   address: string;
   phoneNumber?: string;
   status?: "pending" | "approved" | "rejected";
+  user?: string | { _id?: string; id?: string };
+  owner?: string | { _id?: string; id?: string };
+  businessOwner?: string | { _id?: string; id?: string };
+  createdBy?: string | { _id?: string; id?: string };
   images?: BusinessImageRef[];
   createdAt?: string;
   updatedAt?: string;
 }
 
+const getEntityId = (value: unknown): string | undefined => {
+  if (!value) return undefined;
+  if (typeof value === "string") return value;
+  if (typeof value === "object") {
+    const entity = value as { _id?: string; id?: string };
+    return entity._id || entity.id;
+  }
+  return undefined;
+};
+
 const BusinessDetailScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute();
   const insets = useSafeAreaInsets();
+  const { user } = useSelector((state: RootState) => state.auth);
   const profile = (route.params as any)?.profile as
     | BusinessProfileDetail
     | undefined;
@@ -61,6 +79,7 @@ const BusinessDetailScreen = () => {
   const [imageModalVisible, setImageModalVisible] = useState(false);
   const [modalImageIndex, setModalImageIndex] = useState(0);
   const [raiseOrderVisible, setRaiseOrderVisible] = useState(false);
+  const [isOwnedProfile, setIsOwnedProfile] = useState(false);
 
   const images = useMemo(
     () =>
@@ -74,6 +93,43 @@ const BusinessDetailScreen = () => {
     typeof profile?.category === "object" && profile?.category
       ? profile.category.name
       : undefined;
+
+  const profileOwnerId =
+    getEntityId(profile?.user) ||
+    getEntityId(profile?.owner) ||
+    getEntityId(profile?.businessOwner) ||
+    getEntityId(profile?.createdBy);
+  const loggedInUserId = user?.id || (user as any)?._id;
+  const hasDirectOwnerMatch =
+    Boolean(profileOwnerId && loggedInUserId) && profileOwnerId === loggedInUserId;
+  const isOwner = hasDirectOwnerMatch || isOwnedProfile;
+
+  useEffect(() => {
+    if (!profile?._id || !user || hasDirectOwnerMatch) {
+      setIsOwnedProfile(false);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getMyBusinessProfilesApi();
+        const profiles = res?.data?.profiles ?? [];
+        if (!cancelled) {
+          setIsOwnedProfile(
+            Array.isArray(profiles) &&
+              profiles.some((item: any) => item?._id === profile._id)
+          );
+        }
+      } catch {
+        if (!cancelled) setIsOwnedProfile(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hasDirectOwnerMatch, profile?._id, user]);
 
   const handleCall = () => {
     const phoneNumber = profile?.phoneNumber?.replace(/[\s\-()]/g, "");
@@ -93,6 +149,14 @@ const BusinessDetailScreen = () => {
     const searchUrl = `https://www.google.com/maps/search/?api=1&query=${encoded}`;
     Linking.openURL(directionsUrl).catch(() => {
       Linking.openURL(searchUrl).catch(() => {});
+    });
+  };
+
+  const handleEditBusiness = () => {
+    if (!profile) return;
+    navigation.navigate("AddBusinessProfileScreen", {
+      mode: "edit",
+      profile,
     });
   };
 
@@ -248,12 +312,23 @@ const BusinessDetailScreen = () => {
             </TouchableOpacity>
           ) : null}
           <TouchableOpacity
-            style={[styles.actionButton, styles.raiseOrderButton]}
+            style={[
+              styles.actionButton,
+              isOwner ? styles.editBusinessButton : styles.raiseOrderButton,
+            ]}
             activeOpacity={0.9}
-            onPress={() => setRaiseOrderVisible(true)}
+            onPress={
+              isOwner ? handleEditBusiness : () => setRaiseOrderVisible(true)
+            }
           >
-            <Ionicons name="cart" size={18} color={Colors.white} />
-            <Text style={styles.actionButtonText}>Raise an Order</Text>
+            <Ionicons
+              name={isOwner ? "create-outline" : "cart"}
+              size={18}
+              color={Colors.white}
+            />
+            <Text style={styles.actionButtonText}>
+              {isOwner ? "Edit Business" : "Raise an Order"}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -486,6 +561,9 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
   },
   raiseOrderButton: {
+    backgroundColor: Colors.secondary,
+  },
+  editBusinessButton: {
     backgroundColor: Colors.secondary,
   },
   footerRow: {

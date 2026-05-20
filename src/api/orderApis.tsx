@@ -9,6 +9,12 @@ export interface RaiseOrderPayload {
   name: string;
   phoneNumber: string;
   location?: string;
+  latitude?: number;
+  longitude?: number;
+  customerLatitude?: number;
+  customerLongitude?: number;
+  locationName?: string;
+  addressDetails?: string;
   serviceDetail?: string;
 }
 

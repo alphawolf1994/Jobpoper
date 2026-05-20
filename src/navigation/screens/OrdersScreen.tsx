@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback } from "react";
 import {
   View,
   Text,
@@ -57,6 +57,51 @@ const getInitials = (name: string): string => {
     .toUpperCase();
 };
 
+const getOrderLocation = (order: Order) => {
+  const fallbackLocation = (order as any).location;
+  const rawLocation = order.customerLocation ?? fallbackLocation;
+  const objectLocation =
+    rawLocation && typeof rawLocation === "object" ? rawLocation : null;
+  const address =
+    typeof rawLocation === "string"
+      ? rawLocation.trim()
+      : (
+          objectLocation?.fullAddress ||
+          objectLocation?.address ||
+          objectLocation?.location ||
+          ""
+        ).trim();
+  const rawLatitude =
+    objectLocation?.latitude ??
+    objectLocation?.lat ??
+    order.customerLatitude ??
+    order.latitude ??
+    (order as any).lat;
+  const rawLongitude =
+    objectLocation?.longitude ??
+    objectLocation?.lng ??
+    order.customerLongitude ??
+    order.longitude ??
+    (order as any).lng;
+  const latitude =
+    typeof rawLatitude === "string" ? Number(rawLatitude) : rawLatitude;
+  const longitude =
+    typeof rawLongitude === "string" ? Number(rawLongitude) : rawLongitude;
+  const hasCoordinates =
+    typeof latitude === "number" &&
+    typeof longitude === "number" &&
+    !Number.isNaN(latitude) &&
+    !Number.isNaN(longitude);
+
+  return {
+    address,
+    latitude,
+    longitude,
+    hasCoordinates,
+    hasLocation: Boolean(address || hasCoordinates),
+  };
+};
+
 const OrdersScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const dispatch = useDispatch<AppDispatch>();
@@ -81,10 +126,12 @@ const OrdersScreen: React.FC = () => {
 
   // Open directions to the customer's location in Google Maps. Falls back to
   // a search URL if the directions URL can't be opened.
-  const handleNavigate = (location?: string) => {
-    const address = (location || "").trim();
-    if (!address) return;
-    const encoded = encodeURIComponent(address);
+  const handleNavigate = (location: ReturnType<typeof getOrderLocation>) => {
+    if (!location.hasLocation) return;
+    const destination = location.hasCoordinates
+      ? `${location.latitude},${location.longitude}`
+      : location.address;
+    const encoded = encodeURIComponent(destination);
     const directions = `https://www.google.com/maps/dir/?api=1&destination=${encoded}&travelmode=driving`;
     const search = `https://www.google.com/maps/search/?api=1&query=${encoded}`;
     Linking.openURL(directions).catch(() => {
@@ -100,7 +147,7 @@ const OrdersScreen: React.FC = () => {
     const avatarUrl = resolveImageUrl(primaryImage?.url);
     const businessName = profile?.businessName || "Your business";
 
-    const hasLocation = !!(item.customerLocation && item.customerLocation.trim());
+    const orderLocation = getOrderLocation(item);
 
     return (
       <View style={styles.jobCard}>
@@ -138,11 +185,11 @@ const OrdersScreen: React.FC = () => {
             <Ionicons name="call-outline" size={12} color={Colors.white} />
             <Text style={styles.tagText}>{item.customerPhone}</Text>
           </View>
-          {hasLocation ? (
+          {orderLocation.hasLocation ? (
             <View style={styles.tag}>
               <Ionicons name="location-outline" size={12} color={Colors.white} />
               <Text style={styles.tagText} numberOfLines={1}>
-                {item.customerLocation}
+                {orderLocation.address || "Pinned location"}
               </Text>
             </View>
           ) : null}
@@ -163,10 +210,10 @@ const OrdersScreen: React.FC = () => {
 
         {/* Action buttons */}
         <View style={styles.actionRow}>
-          {hasLocation ? (
+          {orderLocation.hasLocation ? (
             <TouchableOpacity
               style={styles.actionBtn}
-              onPress={() => handleNavigate(item.customerLocation)}
+              onPress={() => handleNavigate(orderLocation)}
               activeOpacity={0.85}
               accessibilityRole="button"
               accessibilityLabel="Open in maps"

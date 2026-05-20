@@ -944,7 +944,22 @@ export interface Order {
   customer: string;
   customerName: string;
   customerPhone: string;
-  customerLocation?: string;
+  customerLocation?:
+    | string
+    | {
+        fullAddress?: string;
+        address?: string;
+        latitude?: number;
+        longitude?: number;
+        name?: string;
+        addressDetails?: string;
+      };
+  customerLatitude?: number;
+  customerLongitude?: number;
+  latitude?: number;
+  longitude?: number;
+  locationName?: string;
+  addressDetails?: string;
   serviceDetail?: string;
   isRead: boolean;
   readAt: string | null;
