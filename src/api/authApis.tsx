@@ -191,6 +191,7 @@ export const submitVerificationDocumentsApi = async (verificationData: {
 
         const res = await axiosInstance.put("/auth/verification-documents", formData, {
             headers: { "Content-Type": "multipart/form-data" },
+            timeout: 90000,
         });
 
         return res.data;

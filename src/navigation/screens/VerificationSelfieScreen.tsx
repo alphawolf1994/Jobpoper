@@ -74,7 +74,7 @@ const VerificationSelfieScreen = () => {
             mediaTypes: ["images"],
             allowsEditing: true,
             aspect: [3, 4],
-            quality: 0.85,
+            quality: 0.7,
             cameraType: ImagePicker.CameraType.front,
           });
 
@@ -114,7 +114,7 @@ const VerificationSelfieScreen = () => {
             mediaTypes: ["images"],
             allowsEditing: true,
             aspect: [3, 4],
-            quality: 0.85,
+            quality: 0.7,
           });
 
           if (!result.canceled && result.assets?.[0]?.uri) {

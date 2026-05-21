@@ -70,7 +70,7 @@ const VerificationIdScreen = () => {
             mediaTypes: ["images"],
             allowsEditing: true,
             aspect: [4, 3],
-            quality: 0.85,
+            quality: 0.7,
           });
           if (!result.canceled && result.assets?.[0]?.uri) {
             setPreviewUri(result.assets[0].uri);
@@ -107,7 +107,7 @@ const VerificationIdScreen = () => {
             mediaTypes: ["images"],
             allowsEditing: true,
             aspect: [4, 3],
-            quality: 0.85,
+            quality: 0.7,
           });
           if (!result.canceled && result.assets?.[0]?.uri) {
             setPreviewUri(result.assets[0].uri);
