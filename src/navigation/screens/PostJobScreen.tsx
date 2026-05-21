@@ -22,6 +22,7 @@ import { Job, SavedLocationData, ServiceCategory } from '../../interface/interfa
 import { IMAGE_BASE_URL } from '../../api/baseURL';
 import CategoryPickerSheet, { getCategoryVisual } from "../../components/CategoryPickerSheet";
 import { fetchServiceCategories } from "../../redux/slices/serviceCategorySlice";
+import VoiceNoteRecorder from "../../components/VoiceNoteRecorder";
 
 const PostJobScreen = () => {
   const navigation = useNavigation();
@@ -118,6 +119,10 @@ const PostJobScreen = () => {
   const [tempTime, setTempTime] = useState<Date | null>(null);
   const [attachments, setAttachments] = useState<string[]>([]);
   const [existingAttachments, setExistingAttachments] = useState<string[]>([]);
+  // Voice note: local URI for new recording, or null
+  const [voiceNote, setVoiceNote] = useState<string | null>(null);
+  // existingVoiceNote: path from backend (edit mode)
+  const [existingVoiceNote, setExistingVoiceNote] = useState<string | null>(null);
 
   const getTomorrow = () => {
     const d = new Date();
@@ -274,6 +279,12 @@ const PostJobScreen = () => {
         setAttachments(jobDataToEdit.attachments);
         setExistingAttachments(jobDataToEdit.attachments);
       }
+
+      // Set existing voice note if any
+      if (jobDataToEdit.voiceNote) {
+        const voiceUrl = `${IMAGE_BASE_URL}${jobDataToEdit.voiceNote.startsWith('/') ? jobDataToEdit.voiceNote : `/${jobDataToEdit.voiceNote}`}`;
+        setExistingVoiceNote(voiceUrl);
+      }
     }
   }, [isEditMode, jobDataToEdit]);
 
@@ -413,10 +424,6 @@ const PostJobScreen = () => {
       showErrorAlert('Please enter a job title');
       return;
     }
-    if (!formData.description.trim()) {
-      showErrorAlert('Please enter a job description');
-      return;
-    }
     if (!formData.cost.trim()) {
       showErrorAlert('Please enter the cost/budget');
       return;
@@ -463,6 +470,9 @@ const PostJobScreen = () => {
           },
         attachments: newAttachments,
         existingAttachments: keptExistingAttachments,
+        // Voice note: new local URI (if recorded), or signal removal
+        ...(voiceNote ? { voiceNote } : {}),
+        ...(isEditMode && !voiceNote && existingVoiceNote === null ? { removeVoiceNote: true } : {}),
         // Only persist distance for Pickup jobs
         distanceKm: jobType === 'Pickup' ? pickupDistanceKm : null,
         // Service category id (backend accepts ObjectId or slug)
@@ -500,6 +510,8 @@ const PostJobScreen = () => {
           setResponsePreference('direct_contact');
           setAttachments([]);
           setExistingAttachments([]);
+          setVoiceNote(null);
+          setExistingVoiceNote(null);
           navigation.goBack();
         });
       }
@@ -556,13 +568,19 @@ const PostJobScreen = () => {
 
           {/* Job Description */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Job Description *</Text>
+            <Text style={styles.label}>Job Description (optional)</Text>
             <MyTextArea
               placeholder="Describe the job requirements, what you need done, and any specific details..."
               value={formData.description}
               onChangeText={(value) => handleInputChange('description', value)}
               containerStyle={styles.textArea}
               numberOfLines={6}
+            />
+            <Text style={styles.orDivider}>— or record a voice note —</Text>
+            <VoiceNoteRecorder
+              existingVoiceNoteUrl={existingVoiceNote}
+              onVoiceNoteChange={(uri) => setVoiceNote(uri)}
+              onRemoveExisting={() => setExistingVoiceNote(null)}
             />
           </View>
 
@@ -1185,6 +1203,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     textAlignVertical: 'top',
+  },
+  orDivider: {
+    textAlign: 'center',
+    fontSize: 12,
+    color: '#9AA0A6',
+    marginVertical: 10,
   },
   infoCard: {
     backgroundColor: '#f8f9fa',

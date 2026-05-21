@@ -806,6 +806,7 @@ export interface Job {
   scheduledDate: string;
   scheduledTime: string;
   attachments?: string[];
+  voiceNote?: string | null;
   status: 'open' | 'in-progress' | 'completed' | 'cancelled';
   jobType?: 'OnSite' | 'Pickup';
   responsePreference?: 'direct_contact' | 'show_interest';

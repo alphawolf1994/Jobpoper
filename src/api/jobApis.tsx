@@ -5,7 +5,6 @@ export const createJobApi = async (jobData: {
     title: string;
     description: string;
     cost: string;
-    // location and jobType can be strings or objects now
     location: string | object;
     jobType?: string | object;
     urgency: string;
@@ -13,6 +12,7 @@ export const createJobApi = async (jobData: {
     scheduledTime: string;
     responsePreference?: 'direct_contact' | 'show_interest';
     attachments?: string[];
+    voiceNote?: string | null;
     distanceKm?: number | null;
     category?: string | null;
 }) => {
@@ -51,8 +51,7 @@ export const createJobApi = async (jobData: {
         if (jobData.category) {
             formData.append("category", jobData.category);
         }
-console.log("Job Data Attachments:", formData);
-        // Append up to 5 images using the same field name: attachments
+        // Append up to 5 images
         if (jobData.attachments && Array.isArray(jobData.attachments)) {
             jobData.attachments.slice(0, 5).forEach((uri, index) => {
                 const inferredName = uri.split("/").pop() || `attachment_${index + 1}.jpg`;
@@ -60,6 +59,14 @@ console.log("Job Data Attachments:", formData);
                 const mime = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : ext === "heic" ? "image/heic" : "image/jpeg";
                 formData.append("attachments", { uri, name: inferredName, type: mime } as unknown as Blob);
             });
+        }
+        // Append voice note if present
+        if (jobData.voiceNote) {
+            const voiceUri = jobData.voiceNote;
+            const voiceName = voiceUri.split("/").pop() || "voice_note.m4a";
+            const ext = voiceName.split(".").pop()?.toLowerCase();
+            const voiceMime = ext === "mp3" ? "audio/mpeg" : ext === "wav" ? "audio/wav" : ext === "aac" ? "audio/aac" : "audio/m4a";
+            formData.append("voiceNote", { uri: voiceUri, name: voiceName, type: voiceMime } as unknown as Blob);
         }
 
         const res = await axiosInstance.post("/jobs", formData, {
@@ -104,6 +111,8 @@ export const updateJobApi = async (jobId: string, jobData: {
     responsePreference?: 'direct_contact' | 'show_interest';
     attachments?: string[];
     existingAttachments?: string[];
+    voiceNote?: string | null;
+    removeVoiceNote?: boolean;
     distanceKm?: number | null;
     category?: string | null;
 }) => {
@@ -153,8 +162,18 @@ export const updateJobApi = async (jobId: string, jobData: {
                 formData.append("attachments", { uri, name: inferredName, type: mime } as unknown as Blob);
             });
         }
-        console.log("Update Job Data Attachments:", formData);
-        console.log("Update Job jobId:", jobId);
+        // New voice note file
+        if (jobData.voiceNote) {
+            const voiceUri = jobData.voiceNote;
+            const voiceName = voiceUri.split("/").pop() || "voice_note.m4a";
+            const ext = voiceName.split(".").pop()?.toLowerCase();
+            const voiceMime = ext === "mp3" ? "audio/mpeg" : ext === "wav" ? "audio/wav" : ext === "aac" ? "audio/aac" : "audio/m4a";
+            formData.append("voiceNote", { uri: voiceUri, name: voiceName, type: voiceMime } as unknown as Blob);
+        }
+        // Signal to remove existing voice note
+        if (jobData.removeVoiceNote) {
+            formData.append("removeVoiceNote", "true");
+        }
         const res = await axiosInstance.put(`/jobs/${jobId}`, formData, {
             headers: { "Content-Type": "multipart/form-data" },
         });

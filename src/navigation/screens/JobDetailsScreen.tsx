@@ -12,6 +12,7 @@ import {
   Linking,
   Platform,
 } from "react-native";
+import { Audio } from "expo-av";
 import * as Location from 'expo-location';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from "../../utils";
@@ -55,6 +56,13 @@ const JobDetailsScreen = () => {
   // immediately on success, before the re-fetch resolves.
   const [optimisticInterested, setOptimisticInterested] = useState(false);
 
+  // Voice note player state
+  const voiceSoundRef = useRef<Audio.Sound | null>(null);
+  const [voiceIsPlaying, setVoiceIsPlaying] = useState(false);
+  const [voicePositionMs, setVoicePositionMs] = useState(0);
+  const [voiceDurationMs, setVoiceDurationMs] = useState(0);
+  const [voiceLoaded, setVoiceLoaded] = useState(false);
+
   useEffect(() => {
     if (jobId) {
       dispatch(getJobById(jobId));
@@ -63,6 +71,68 @@ const JobDetailsScreen = () => {
       setOptimisticInterested(false);
     }
   }, [dispatch, jobId]);
+
+  // Load voice note audio when job changes
+  useEffect(() => {
+    let mounted = true;
+    const loadVoice = async () => {
+      // Unload previous
+      if (voiceSoundRef.current) {
+        await voiceSoundRef.current.unloadAsync().catch(() => {});
+        voiceSoundRef.current = null;
+      }
+      setVoiceLoaded(false);
+      setVoiceIsPlaying(false);
+      setVoicePositionMs(0);
+      setVoiceDurationMs(0);
+
+      if (!currentJob?.voiceNote) return;
+      const uri = `${IMAGE_BASE_URL}${currentJob.voiceNote.startsWith('/') ? currentJob.voiceNote : `/${currentJob.voiceNote}`}`;
+      try {
+        const { sound, status } = await Audio.Sound.createAsync({ uri });
+        if (!mounted) { sound.unloadAsync(); return; }
+        voiceSoundRef.current = sound;
+        if (status.isLoaded) setVoiceDurationMs(status.durationMillis ?? 0);
+        setVoiceLoaded(true);
+      } catch (e) {
+        // voice note failed to load silently
+      }
+    };
+    loadVoice();
+    return () => {
+      mounted = false;
+      voiceSoundRef.current?.unloadAsync().catch(() => {});
+    };
+  }, [currentJob?.voiceNote]);
+
+  const toggleVoicePlayback = async () => {
+    const sound = voiceSoundRef.current;
+    if (!sound || !voiceLoaded) return;
+    if (voiceIsPlaying) {
+      await sound.pauseAsync();
+      setVoiceIsPlaying(false);
+    } else {
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      await sound.playAsync();
+      setVoiceIsPlaying(true);
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (!status.isLoaded) return;
+        setVoicePositionMs(status.positionMillis ?? 0);
+        if (status.didJustFinish) {
+          setVoiceIsPlaying(false);
+          setVoicePositionMs(0);
+          sound.setPositionAsync(0);
+        }
+      });
+    }
+  };
+
+  const formatVoiceTime = (ms: number) => {
+    const s = Math.floor(ms / 1000);
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -615,7 +685,49 @@ const JobDetailsScreen = () => {
 
         {renderAttachments()}
 
-       
+        {/* Voice Note Player */}
+        {currentJob?.voiceNote ? (
+          <View style={styles.attachmentsSection}>
+            <Text style={styles.sectionTitle}>Voice Note</Text>
+            <View style={styles.voiceNoteCard}>
+              <View style={styles.voiceNoteHeader}>
+                <Ionicons name="mic" size={18} color={Colors.primary} />
+                <Text style={styles.voiceNoteLabel}>
+                  {formatVoiceTime(voiceDurationMs) !== '00:00' ? formatVoiceTime(voiceDurationMs) : '...'}
+                </Text>
+              </View>
+              <View style={styles.voiceNoteControls}>
+                <TouchableOpacity
+                  onPress={toggleVoicePlayback}
+                  activeOpacity={0.8}
+                  style={[styles.voicePlayBtn, !voiceLoaded && { opacity: 0.5 }]}
+                  disabled={!voiceLoaded}
+                >
+                  <Ionicons
+                    name={voiceIsPlaying ? 'pause' : 'play'}
+                    size={22}
+                    color={Colors.white}
+                  />
+                </TouchableOpacity>
+                <View style={styles.voiceProgressBar}>
+                  <View
+                    style={[
+                      styles.voiceProgressFill,
+                      {
+                        width: voiceDurationMs > 0
+                          ? `${(voicePositionMs / voiceDurationMs) * 100}%`
+                          : '0%',
+                      },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.voicePositionText}>
+                  {formatVoiceTime(voicePositionMs)}
+                </Text>
+              </View>
+            </View>
+          </View>
+        ) : null}
 
         {/* {isMyJob && (
           <View style={styles.section}>
@@ -1402,7 +1514,56 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   attachmentsSection: {
-    marginBottom: 60,
+    marginBottom: 24,
+  },
+  voiceNoteCard: {
+    backgroundColor: '#f5f8ff',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: Colors.primary + '40',
+  },
+  voiceNoteHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  voiceNoteLabel: {
+    fontSize: 13,
+    color: Colors.gray,
+    fontWeight: '500',
+  },
+  voiceNoteControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  voicePlayBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  voiceProgressBar: {
+    flex: 1,
+    height: 4,
+    backgroundColor: '#dde3f0',
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  voiceProgressFill: {
+    height: '100%',
+    backgroundColor: Colors.primary,
+    borderRadius: 2,
+  },
+  voicePositionText: {
+    fontSize: 11,
+    color: Colors.gray,
+    minWidth: 36,
+    textAlign: 'right',
   },
   attachmentCard: {
     width: SCREEN_WIDTH * 0.7,
