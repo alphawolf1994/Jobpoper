@@ -84,6 +84,9 @@ export const createBusinessProfileApi = async (
 export interface ListApprovedBusinessProfilesParams {
     page?: number;
     limit?: number;
+    latitude: number;
+    longitude: number;
+    location?: string;
     search?: string;
     category?: string | null;
 }
@@ -91,9 +94,12 @@ export interface ListApprovedBusinessProfilesParams {
 export const listApprovedBusinessProfilesApi = async ({
     page = 1,
     limit = 10,
+    latitude,
+    longitude,
+    location,
     search,
     category,
-}: ListApprovedBusinessProfilesParams = {}) => {
+}: ListApprovedBusinessProfilesParams) => {
     try {
         const safePage = Math.max(1, Math.floor(page));
         const safeLimit = Math.max(1, Math.min(50, Math.floor(limit)));
@@ -101,6 +107,9 @@ export const listApprovedBusinessProfilesApi = async ({
             params: {
                 page: safePage,
                 limit: safeLimit,
+                latitude,
+                longitude,
+                location: location?.trim() || undefined,
                 search: search?.trim() || undefined,
                 category: category || undefined,
             },

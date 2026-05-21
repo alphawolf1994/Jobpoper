@@ -22,6 +22,7 @@ import CategoryPickerSheet from "../../components/CategoryPickerSheet";
 import { AppDispatch, RootState } from "../../redux/store";
 import { fetchBusinessCategories } from "../../redux/slices/businessCategorySlice";
 import { BusinessCategory } from "../../interface/interfaces";
+import { geocodeAddressToCoordinates } from "../../utils/geocode";
 
 const PAGE_SIZE = 10;
 
@@ -47,6 +48,9 @@ interface BusinessProfileItem {
   category?: { _id: string; name?: string; slug?: string } | string;
   address: string;
   phoneNumber?: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  distance?: number;
   status?: "pending" | "approved" | "rejected";
   images?: BusinessImageRef[];
   createdAt?: string;
@@ -108,6 +112,39 @@ const BusinessTabScreen = () => {
     loading: categoriesLoading,
     error: categoriesError,
   } = useSelector((state: RootState) => state.businessCategories);
+  const { currentLocation, currentLocationCoordinates } = useSelector(
+    (state: RootState) => state.job
+  );
+  const { user } = useSelector((state: RootState) => state.auth);
+
+  const resolveSelectedCoordinates = useCallback(async () => {
+    if (currentLocationCoordinates) return currentLocationCoordinates;
+
+    const profileCurrentLocation = user?.profile?.currentLocation;
+    if (
+      profileCurrentLocation?.latitude != null &&
+      profileCurrentLocation?.longitude != null
+    ) {
+      return {
+        latitude: profileCurrentLocation.latitude,
+        longitude: profileCurrentLocation.longitude,
+      };
+    }
+
+    const locationString =
+      currentLocation ||
+      profileCurrentLocation?.fullAddress ||
+      user?.profile?.location ||
+      "New York, NY, USA";
+    const geocoded = await geocodeAddressToCoordinates(locationString);
+    if (geocoded) return geocoded;
+    throw new Error("Could not resolve location; try selecting a listed place");
+  }, [
+    currentLocation,
+    currentLocationCoordinates,
+    user?.profile?.currentLocation,
+    user?.profile?.location,
+  ]);
 
   const fetchPage = useCallback(
     async (page: number, mode: "initial" | "refresh" | "append") => {
@@ -119,9 +156,17 @@ const BusinessTabScreen = () => {
       setError(null);
 
       try {
+        const { latitude, longitude } = await resolveSelectedCoordinates();
+        const location =
+          currentLocation ||
+          user?.profile?.currentLocation?.fullAddress ||
+          user?.profile?.location;
         const res = await listApprovedBusinessProfilesApi({
           page,
           limit: PAGE_SIZE,
+          latitude,
+          longitude,
+          location,
           search: searchQuery,
           category: selectedCategory?._id,
         });
@@ -159,7 +204,14 @@ const BusinessTabScreen = () => {
         if (mode === "append") setLoadingMore(false);
       }
     },
-    [searchQuery, selectedCategory?._id]
+    [
+      currentLocation,
+      resolveSelectedCoordinates,
+      searchQuery,
+      selectedCategory?._id,
+      user?.profile?.currentLocation?.fullAddress,
+      user?.profile?.location,
+    ]
   );
 
   useEffect(() => {
@@ -339,7 +391,7 @@ const BusinessTabScreen = () => {
         <Text style={styles.emptyMessage}>
           {searchQuery.trim() || selectedCategory
             ? "Try adjusting your search or category filter."
-            : "Approved businesses will appear here."}
+            : "Approved businesses within 50 km of your selected location will appear here."}
         </Text>
       </View>
     );
@@ -351,7 +403,7 @@ const BusinessTabScreen = () => {
         <Text style={styles.headerTitle}>Businesses</Text>
         {!initialLoading && profiles.length > 0 ? (
           <Text style={styles.headerSubtitle}>
-            {pagination.total} approved
+            {pagination.total} nearby
           </Text>
         ) : null}
       </View>
