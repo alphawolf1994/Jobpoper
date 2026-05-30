@@ -33,7 +33,6 @@ export interface AdminUser {
     fullName: string;
     email: string;
     location?: string;
-    dateOfBirth?: string;
     profileImage?: string;
     isProfileComplete: boolean;
   };

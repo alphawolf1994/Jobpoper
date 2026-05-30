@@ -19,7 +19,6 @@ import Button from "../../components/Button";
 import Loader from "../../components/Loader";
 import LocationAutocomplete from "../../components/LocationAutocomplete";
 import ImagePath from "../../assets/images/ImagePath";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
 import { getCurrentUser, completeProfile } from "../../redux/slices/authSlice";
@@ -51,9 +50,6 @@ const UserDetailsScreen = () => {
         country: "",
         fullAddress: "",
     });
-    const [dob, setDob] = useState<Date | null>(null);
-    const [showPicker, setShowPicker] = useState(false);
-
     // Profile image state
     const [profileImage, setProfileImage] = useState<string | null>(null);
 
@@ -78,7 +74,6 @@ const UserDetailsScreen = () => {
                 });
             }
 
-            setDob(user.profile?.dateOfBirth ? new Date(user.profile.dateOfBirth) : null);
             setProfileImage(user.profile?.profileImage || null);
         } else {
             // Fetch current user data if not available
@@ -144,7 +139,6 @@ const UserDetailsScreen = () => {
                 location: location.fullAddress || `${location.city}, ${location.state}, ${location.country}`.trim(),
                 latitude: location.latitude,
                 longitude: location.longitude,
-                dateOfBirth: dob ? dob.toISOString().split('T')[0] : undefined,
                 profileImage: profileImage || undefined,
             };
 
@@ -256,38 +250,6 @@ const UserDetailsScreen = () => {
                             onLocationSelect={(locationData) => setLocation(locationData)}
                             firstContainerStyle={{ marginTop: 0 }}
                         />
-
-                        {/* Date of Birth Picker */}
-                        <TouchableOpacity onPress={() => setShowPicker(true)} activeOpacity={0.8}>
-                            <View style={styles.inputWrapperRelative}>
-                                <MyTextInput
-                                    label="Date of Birth"
-                                    placeholder="Select date of birth"
-                                    value={dob ? dob.toDateString() : ""}
-                                    editable={false}
-                                />
-                                <Ionicons
-                                    name="calendar-outline"
-                                    size={20}
-                                    color={Colors.primary}
-                                    style={styles.trailingIcon}
-                                />
-                            </View>
-                        </TouchableOpacity>
-
-                        {showPicker && (
-                            <DateTimePicker
-                                mode="date"
-                                value={dob ?? new Date(2000, 0, 1)}
-                                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                                maximumDate={new Date()}
-                                minimumDate={new Date(1900, 0, 1)}
-                                onChange={(_, date) => {
-                                    setShowPicker(false);
-                                    if (date) setDob(date);
-                                }}
-                            />
-                        )}
 
                         {/* Save Button */}
                         <Button

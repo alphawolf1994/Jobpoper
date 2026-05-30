@@ -61,7 +61,6 @@ export interface UserProfile {
     longitude?: number;
     updatedAt?: string;
   };
-  dateOfBirth?: string;
   profileImage?: string;
   isProfileComplete: boolean;
 }

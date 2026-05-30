@@ -94,7 +94,6 @@ export const completeProfileApi = async (profileData: {
     location?: string;
     latitude?: number;
     longitude?: number;
-    dateOfBirth?: string;
     profileImage?: string;
 }) => {
     try {
@@ -105,8 +104,6 @@ export const completeProfileApi = async (profileData: {
         if (profileData.location) formData.append("location", profileData.location);
         if (profileData.latitude != null) formData.append("latitude", String(profileData.latitude));
         if (profileData.longitude != null) formData.append("longitude", String(profileData.longitude));
-        if (profileData.dateOfBirth) formData.append("dateOfBirth", profileData.dateOfBirth);
-
         // Append image if provided (React Native file object)
         if (profileData.profileImage) {
             const uri = profileData.profileImage;

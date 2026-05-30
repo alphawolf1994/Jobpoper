@@ -17,7 +17,6 @@ import MyTextInput from "../../components/MyTextInput";
 import Button from "../../components/Button";
 import Loader from "../../components/Loader";
 import LocationAutocomplete from "../../components/LocationAutocomplete";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { useNavigation } from "@react-navigation/native";
 import { AntDesign, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
@@ -47,17 +46,7 @@ const BasicProfileScreen = () => {
     country: "",
     fullAddress: "",
   });
-  const [dob, setDob] = useState<Date | null>(null);
-  const [showPicker, setShowPicker] = useState(false);
-
   const navigateHome = () => (navigation as any).navigate("HomeTabs");
-
-  const formatDate = (date: Date) => {
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = String(date.getFullYear());
-    return `${day} ${month} ${year}`;
-  };
 
   const handleCompleteProfile = async () => {
     // Validate required fields
@@ -115,7 +104,6 @@ const BasicProfileScreen = () => {
           `${location.city}, ${location.state}, ${location.country}`.trim(),
         latitude: location.latitude,
         longitude: location.longitude,
-        dateOfBirth: dob ? dob.toISOString().split("T")[0] : undefined,
       };
 
       const result = await dispatch(completeProfile(profileData)).unwrap();
@@ -224,39 +212,6 @@ const BasicProfileScreen = () => {
               placeholder="Search for your city"
               onLocationSelect={(locationData) => setLocation(locationData)}
             />
-
-            <TouchableOpacity
-              onPress={() => setShowPicker(true)}
-              activeOpacity={0.8}
-            >
-              <View style={styles.inputWrapperRelative}>
-                <MyTextInput
-                  label="Age"
-                  placeholder="Select date of birth"
-                  value={dob ? formatDate(dob) : ""}
-                  editable={false}
-                />
-                <AntDesign
-                  name="calendar"
-                  size={20}
-                  color={Colors.primary}
-                  style={styles.trailingIcon}
-                />
-              </View>
-            </TouchableOpacity>
-            {showPicker && (
-              <DateTimePicker
-                mode="date"
-                value={dob ?? new Date(2000, 0, 1)}
-                display={Platform.OS === "ios" ? "spinner" : "default"}
-                maximumDate={new Date()}
-                minimumDate={new Date(1900, 0, 1)}
-                onChange={(_, date) => {
-                  setShowPicker(false);
-                  if (date) setDob(date);
-                }}
-              />
-            )}
 
             <Button
               label={loading ? "Completing Profile..." : "Continue"}

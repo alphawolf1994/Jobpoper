@@ -206,11 +206,6 @@ const AdminUserDetailScreen = () => {
             <InfoRow label="Full Name"     value={displayName} />
             <InfoRow label="Email"         value={u.email || u.profile?.email || ""} />
             <InfoRow label="Location"      value={u.location || u.profile?.location || ""} />
-            <InfoRow label="Date of Birth" value={
-              u.profile?.dateOfBirth
-                ? new Date(u.profile.dateOfBirth).toLocaleDateString()
-                : ""
-            } />
           </View>
         </View>
 

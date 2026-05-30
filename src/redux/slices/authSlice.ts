@@ -130,7 +130,6 @@ export const completeProfile = createAsyncThunk(
     location?: string;
     latitude?: number;
     longitude?: number;
-    dateOfBirth?: string;
     profileImage?: string;
   }, { rejectWithValue }) => {
     try {
