@@ -30,6 +30,7 @@ import { formatDateDDMMYYYY, getJobCategoryName } from "../../utils";
 import VerificationBottomSheet, { VerificationBottomSheetHandle } from "../../components/VerificationBottomSheet";
 import PickupPreferencesBottomSheet, { PickupPreferencesBottomSheetHandle } from "../../components/PickupPreferencesBottomSheet";
 import { fetchVerificationStatus } from "../../redux/slices/verificationSlice";
+import { getCategoryVisual } from "../../components/CategoryPickerSheet";
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -1195,6 +1196,62 @@ const JobDetailsScreen = () => {
                         </Text>
                       )}
                     </View>
+
+                    {/* Professional Profile Panel */}
+                    {entry.user.isProfessional && entry.user.professionalProfile && (
+                      <View style={styles.professionalPanel}>
+                        <View style={styles.professionalPanelHeader}>
+                          <Ionicons name="briefcase-outline" size={14} color="#7C3AED" />
+                          <Text style={styles.professionalPanelTitle}>Professional / Worker</Text>
+                        </View>
+
+                        {/* Service Categories */}
+                        {entry.user.professionalProfile.serviceCategories && entry.user.professionalProfile.serviceCategories.length > 0 && (
+                          <View style={styles.profCategoriesWrap}>
+                            {entry.user.professionalProfile.serviceCategories.map((cat: any) => {
+                              const visual = getCategoryVisual(cat);
+                              return (
+                                <View key={cat._id} style={[styles.profCategoryChip, { backgroundColor: visual.backgroundColor }]}>
+                                  <Ionicons name={visual.icon as any} size={11} color={visual.color} />
+                                  <Text style={[styles.profCategoryChipText, { color: visual.color }]}>{cat.name}</Text>
+                                </View>
+                              );
+                            })}
+                          </View>
+                        )}
+
+                        {/* Experience & Bio */}
+                        <View style={styles.profDetailsRow}>
+                          {entry.user.professionalProfile.yearsOfExperience != null && (
+                            <View style={styles.profBadge}>
+                              <Ionicons name="time-outline" size={12} color="#7C3AED" />
+                              <Text style={styles.profBadgeText}>{entry.user.professionalProfile.yearsOfExperience} yrs exp</Text>
+                            </View>
+                          )}
+                        </View>
+
+                        {entry.user.professionalProfile.bio ? (
+                          <Text style={styles.profBio}>{entry.user.professionalProfile.bio}</Text>
+                        ) : null}
+
+                        {/* Work Images */}
+                        {entry.user.professionalProfile.workImages && entry.user.professionalProfile.workImages.length > 0 && (
+                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.workImagesScroll}>
+                            {entry.user.professionalProfile.workImages.map((imgPath: string, idx: number) => {
+                              const uri = `${IMAGE_BASE_URL}${imgPath.startsWith('/') ? imgPath : `/${imgPath}`}`;
+                              return (
+                                <Image
+                                  key={idx}
+                                  source={{ uri }}
+                                  style={styles.workImageThumb}
+                                  contentFit="cover"
+                                />
+                              );
+                            })}
+                          </ScrollView>
+                        )}
+                      </View>
+                    )}
                   </View>
                 );
               })}
@@ -1905,5 +1962,78 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.white,
     marginLeft: 8,
+  },
+  // Professional panel styles
+  professionalPanel: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#EDE9FE',
+    backgroundColor: '#FAFAFF',
+    borderRadius: 8,
+    padding: 10,
+  },
+  professionalPanelHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  professionalPanelTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#7C3AED',
+  },
+  profCategoriesWrap: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginBottom: 8,
+  },
+  profCategoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  profCategoryChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  profDetailsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 6,
+  },
+  profBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#EDE9FE',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  profBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#7C3AED',
+  },
+  profBio: {
+    fontSize: 13,
+    color: '#374151',
+    lineHeight: 18,
+    marginBottom: 8,
+  },
+  workImagesScroll: {
+    marginTop: 4,
+  },
+  workImageThumb: {
+    width: 72,
+    height: 72,
+    borderRadius: 8,
+    marginRight: 8,
   },
 });

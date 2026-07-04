@@ -92,6 +92,10 @@ interface CategoryPickerSheetProps {
   loading?: boolean;
   error?: string | null;
   selectedId?: string | null;
+  /** Pass an array of selected IDs to enable multi-select mode */
+  selectedIds?: string[];
+  /** When true: items don't auto-close the sheet; a Done button appears instead */
+  multiSelect?: boolean;
   onRetry?: () => void;
   /** When true, shows a "Reset" action that calls onReset and clears the picker */
   showReset?: boolean;
@@ -108,6 +112,8 @@ const CategoryPickerSheet: React.FC<CategoryPickerSheetProps> = ({
   loading,
   error,
   selectedId,
+  selectedIds,
+  multiSelect = false,
   onRetry,
   showReset,
   onReset,
@@ -248,7 +254,9 @@ const CategoryPickerSheet: React.FC<CategoryPickerSheetProps> = ({
                 keyboardShouldPersistTaps="handled"
                 contentContainerStyle={{ paddingBottom: 12 }}
                 renderItem={({ item }) => {
-                  const selected = selectedId === item._id;
+                  const selected = multiSelect
+                    ? (selectedIds ?? []).includes(item._id)
+                    : selectedId === item._id;
                   const categoryVisual = getCategoryVisual(item);
                   return (
                     <TouchableOpacity
@@ -256,7 +264,7 @@ const CategoryPickerSheet: React.FC<CategoryPickerSheetProps> = ({
                       activeOpacity={0.85}
                       onPress={() => {
                         onSelect(item);
-                        onClose();
+                        if (!multiSelect) onClose();
                       }}
                     >
                       <View
@@ -284,8 +292,8 @@ const CategoryPickerSheet: React.FC<CategoryPickerSheetProps> = ({
                         ) : null}
                       </View>
                       <Ionicons
-                        name={selected ? "checkmark-circle" : "chevron-forward"}
-                        size={selected ? 22 : 18}
+                        name={selected ? "checkmark-circle" : "ellipse-outline"}
+                        size={22}
                         color={selected ? "#12B264" : "#A8B0C2"}
                       />
                     </TouchableOpacity>
@@ -293,6 +301,15 @@ const CategoryPickerSheet: React.FC<CategoryPickerSheetProps> = ({
                 }}
                 ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
               />
+            )}
+
+            {/* Done button — only in multi-select mode */}
+            {multiSelect && (
+              <TouchableOpacity style={styles.doneBtn} onPress={onClose} activeOpacity={0.85}>
+                <Text style={styles.doneBtnText}>
+                  Done{selectedIds && selectedIds.length > 0 ? ` (${selectedIds.length} selected)` : ""}
+                </Text>
+              </TouchableOpacity>
             )}
           </Pressable>
         </Pressable>
@@ -452,5 +469,18 @@ const styles = StyleSheet.create({
     color: Colors.white,
     fontWeight: "700",
     fontSize: 14,
+  },
+  doneBtn: {
+    marginTop: 12,
+    paddingVertical: 14,
+    borderRadius: 14,
+    backgroundColor: Colors.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  doneBtnText: {
+    color: Colors.white,
+    fontWeight: "700",
+    fontSize: 16,
   },
 });

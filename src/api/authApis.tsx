@@ -95,6 +95,7 @@ export const completeProfileApi = async (profileData: {
     latitude?: number;
     longitude?: number;
     profileImage?: string;
+    isProfessional?: boolean;
 }) => {
     try {
         // Build multipart form data
@@ -104,6 +105,7 @@ export const completeProfileApi = async (profileData: {
         if (profileData.location) formData.append("location", profileData.location);
         if (profileData.latitude != null) formData.append("latitude", String(profileData.latitude));
         if (profileData.longitude != null) formData.append("longitude", String(profileData.longitude));
+        if (profileData.isProfessional !== undefined) formData.append("isProfessional", String(profileData.isProfessional));
         // Append image if provided (React Native file object)
         if (profileData.profileImage) {
             const uri = profileData.profileImage;
@@ -120,6 +122,45 @@ export const completeProfileApi = async (profileData: {
         return res.data;
     } catch (error: any) {
         throw new Error(error.response?.data?.message || "Profile completion failed");
+    }
+};
+
+// Update Professional Profile
+export const updateProfessionalProfileApi = async (data: {
+    serviceCategories?: string[];
+    newWorkImages?: string[]; // local URIs
+    existingWorkImages?: string[]; // already-saved paths
+    bio?: string;
+    yearsOfExperience?: number | null;
+}) => {
+    try {
+        const formData = new FormData();
+        if (data.serviceCategories) {
+            formData.append("serviceCategories", JSON.stringify(data.serviceCategories));
+        }
+        if (data.existingWorkImages) {
+            formData.append("existingWorkImages", JSON.stringify(data.existingWorkImages));
+        }
+        if (data.bio !== undefined) formData.append("bio", data.bio);
+        if (data.yearsOfExperience != null) formData.append("yearsOfExperience", String(data.yearsOfExperience));
+
+        // Append new local images
+        if (data.newWorkImages && data.newWorkImages.length > 0) {
+            data.newWorkImages.forEach((uri) => {
+                const inferredName = uri.split("/").pop() || "work.jpg";
+                const ext = inferredName.split(".").pop()?.toLowerCase();
+                const mime = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : ext === "heic" ? "image/heic" : "image/jpeg";
+                formData.append("workImages", { uri, name: inferredName, type: mime } as unknown as Blob);
+            });
+        }
+
+        const res = await axiosInstance.put("/auth/professional-profile", formData, {
+            headers: { "Content-Type": "multipart/form-data" },
+            timeout: 90000,
+        });
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Failed to update professional profile");
     }
 };
 

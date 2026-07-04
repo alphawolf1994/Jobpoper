@@ -9,7 +9,16 @@ export interface JobPoperUser {
   profile?: UserProfile;
   verification?: UserVerification;
   vehiclePreference?: VehiclePreference;
+  isProfessional?: boolean;
+  professionalProfile?: ProfessionalProfile;
   lastLogin?: string;
+}
+
+export interface ProfessionalProfile {
+  serviceCategories?: ServiceCategory[];
+  workImages?: string[];
+  bio?: string;
+  yearsOfExperience?: number | null;
 }
 
 export interface UserVerification {
@@ -789,6 +798,8 @@ export interface InterestedUserEntry {
       profileImage?: string;
     };
     vehiclePreference?: VehiclePreference;
+    isProfessional?: boolean;
+    professionalProfile?: ProfessionalProfile;
   };
   notedAt: string;
   _id: string;

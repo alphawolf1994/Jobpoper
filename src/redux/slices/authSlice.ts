@@ -12,7 +12,8 @@ import {
   changePinApi,
   checkPhoneApi,
   getVehiclePreferenceApi,
-  updateVehiclePreferenceApi
+  updateVehiclePreferenceApi,
+  updateProfessionalProfileApi
 } from "../../api/authApis";
 import { setAuthToken } from "../../api/axiosInstance";
 import { JobPoperUser, VehicleType } from "../../interface/interfaces";
@@ -131,6 +132,7 @@ export const completeProfile = createAsyncThunk(
     latitude?: number;
     longitude?: number;
     profileImage?: string;
+    isProfessional?: boolean;
   }, { rejectWithValue }) => {
     try {
       const response = await completeProfileApi(profileData);
@@ -229,6 +231,28 @@ export const updateVehiclePreference = createAsyncThunk(
       return response;
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to save vehicle preference");
+    }
+  }
+);
+
+// Update Professional Profile
+export const updateProfessionalProfile = createAsyncThunk(
+  "auth/updateProfessionalProfile",
+  async (
+    data: {
+      serviceCategories?: string[];
+      newWorkImages?: string[];
+      existingWorkImages?: string[];
+      bio?: string;
+      yearsOfExperience?: number | null;
+    },
+    { rejectWithValue }
+  ) => {
+    try {
+      const response = await updateProfessionalProfileApi(data);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "Failed to update professional profile");
     }
   }
 );
@@ -480,6 +504,23 @@ const authSlice = createSlice({
               vehiclePreference: response.data.vehiclePreference,
             };
           }
+        }
+        state.loading = false;
+        state.error = null;
+      })
+      // Update Professional Profile
+      .addCase(updateProfessionalProfile.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateProfessionalProfile.rejected, (state, action) => {
+        state.error = action.payload as string;
+        state.loading = false;
+      })
+      .addCase(updateProfessionalProfile.fulfilled, (state, action) => {
+        const response = action.payload;
+        if (response?.status === 'success' && response?.data?.user) {
+          state.user = response.data.user;
         }
         state.loading = false;
         state.error = null;

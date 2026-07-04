@@ -33,6 +33,7 @@ const BasicProfileScreen = () => {
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [isProfessional, setIsProfessional] = useState(false);
   const [location, setLocation] = useState<{
     city: string;
     state: string;
@@ -104,6 +105,7 @@ const BasicProfileScreen = () => {
           `${location.city}, ${location.state}, ${location.country}`.trim(),
         latitude: location.latitude,
         longitude: location.longitude,
+        isProfessional,
       };
 
       const result = await dispatch(completeProfile(profileData)).unwrap();
@@ -213,6 +215,37 @@ const BasicProfileScreen = () => {
               onLocationSelect={(locationData) => setLocation(locationData)}
             />
 
+            {/* Professional / Worker selection */}
+            <View style={styles.professionalSection}>
+              <Text style={styles.professionalLabel}>Are you a Professional / Worker?</Text>
+              <Text style={styles.professionalHint}>
+                Select Yes if you offer services and want to showcase your skills to job owners.
+              </Text>
+              <View style={styles.radioRow}>
+                <TouchableOpacity
+                  style={[styles.radioOption, !isProfessional && styles.radioOptionSelected]}
+                  onPress={() => setIsProfessional(false)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.radioCircle, !isProfessional && styles.radioCircleSelected]}>
+                    {!isProfessional && <View style={styles.radioInner} />}
+                  </View>
+                  <Text style={[styles.radioText, !isProfessional && styles.radioTextSelected]}>No</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.radioOption, isProfessional && styles.radioOptionSelected]}
+                  onPress={() => setIsProfessional(true)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.radioCircle, isProfessional && styles.radioCircleSelected]}>
+                    {isProfessional && <View style={styles.radioInner} />}
+                  </View>
+                  <Text style={[styles.radioText, isProfessional && styles.radioTextSelected]}>Yes</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
             <Button
               label={loading ? "Completing Profile..." : "Continue"}
               onPress={handleCompleteProfile}
@@ -291,6 +324,77 @@ const styles = StyleSheet.create({
   disabledActionButton: {
     backgroundColor: "#A9B6D6",
     opacity: 0.7,
+  },
+  professionalSection: {
+    marginTop: 20,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    shadowColor: "#000",
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  professionalLabel: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: Colors.black,
+    marginBottom: 4,
+  },
+  professionalHint: {
+    fontSize: 13,
+    color: Colors.gray,
+    marginBottom: 14,
+    lineHeight: 18,
+  },
+  radioRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  radioOption: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#E5E7EB",
+    backgroundColor: "#F9FAFB",
+  },
+  radioOptionSelected: {
+    borderColor: Colors.primary,
+    backgroundColor: "#EFF6FF",
+  },
+  radioCircle: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: "#D1D5DB",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  radioCircleSelected: {
+    borderColor: Colors.primary,
+  },
+  radioInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: Colors.primary,
+  },
+  radioText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: Colors.gray,
+  },
+  radioTextSelected: {
+    color: Colors.primary,
   },
 });
 
