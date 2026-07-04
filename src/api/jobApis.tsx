@@ -15,6 +15,9 @@ export const createJobApi = async (jobData: {
     voiceNote?: string | null;
     distanceKm?: number | null;
     category?: string | null;
+    postedOnBehalf?: boolean;
+    externalContactName?: string;
+    externalContactPhone?: string;
 }) => {
     try {
         // Build multipart form data
@@ -50,6 +53,15 @@ export const createJobApi = async (jobData: {
         }
         if (jobData.category) {
             formData.append("category", jobData.category);
+        }
+        formData.append("postedOnBehalf", jobData.postedOnBehalf ? "true" : "false");
+        if (jobData.postedOnBehalf) {
+            if (jobData.externalContactName) {
+                formData.append("externalContactName", jobData.externalContactName);
+            }
+            if (jobData.externalContactPhone) {
+                formData.append("externalContactPhone", jobData.externalContactPhone);
+            }
         }
         // Append up to 5 images
         if (jobData.attachments && Array.isArray(jobData.attachments)) {
@@ -115,6 +127,9 @@ export const updateJobApi = async (jobId: string, jobData: {
     removeVoiceNote?: boolean;
     distanceKm?: number | null;
     category?: string | null;
+    postedOnBehalf?: boolean;
+    externalContactName?: string;
+    externalContactPhone?: string;
 }) => {
     try {
         // Build multipart form data
@@ -173,6 +188,17 @@ export const updateJobApi = async (jobId: string, jobData: {
         // Signal to remove existing voice note
         if (jobData.removeVoiceNote) {
             formData.append("removeVoiceNote", "true");
+        }
+        if (jobData.postedOnBehalf !== undefined) {
+            formData.append("postedOnBehalf", jobData.postedOnBehalf ? "true" : "false");
+            if (jobData.postedOnBehalf) {
+                if (jobData.externalContactName !== undefined) {
+                    formData.append("externalContactName", jobData.externalContactName);
+                }
+                if (jobData.externalContactPhone !== undefined) {
+                    formData.append("externalContactPhone", jobData.externalContactPhone);
+                }
+            }
         }
         const res = await axiosInstance.put(`/jobs/${jobId}`, formData, {
             headers: { "Content-Type": "multipart/form-data" },

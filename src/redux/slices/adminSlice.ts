@@ -69,6 +69,11 @@ export interface AdminJob {
     icon?: string;
   } | null;
   interestedCount: number;
+  postedOnBehalf?: boolean;
+  externalContact?: {
+    name: string;
+    phoneNumber: string;
+  } | null;
   createdAt: string;
   // Detail-only fields (buildAdminJobDetail)
   description?: string;

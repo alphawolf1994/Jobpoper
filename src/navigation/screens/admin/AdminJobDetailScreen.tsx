@@ -157,9 +157,21 @@ const AdminJobDetailScreen = () => {
         </View>
 
         {/* Posted By — postedBy.fullName is FLAT (not postedBy.profile.fullName) */}
+        {j.postedOnBehalf && j.externalContact && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Job Seeker (External Contact)</Text>
+            <View style={styles.card}>
+              <InfoRow label="Name"  value={j.externalContact.name} />
+              <InfoRow label="Phone" value={j.externalContact.phoneNumber} />
+            </View>
+          </View>
+        )}
+
         {j.postedBy && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Posted By</Text>
+            <Text style={styles.sectionTitle}>
+              {j.postedOnBehalf ? "Posted By (App User)" : "Posted By"}
+            </Text>
             <TouchableOpacity
               style={[styles.card, styles.posterRow]}
               onPress={() => (navigation as any).navigate("AdminUserDetailScreen", { userId: j.postedBy!.id })}

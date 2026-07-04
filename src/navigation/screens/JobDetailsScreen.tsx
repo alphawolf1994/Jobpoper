@@ -146,6 +146,16 @@ const JobDetailsScreen = () => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
 
+  const getJobSeekerDisplayName = (job: Job) => {
+    if (job.postedOnBehalf && job.externalContact?.name) {
+      return job.externalContact.name;
+    }
+    return job.postedBy?.profile?.fullName || 'Unknown';
+  };
+
+  const isExternalJobSeeker = (job: Job) =>
+    !!(job.postedOnBehalf && job.externalContact?.name);
+
   const formatJobTags = (job: Job) => {
     const tags = [];
 
@@ -191,7 +201,10 @@ const JobDetailsScreen = () => {
   const handleContact = () => {
     if (!currentJob) return;
 
-    const contactInfo = currentJob.contactInfo || currentJob.postedBy?.phoneNumber;
+    const contactInfo =
+      currentJob.contactInfo ||
+      (currentJob.postedOnBehalf ? currentJob.externalContact?.phoneNumber : null) ||
+      currentJob.postedBy?.phoneNumber;
 
     if (contactInfo) {
       showAlert({
@@ -747,31 +760,49 @@ const JobDetailsScreen = () => {
   const renderAboutTab = () => {
     if (!currentJob) return null;
 
+    const seekerName = getJobSeekerDisplayName(currentJob);
+    const externalSeeker = isExternalJobSeeker(currentJob);
+
     return (
       <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
         <View style={styles.aboutSection}>
           <View style={styles.posterHeader}>
             <View style={styles.aboutPosterAvatar}>
               <Text style={styles.posterAvatarText}>
-                {getInitials(currentJob.postedBy?.profile?.fullName || 'U')}
+                {getInitials(seekerName)}
               </Text>
             </View>
             <View style={styles.posterInfo}>
-              <Text style={styles.posterName}>{currentJob.postedBy?.profile?.fullName || 'Unknown'}</Text>
-              <Text style={styles.posterTitle}>Job Poster</Text>
+              <Text style={styles.posterName}>{seekerName}</Text>
+              <Text style={styles.posterTitle}>
+                {externalSeeker ? 'Job Seeker' : 'Job Poster'}
+              </Text>
             </View>
           </View>
 
           <View style={styles.posterStats}>
-            <View style={styles.statItem}>
-              <Text style={styles.statLabel}>Email</Text>
-              <Text style={styles.statValue}>{currentJob.postedBy?.profile?.email || 'N/A'}</Text>
-            </View>
-            {currentJob.postedBy?.profile?.location && (
-              <View style={styles.statItem}>
-                <Text style={styles.statLabel}>Location</Text>
-                <Text style={styles.statValue}>{currentJob.postedBy.profile.location}</Text>
-              </View>
+            {externalSeeker ? (
+              <>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Phone</Text>
+                  <Text style={styles.statValue}>
+                    {currentJob.externalContact?.phoneNumber || currentJob.contactInfo || 'N/A'}
+                  </Text>
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={styles.statItem}>
+                  <Text style={styles.statLabel}>Email</Text>
+                  <Text style={styles.statValue}>{currentJob.postedBy?.profile?.email || 'N/A'}</Text>
+                </View>
+                {currentJob.postedBy?.profile?.location && (
+                  <View style={styles.statItem}>
+                    <Text style={styles.statLabel}>Location</Text>
+                    <Text style={styles.statValue}>{currentJob.postedBy.profile.location}</Text>
+                  </View>
+                )}
+              </>
             )}
           </View>
         </View>
@@ -806,6 +837,8 @@ const JobDetailsScreen = () => {
 
   const jobTags = formatJobTags(currentJob);
   const locationDisplay = getLocationDisplay(currentJob);
+  const seekerDisplayName = getJobSeekerDisplayName(currentJob);
+  const externalSeeker = isExternalJobSeeker(currentJob);
   const isDirectContact = currentJob.responsePreference === 'direct_contact' || !currentJob.responsePreference;
   const isMyJob = !!user && currentJob.postedBy?._id === user.id;
   const interestedUsers: InterestedUserEntry[] = currentJob.interestedUsers || [];
@@ -939,7 +972,7 @@ const JobDetailsScreen = () => {
         <View style={styles.logoContainer}>
           <View style={styles.posterAvatar}>
             <Text style={styles.logoText}>
-              {getInitials(currentJob.postedBy?.profile?.fullName || 'U')}
+              {getInitials(seekerDisplayName)}
             </Text>
           </View>
         </View>
@@ -947,7 +980,11 @@ const JobDetailsScreen = () => {
         {/* Job Info */}
         <View style={styles.jobInfo}>
           <Text style={styles.jobTitle}>{currentJob.title}</Text>
-          <Text style={styles.companyName}>Posted by {currentJob.postedBy?.profile?.fullName || 'Unknown'}</Text>
+          <Text style={styles.companyName}>
+            {externalSeeker
+              ? `Job seeker: ${seekerDisplayName}`
+              : `Posted by ${seekerDisplayName}`}
+          </Text>
 
           {/* <View style={styles.salaryLocationRow}>
             <Text style={styles.salary}>{currentJob.cost}</Text>

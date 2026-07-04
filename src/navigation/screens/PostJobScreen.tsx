@@ -1,5 +1,6 @@
 import React, { useState, useRef, useMemo } from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, KeyboardAvoidingView, Platform, Modal, FlatList } from "react-native";
+import Checkbox from "expo-checkbox";
 import { Colors } from "../../utils";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../components/Header";
@@ -123,6 +124,13 @@ const PostJobScreen = () => {
   const [voiceNote, setVoiceNote] = useState<string | null>(null);
   // existingVoiceNote: path from backend (edit mode)
   const [existingVoiceNote, setExistingVoiceNote] = useState<string | null>(null);
+
+  // Post on behalf of another person (not on JobPoper)
+  const [postedOnBehalf, setPostedOnBehalf] = useState(false);
+  const [externalContactName, setExternalContactName] = useState('');
+  const [externalContactPhone, setExternalContactPhone] = useState('');
+
+  const PHONE_REGEX = /^\+?[1-9]\d{1,14}$/;
 
   const getTomorrow = () => {
     const d = new Date();
@@ -284,6 +292,12 @@ const PostJobScreen = () => {
       if (jobDataToEdit.voiceNote) {
         const voiceUrl = `${IMAGE_BASE_URL}${jobDataToEdit.voiceNote.startsWith('/') ? jobDataToEdit.voiceNote : `/${jobDataToEdit.voiceNote}`}`;
         setExistingVoiceNote(voiceUrl);
+      }
+
+      if (jobDataToEdit.postedOnBehalf) {
+        setPostedOnBehalf(true);
+        setExternalContactName(jobDataToEdit.externalContact?.name || '');
+        setExternalContactPhone(jobDataToEdit.externalContact?.phoneNumber || '');
       }
     }
   }, [isEditMode, jobDataToEdit]);
@@ -447,6 +461,21 @@ const PostJobScreen = () => {
         return;
       }
     }
+    if (postedOnBehalf) {
+      if (!externalContactName.trim()) {
+        showErrorAlert('Please enter the job seeker\'s name');
+        return;
+      }
+      const normalizedPhone = externalContactPhone.replace(/[\s\-()]/g, '');
+      if (!normalizedPhone) {
+        showErrorAlert('Please enter the job seeker\'s phone number');
+        return;
+      }
+      if (!PHONE_REGEX.test(normalizedPhone)) {
+        showErrorAlert('Please enter a valid phone number for the job seeker');
+        return;
+      }
+    }
     try {
       // Separate attachments into existing and new
       const newAttachments = attachments.filter(uri => isNewAttachment(uri));
@@ -477,6 +506,13 @@ const PostJobScreen = () => {
         distanceKm: jobType === 'Pickup' ? pickupDistanceKm : null,
         // Service category id (backend accepts ObjectId or slug)
         category: selectedCategory ? selectedCategory._id : null,
+        postedOnBehalf,
+        ...(postedOnBehalf
+          ? {
+              externalContactName: externalContactName.trim(),
+              externalContactPhone: externalContactPhone.replace(/[\s\-()]/g, ''),
+            }
+          : {}),
       };
 
       let result;
@@ -512,6 +548,9 @@ const PostJobScreen = () => {
           setExistingAttachments([]);
           setVoiceNote(null);
           setExistingVoiceNote(null);
+          setPostedOnBehalf(false);
+          setExternalContactName('');
+          setExternalContactPhone('');
           navigation.goBack();
         });
       }
@@ -973,6 +1012,50 @@ const PostJobScreen = () => {
             )}
           </View>
 
+          {/* Post on behalf of another person */}
+          <View style={styles.inputGroup}>
+            <TouchableOpacity
+              style={styles.checkboxRow}
+              activeOpacity={0.7}
+              onPress={() => setPostedOnBehalf((prev) => !prev)}
+            >
+              <Checkbox
+                value={postedOnBehalf}
+                onValueChange={setPostedOnBehalf}
+                color={postedOnBehalf ? Colors.primary : undefined}
+              />
+              <Text style={styles.checkboxLabel}>Post for someone behalf</Text>
+            </TouchableOpacity>
+            <Text style={styles.checkboxHelper}>
+              You're posting a job for someone else to help them fulfil their needs.
+            </Text>
+            {postedOnBehalf && (
+              <View style={styles.externalContactFields}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Job seeker name *</Text>
+                  <MyTextInput
+                    placeholder="Enter their full name"
+                    value={externalContactName}
+                    onChange={setExternalContactName}
+                    containerStyle={styles.input}
+                    leftIcon={<Ionicons name="person-outline" size={20} color="#9AA0A6" />}
+                  />
+                </View>
+                <View style={[styles.inputGroup, { marginBottom: 0 }]}>
+                  <Text style={styles.label}>Job seeker phone number *</Text>
+                  <MyTextInput
+                    placeholder="e.g. +923001234567"
+                    value={externalContactPhone}
+                    onChange={setExternalContactPhone}
+                    keyboardType="phone-pad"
+                    containerStyle={styles.input}
+                    leftIcon={<Ionicons name="call-outline" size={20} color="#9AA0A6" />}
+                  />
+                </View>
+              </View>
+            )}
+          </View>
+
           {/* Submit Button */}
           <View style={styles.buttonContainer}>
             <Button
@@ -1138,6 +1221,26 @@ const styles = StyleSheet.create({
     color: Colors.gray,
     marginTop: 6,
     fontStyle: 'italic',
+  },
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  checkboxLabel: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '600',
+    color: Colors.black,
+  },
+  checkboxHelper: {
+    fontSize: 12,
+    color: Colors.gray,
+    marginTop: 8,
+    lineHeight: 18,
+  },
+  externalContactFields: {
+    marginTop: 8,
   },
   categoryLeft: {
     flex: 1,

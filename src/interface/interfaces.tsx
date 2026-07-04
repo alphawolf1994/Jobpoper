@@ -828,6 +828,11 @@ export interface Job {
   };
   formattedScheduledDate?: string;
   contactInfo?: string;
+  postedOnBehalf?: boolean;
+  externalContact?: {
+    name?: string;
+    phoneNumber?: string;
+  } | null;
   interestedUsers?: InterestedUserEntry[];
   distanceKm?: number | null;
   category?: ServiceCategory | string | null;
