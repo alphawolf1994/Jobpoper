@@ -10,8 +10,9 @@ import ImagePath from "../assets/images/ImagePath";
 import LocationAutocomplete from "./LocationAutocomplete";
 import Button from "./Button";
 import { RootState, AppDispatch } from "../redux/store";
-import { setCurrentLocation, setCurrentLocationCoordinates } from "../redux/slices/jobSlice";
+import { setCurrentLocation, setCurrentLocationCoordinates, setLocationSource } from "../redux/slices/jobSlice";
 import { updateCurrentLocation } from "../redux/slices/authSlice";
+import { useAutoLocation } from "../hooks/useAutoLocation";
 import { IMAGE_BASE_URL } from "../api/baseURL";
 import {
   getAllNotifications,
@@ -35,6 +36,10 @@ const Header: React.FC = () => {
   
   const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
   const { currentLocation } = useSelector((state: RootState) => state.job);
+
+  // Auto-detect the device's current location on mount and expose an
+  // on-demand trigger + detecting state for the header/modal UI.
+  const { detectNow, isDetectingLocation } = useAutoLocation({ persistToProfile: true });
   const { notifications, unreadCount, loading } = useSelector((state: RootState) => state.notification);
   const {
     unreadCount: unreadOrders,
@@ -69,6 +74,8 @@ const Header: React.FC = () => {
     longitude?: number;
   }) => {
     dispatch(setCurrentLocation(locationData.fullAddress));
+    // A manual choice takes priority over auto-detection for this session.
+    dispatch(setLocationSource("manual"));
     if (locationData.latitude != null && locationData.longitude != null) {
       dispatch(setCurrentLocationCoordinates({ latitude: locationData.latitude, longitude: locationData.longitude }));
       dispatch(updateCurrentLocation({
@@ -96,6 +103,11 @@ const Header: React.FC = () => {
   };
 
   const formatLocationDisplay = () => {
+    // Show a neutral detecting state while GPS resolves (only when we don't
+    // already have a location to show), to avoid a flash of the default.
+    if (isDetectingLocation && !currentLocation) {
+      return "Locating…";
+    }
     if (displayLocation) {
       const parts = displayLocation.split(',');
       return parts.map(part => part.trim()).join(", ");
@@ -363,13 +375,28 @@ const Header: React.FC = () => {
               Select your preferred location to see relevant job opportunities
             </Text>
             
+            <TouchableOpacity
+              style={styles.useCurrentLocationButton}
+              activeOpacity={0.7}
+              disabled={isDetectingLocation}
+              onPress={() => {
+                setIsLocationModalVisible(false);
+                detectNow();
+              }}
+            >
+              <Ionicons name="locate-outline" size={20} color={Colors.primary} />
+              <Text style={styles.useCurrentLocationText}>
+                {isDetectingLocation ? "Detecting your location…" : "Use my current location"}
+              </Text>
+            </TouchableOpacity>
+
             <LocationAutocomplete
               label="Search Location"
               placeholder="Enter city, state, or country"
               onLocationSelect={handleLocationSelect}
               firstContainerStyle={{ marginTop: 20 }}
             />
-            
+
             <View style={styles.currentLocationContainer}>
               <Text style={styles.currentLocationLabel}>Current Location:</Text>
               <Text style={styles.currentLocationText}>
@@ -567,6 +594,23 @@ const styles = StyleSheet.create({
     color: Colors.gray,
     marginTop: 20,
     lineHeight: 22,
+  },
+  useCurrentLocationButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    backgroundColor: "#F0F7FF",
+    gap: 8,
+  },
+  useCurrentLocationText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: Colors.primary,
   },
   currentLocationContainer: {
     marginTop: 30,

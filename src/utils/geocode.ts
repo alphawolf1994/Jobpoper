@@ -23,6 +23,63 @@ export async function geocodeAddressToCoordinates(
   }
 }
 
+export interface ReverseGeocodeResult {
+  city: string;
+  state: string;
+  country: string;
+  fullAddress: string;
+}
+
+/**
+ * Reverse-geocode latitude/longitude into a structured, human-readable address
+ * using the Google Geocoding API. Returns null if it cannot be resolved.
+ *
+ * Shared helper so the header auto-location and AddLocationScreen use the
+ * exact same logic instead of duplicating fetch calls.
+ */
+export async function reverseGeocodeToAddress(
+  latitude: number,
+  longitude: number
+): Promise<ReverseGeocodeResult | null> {
+  if (typeof latitude !== "number" || typeof longitude !== "number") return null;
+  if (Number.isNaN(latitude) || Number.isNaN(longitude)) return null;
+  try {
+    const resp = await fetch(
+      `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_API_KEY}`
+    );
+    const data = await resp.json();
+    const result = data?.results?.[0];
+    if (data.status !== "OK" || !result) return null;
+
+    let city = "";
+    let state = "";
+    let country = "";
+
+    (result.address_components || []).forEach((component: any) => {
+      const types: string[] = component.types || [];
+      if (types.includes("locality") || types.includes("postal_town")) {
+        city = component.long_name;
+      } else if (!city && types.includes("administrative_area_level_2")) {
+        // Fallback for regions without a "locality" (common outside the US)
+        city = component.long_name;
+      } else if (types.includes("administrative_area_level_1")) {
+        state = component.long_name;
+      } else if (types.includes("country")) {
+        country = component.long_name;
+      }
+    });
+
+    // Build a compact label; prefer the components, fall back to Google's string.
+    const compact = [city, state, country].filter(Boolean).join(", ");
+    const fullAddress = compact || result.formatted_address || "";
+    if (!fullAddress) return null;
+
+    return { city, state, country, fullAddress };
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Compute the great-circle distance (in kilometers) between two lat/lng points
  * using the Haversine formula. Returns null if any value is invalid.

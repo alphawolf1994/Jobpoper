@@ -23,7 +23,10 @@ declare module 'react-native-maps' {
 
 declare module 'expo-location' {
   export const requestForegroundPermissionsAsync: any;
+  export const getForegroundPermissionsAsync: any;
   export const getCurrentPositionAsync: any;
+  export const getLastKnownPositionAsync: any;
+  export const hasServicesEnabledAsync: any;
   export const Accuracy: any;
 }
 

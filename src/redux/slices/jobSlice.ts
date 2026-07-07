@@ -54,6 +54,20 @@ interface JobState {
   createJobSuccess: boolean;
   currentLocation: string | null;
   currentLocationCoordinates: { latitude: number; longitude: number } | null;
+  // Where the active location came from. 'manual' must not be silently
+  // overwritten by auto-detection within a session.
+  locationSource: "auto" | "manual" | "profile" | "default" | null;
+  // True while the device GPS location is being detected.
+  isDetectingLocation: boolean;
+  // Foreground location permission status as last seen by the app.
+  locationPermissionStatus: "unknown" | "granted" | "denied";
+}
+
+export interface SetDetectedLocationPayload {
+  fullAddress: string;
+  latitude: number;
+  longitude: number;
+  source: "auto" | "manual" | "profile" | "default";
 }
 
 async function resolveCoordinates(state: RootState): Promise<{ latitude: number; longitude: number }> {
@@ -97,6 +111,9 @@ const initialState: JobState = {
   createJobSuccess: false,
   currentLocation: null,
   currentLocationCoordinates: null,
+  locationSource: null,
+  isDetectingLocation: false,
+  locationPermissionStatus: "unknown",
 };
 
 // Create Job Async Thunk
@@ -393,6 +410,26 @@ const jobSlice = createSlice({
     },
     setCurrentLocationCoordinates: (state, action: PayloadAction<{ latitude: number; longitude: number } | null>) => {
       state.currentLocationCoordinates = action.payload;
+    },
+    setLocationSource: (state, action: PayloadAction<JobState["locationSource"]>) => {
+      state.locationSource = action.payload;
+    },
+    setIsDetectingLocation: (state, action: PayloadAction<boolean>) => {
+      state.isDetectingLocation = action.payload;
+    },
+    setLocationPermissionStatus: (state, action: PayloadAction<JobState["locationPermissionStatus"]>) => {
+      state.locationPermissionStatus = action.payload;
+    },
+    // Atomically set label + coordinates + source. Auto-detection will NOT
+    // overwrite a location the user chose manually in this session.
+    setDetectedLocation: (state, action: PayloadAction<SetDetectedLocationPayload>) => {
+      const { fullAddress, latitude, longitude, source } = action.payload;
+      if (source === "auto" && state.locationSource === "manual") {
+        return; // respect manual override
+      }
+      state.currentLocation = fullAddress;
+      state.currentLocationCoordinates = { latitude, longitude };
+      state.locationSource = source;
     },
   },
   extraReducers: (builder) => {
@@ -758,5 +795,5 @@ const jobSlice = createSlice({
   },
 });
 
-export const { clearError, resetCreateJobSuccess, setCurrentJob, setCurrentLocation, setCurrentLocationCoordinates } = jobSlice.actions;
+export const { clearError, resetCreateJobSuccess, setCurrentJob, setCurrentLocation, setCurrentLocationCoordinates, setLocationSource, setIsDetectingLocation, setLocationPermissionStatus, setDetectedLocation } = jobSlice.actions;
 export default jobSlice.reducer;
