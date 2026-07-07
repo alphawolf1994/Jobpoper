@@ -408,3 +408,55 @@ export const expireOldJobsApi = async () => {
         throw new Error(error.response?.data?.message || "Failed to expire old jobs");
     }
 };
+
+// Lookup a worker by their Worker ID string
+export const lookupWorkerApi = async (workerId: string) => {
+    try {
+        const res = await axiosInstance.get(`/jobs/workers/lookup/${workerId}`);
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Worker not found");
+    }
+};
+
+// Customer confirms worker and starts a job
+export const startJobApi = async (jobId: string, workerId: string) => {
+    try {
+        const res = await axiosInstance.post(`/jobs/${jobId}/start`, { workerId });
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Failed to start job");
+    }
+};
+
+// Worker enters Job PIN to mark job as completed
+export const completeJobApi = async (jobId: string, jobPin: string) => {
+    try {
+        const res = await axiosInstance.post(`/jobs/${jobId}/complete`, { jobPin });
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Failed to complete job");
+    }
+};
+
+// Customer submits a review after job is completed
+export const submitReviewApi = async (jobId: string, rating: number, comment: string) => {
+    try {
+        const res = await axiosInstance.post(`/jobs/${jobId}/review`, { rating, comment });
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Failed to submit review");
+    }
+};
+
+// Get paginated reviews for a worker
+export const getWorkerReviewsApi = async (userId: string, page = 1, limit = 10) => {
+    try {
+        const res = await axiosInstance.get(`/jobs/workers/${userId}/reviews`, {
+            params: { page, limit },
+        });
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Failed to fetch reviews");
+    }
+};

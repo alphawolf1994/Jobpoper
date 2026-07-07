@@ -11,6 +11,9 @@ import { getUserJobs, getMyInterestedJobs, deleteJob, updateJobStatus } from '..
 import { Job } from '../../interface/interfaces';
 import { useAlertModal } from "../../hooks/useAlertModal";
 import { formatDateDDMMYYYY } from "../../utils";
+import VerifyWorkerSheet from "../../components/VerifyWorkerSheet";
+import CompleteJobSheet from "../../components/CompleteJobSheet";
+import ReviewModal from "../../components/ReviewModal";
 
 const MyJobsScreen = () => {
   const navigation = useNavigation<any>();
@@ -19,6 +22,9 @@ const MyJobsScreen = () => {
   
   const { userJobs, interestedJobs, loading, error } = useSelector((state: RootState) => state.job);
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
+  const [verifySheetJob, setVerifySheetJob] = useState<Job | null>(null);
+  const [completeSheetJob, setCompleteSheetJob] = useState<Job | null>(null);
+  const [reviewJob, setReviewJob] = useState<Job | null>(null);
 
   useEffect(() => {
     // Fetch data when component mounts
@@ -100,6 +106,7 @@ const MyJobsScreen = () => {
     switch (status) {
       case 'open': return Colors.green;
       case 'completed': return Colors.gray;
+      case 'job_started': return '#F59E0B';
       case 'in-progress': return Colors.primary;
       case 'cancelled': return Colors.red;
       default: return Colors.gray;
@@ -110,6 +117,7 @@ const MyJobsScreen = () => {
     switch (status) {
       case 'open': return 'Open';
       case 'completed': return 'Completed';
+      case 'job_started': return 'In Progress';
       case 'in-progress': return 'In Progress';
       case 'cancelled': return 'Cancelled';
       default: return 'Unknown';
@@ -193,20 +201,55 @@ const MyJobsScreen = () => {
         </View>
       </View>
 
+      {/* Job PIN Banner — visible when job has started */}
+      {item.status === 'job_started' && item.jobPin && (
+        <View style={styles.jobPinBanner}>
+          <Ionicons name="key-outline" size={16} color="#92400E" />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.jobPinLabel}>Job PIN (worker enters this to complete)</Text>
+            <Text style={styles.jobPinValue}>{item.jobPin}</Text>
+          </View>
+        </View>
+      )}
+
+      {/* Verify Worker button — for open jobs with response preference show_interest */}
+      {item.status === 'open' && item.responsePreference === 'show_interest' && (
+        <TouchableOpacity
+          style={styles.verifyWorkerBtn}
+          activeOpacity={0.8}
+          onPress={() => setVerifySheetJob(item)}
+        >
+          <Ionicons name="shield-checkmark-outline" size={17} color={Colors.white} />
+          <Text style={styles.verifyWorkerBtnText}>Verify & Start Job</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* Leave a review button — for completed+unreviewed jobs */}
+      {item.status === 'completed' && item.isReviewed === false && item.assignedWorker && (
+        <TouchableOpacity
+          style={styles.reviewBtn}
+          activeOpacity={0.8}
+          onPress={() => setReviewJob(item)}
+        >
+          <Ionicons name="star-outline" size={16} color="#F59E0B" />
+          <Text style={styles.reviewBtnText}>Leave a Review</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Action Buttons */}
       <View style={styles.actionRow}>
-        {item.status !== 'completed' && (
-          <TouchableOpacity 
-            style={[styles.actionButton, styles.completeButton]} 
+        {item.status !== 'completed' && item.status !== 'job_started' && (
+          <TouchableOpacity
+            style={[styles.actionButton, styles.completeButton]}
             onPress={() => handleCompleteJob(item)}
           >
             <Ionicons name="checkmark-circle-outline" size={18} color={Colors.white} />
             <Text style={styles.completeButtonText}>Complete Job</Text>
           </TouchableOpacity>
         )}
-        
-        <TouchableOpacity 
-          style={[styles.actionButton, styles.deleteButton]} 
+
+        <TouchableOpacity
+          style={[styles.actionButton, styles.deleteButton]}
           onPress={() => handleDeleteJob(item)}
         >
           <Ionicons name="trash-outline" size={18} color={Colors.red} />
@@ -268,6 +311,18 @@ const MyJobsScreen = () => {
           Posted by {item.postedBy?.profile?.fullName || 'Unknown'}
         </Text>
       </View>
+
+      {/* Enter Job PIN button — worker sees this when job is started */}
+      {item.status === 'job_started' && (
+        <TouchableOpacity
+          style={styles.enterPinBtn}
+          activeOpacity={0.8}
+          onPress={() => setCompleteSheetJob(item)}
+        >
+          <Ionicons name="key-outline" size={17} color={Colors.white} />
+          <Text style={styles.enterPinBtnText}>Enter Job PIN to Complete</Text>
+        </TouchableOpacity>
+      )}
     </TouchableOpacity>
   );
 
@@ -368,6 +423,35 @@ const MyJobsScreen = () => {
         )}
       </View>
       {alertModal}
+
+      <VerifyWorkerSheet
+        visible={!!verifySheetJob}
+        job={verifySheetJob}
+        onClose={() => setVerifySheetJob(null)}
+        onStarted={() => {
+          dispatch(getUserJobs());
+          showAlert({ title: "Job Started", message: "The job has been started and the worker has been notified.", type: "success" });
+        }}
+      />
+
+      <CompleteJobSheet
+        visible={!!completeSheetJob}
+        job={completeSheetJob}
+        onClose={() => setCompleteSheetJob(null)}
+        onCompleted={() => {
+          dispatch(getMyInterestedJobs({ page: 1, limit: 10 }));
+          showAlert({ title: "Job Completed!", message: "Great work! The job owner will now be prompted to leave a review.", type: "success" });
+        }}
+      />
+
+      <ReviewModal
+        visible={!!reviewJob}
+        job={reviewJob}
+        onClose={() => setReviewJob(null)}
+        onSubmitted={() => {
+          dispatch(getUserJobs());
+        }}
+      />
     </SafeAreaView>
   );
 };
@@ -616,5 +700,75 @@ const styles = StyleSheet.create({
     borderColor:Colors.red,
     borderRadius: 50,
     marginRight: 8,
+  },
+  jobPinBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FCD34D',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
+  },
+  jobPinLabel: {
+    fontSize: 11,
+    color: '#92400E',
+    fontWeight: '500',
+  },
+  jobPinValue: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: '#92400E',
+    letterSpacing: 4,
+    marginTop: 2,
+  },
+  verifyWorkerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#10B981',
+    borderRadius: 12,
+    paddingVertical: 11,
+    marginBottom: 10,
+  },
+  verifyWorkerBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.white,
+  },
+  enterPinBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#F59E0B',
+    borderRadius: 12,
+    paddingVertical: 11,
+    marginTop: 10,
+  },
+  enterPinBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.white,
+  },
+  reviewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1.5,
+    borderColor: '#F59E0B',
+    borderRadius: 12,
+    paddingVertical: 10,
+    marginBottom: 10,
+    backgroundColor: '#FFFBEB',
+  },
+  reviewBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#92400E',
   },
 });

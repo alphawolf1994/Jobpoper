@@ -346,6 +346,27 @@ const UserDetailsScreen = () => {
                                 This info is shown to job owners when you show interest in their jobs.
                             </Text>
 
+                            {/* Worker ID Card */}
+                            {user?.workerId ? (
+                                <View style={styles.workerIdCard}>
+                                    <View style={styles.workerIdLeft}>
+                                        <Ionicons name="shield-checkmark" size={20} color="#10B981" />
+                                        <View>
+                                            <Text style={styles.workerIdLabel}>Your Worker ID</Text>
+                                            <Text style={styles.workerIdValue}>{user.workerId}</Text>
+                                        </View>
+                                    </View>
+                                    <Text style={styles.workerIdHint}>Share with job owners to verify you</Text>
+                                </View>
+                            ) : (
+                                <View style={styles.workerIdCardPending}>
+                                    <Ionicons name="information-circle-outline" size={18} color="#6B7280" />
+                                    <Text style={styles.workerIdPendingText}>
+                                        Your Worker ID will be generated after you save your professional profile.
+                                    </Text>
+                                </View>
+                            )}
+
                             {/* Category Picker */}
                             <Text style={styles.fieldLabel}>Service Categories * (max 5)</Text>
                             <TouchableOpacity
@@ -668,5 +689,53 @@ const styles = StyleSheet.create({
         color: Colors.primary,
         fontWeight: '600',
         marginTop: 2,
+    },
+    workerIdCard: {
+        backgroundColor: '#ECFDF5',
+        borderWidth: 1,
+        borderColor: '#6EE7B7',
+        borderRadius: 12,
+        padding: 14,
+        marginBottom: 8,
+        gap: 4,
+    },
+    workerIdLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    workerIdLabel: {
+        fontSize: 11,
+        color: '#065F46',
+        fontWeight: '500',
+    },
+    workerIdValue: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#065F46',
+        letterSpacing: 3,
+    },
+    workerIdHint: {
+        fontSize: 12,
+        color: '#6B7280',
+        marginTop: 4,
+        marginLeft: 30,
+    },
+    workerIdCardPending: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: 8,
+        backgroundColor: '#F9FAFB',
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        borderRadius: 12,
+        padding: 12,
+        marginBottom: 8,
+    },
+    workerIdPendingText: {
+        flex: 1,
+        fontSize: 13,
+        color: '#6B7280',
+        lineHeight: 18,
     },
 });

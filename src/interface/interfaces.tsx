@@ -12,6 +12,8 @@ export interface JobPoperUser {
   isProfessional?: boolean;
   professionalProfile?: ProfessionalProfile;
   lastLogin?: string;
+  workerId?: string | null;
+  rating?: { average: number; count: number };
 }
 
 export interface ProfessionalProfile {
@@ -800,9 +802,43 @@ export interface InterestedUserEntry {
     vehiclePreference?: VehiclePreference;
     isProfessional?: boolean;
     professionalProfile?: ProfessionalProfile;
+    workerId?: string | null;
+    rating?: { average: number; count: number };
   };
   notedAt: string;
   _id: string;
+}
+
+// Worker lookup / verification interfaces
+export interface WorkerProfile {
+  _id: string;
+  workerId: string;
+  phoneNumber?: string;
+  profile: {
+    fullName: string;
+    email: string;
+    profileImage?: string;
+  };
+  isProfessional?: boolean;
+  professionalProfile?: ProfessionalProfile;
+  rating: { average: number; count: number };
+  verification?: {
+    status: 'not_submitted' | 'under_review' | 'approved' | 'rejected';
+  };
+}
+
+export interface WorkerReview {
+  _id: string;
+  jobId: string;
+  reviewerId: {
+    _id: string;
+    profile: { fullName: string; profileImage?: string };
+  };
+  workerId: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // JobPoper Job Interfaces
@@ -817,7 +853,11 @@ export interface Job {
   scheduledTime: string;
   attachments?: string[];
   voiceNote?: string | null;
-  status: 'open' | 'in-progress' | 'completed' | 'cancelled';
+  status: 'open' | 'job_started' | 'completed' | 'cancelled';
+  jobPin?: string | null;
+  assignedWorker?: string | null;
+  startedAt?: string | null;
+  isReviewed?: boolean;
   jobType?: 'OnSite' | 'Pickup';
   responsePreference?: 'direct_contact' | 'show_interest';
   postedBy: {
