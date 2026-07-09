@@ -18,6 +18,7 @@ export interface DeviceLocationSuccess {
   city: string;
   state: string;
   country: string;
+  countryCode: string;
   fullAddress: string;
 }
 
@@ -173,6 +174,7 @@ export async function getDeviceLocation(
       city: address.city,
       state: address.state,
       country: address.country,
+      countryCode: address.countryCode,
       fullAddress: address.fullAddress,
     };
   } catch (e: any) {

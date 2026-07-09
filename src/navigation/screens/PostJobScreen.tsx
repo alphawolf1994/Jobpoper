@@ -461,6 +461,14 @@ const PostJobScreen = () => {
         return;
       }
     }
+    if (!selectedDate) {
+      showErrorAlert('Please select the date for this job');
+      return;
+    }
+    if (!selectedTime) {
+      showErrorAlert('Please select the preferred time for this job');
+      return;
+    }
     if (postedOnBehalf) {
       if (!externalContactName.trim()) {
         showErrorAlert('Please enter the job seeker\'s name');
@@ -555,8 +563,10 @@ const PostJobScreen = () => {
         });
       }
     } catch (error: any) {
-
-      const errorMessage = error || error?.message || (isEditMode ? 'Failed to update job. Please try again.' : 'Failed to post job. Please try again.');
+      const errorMessage =
+        (typeof error === 'string' && error.trim()) ? error :
+        (typeof error?.message === 'string' && error.message.trim()) ? error.message :
+        (isEditMode ? 'Failed to update job. Please try again.' : 'Failed to post job. Please try again.');
       showErrorAlert(errorMessage);
     }
   };
@@ -839,7 +849,7 @@ const PostJobScreen = () => {
 
             {/* Day Selection (Date Picker) */}
             <View style={styles.pickerContainer}>
-              <Text style={styles.pickerLabel}>When do you need this done?</Text>
+              <Text style={styles.pickerLabel}>When do you need this done? *</Text>
               <TouchableOpacity
                 activeOpacity={urgencyValue === 'Urgent' ? 1 : 0.8}
                 onPress={() => {
@@ -911,7 +921,7 @@ const PostJobScreen = () => {
 
             {/* Time Selection (Time Picker) */}
             <View style={styles.pickerContainer}>
-              <Text style={styles.pickerLabel}>Preferred time?</Text>
+              <Text style={styles.pickerLabel}>Preferred time? *</Text>
               <TouchableOpacity activeOpacity={0.8} onPress={() => { setTempTime(selectedTime ?? new Date()); setShowTimePicker(true); }}>
                 <View style={[styles.dropdown, styles.inputRow]}>
                   <Text style={selectedTime ? styles.dropdownText : styles.placeholder}>

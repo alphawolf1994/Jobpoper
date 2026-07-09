@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 import PhoneInput from "react-native-phone-number-input";
 import { Colors } from "../utils";
 import ErrorText from "./ErrorText";
+import useAutoCountryCode from "../hooks/useAutoCountryCode";
 
 // Account for status bar + extra breathing room so the search input / close
 // button never sit underneath the system status bar on Android devices that
@@ -37,6 +38,14 @@ interface PhoneNumberInputProps {
   firstContainerStyle?: ViewStyle;
   defaultCode?: any;
   disabled?: boolean;
+  /**
+   * When true (default) and the caller has NOT already typed a number, the
+   * picker auto-selects the country detected from the device's GPS location
+   * (reverse-geocoded ISO code). The user can still change the country
+   * manually, and any manual change or typed digit locks out further
+   * auto-selection. Pass false to keep the static `defaultCode` behavior.
+   */
+  autoDetectCountry?: boolean;
 }
 
 const PhoneNumberInput = ({
@@ -51,33 +60,73 @@ const PhoneNumberInput = ({
   firstContainerStyle,
   defaultCode = "IN",
   disabled = false,
+  autoDetectCountry = true,
 }: PhoneNumberInputProps) => {
   const phoneInput = useRef<PhoneInput>(null);
 
-  // Push the initial calling code up to the parent after mount so consumers
-  // don't have to wait for the first country change to know which code is
-  // active. The lib's ref methods are only available after a render.
-  React.useEffect(() => {
+  // The ISO country the inner PhoneInput is initialized with. Starts at
+  // `defaultCode` and gets replaced by the GPS-detected country once (and only
+  // if) the user hasn't already interacted with the field.
+  const [activeCode, setActiveCode] = useState<string>(defaultCode);
+
+  // `true` once the user has manually picked a country or typed a digit — from
+  // that point we never auto-override their choice.
+  const userLockedRef = useRef(false);
+  // Remember whether the caller mounted us with a pre-filled value (e.g. an
+  // edit form). A pre-filled number counts as "already interacted".
+  const hadInitialValueRef = useRef(!!value);
+
+  // Detected ISO code from the device location (undefined until resolved).
+  const detectedCode = useAutoCountryCode(
+    autoDetectCountry && !hadInitialValueRef.current
+  );
+
+  // Apply the detected country exactly once, and only if the user hasn't
+  // touched the field yet. Changing `activeCode` remounts the inner
+  // PhoneInput (via `key`), which re-initializes it to the detected country.
+  useEffect(() => {
+    if (!autoDetectCountry) return;
+    if (userLockedRef.current) return;
+    if (hadInitialValueRef.current) return;
+    if (!detectedCode) return;
+    setActiveCode((prev) =>
+      prev === detectedCode ? prev : detectedCode
+    );
+  }, [detectedCode, autoDetectCountry]);
+
+  // Push the current calling code up to the parent after each (re)mount so
+  // consumers don't have to wait for a manual country change to know which
+  // code is active. The lib's ref methods are only available after a render.
+  useEffect(() => {
     if (!onChangeCallingCode) return;
     const code = phoneInput.current?.getCallingCode?.();
     if (code) onChangeCallingCode(code);
-    // We intentionally only run this once; subsequent updates come through
-    // the country picker's onChangeCountry callback below.
+    // Re-run whenever the active country changes (initial mount + auto-detect
+    // remount). Subsequent manual updates come through onChangeCountry below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [activeCode]);
 
   return (
     <View style={[firstContainerStyle]}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <View style={[styles.container, containerStyle]}>
         <PhoneInput
+          // Remounting on `activeCode` re-initializes the picker to the
+          // detected country. `defaultValue` preserves any typed digits.
+          key={activeCode}
           ref={phoneInput}
           defaultValue={value}
-          defaultCode={defaultCode}
+          defaultCode={activeCode as any}
           layout="first"
-          onChangeText={onChangeText}
+          onChangeText={(text) => {
+            // Any typed digit locks out auto country-detection.
+            if (text) userLockedRef.current = true;
+            onChangeText?.(text);
+          }}
           onChangeFormattedText={onChangeFormattedText}
           onChangeCountry={(country) => {
+            // A manual country pick locks out auto country-detection.
+            userLockedRef.current = true;
             // `country.callingCode` is a string[] like ["91"] in v2.x
             const code = Array.isArray(country?.callingCode)
               ? country.callingCode[0]

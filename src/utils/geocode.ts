@@ -28,6 +28,9 @@ export interface ReverseGeocodeResult {
   state: string;
   country: string;
   fullAddress: string;
+  // ISO 3166-1 alpha-2 country code, uppercase (e.g. "PK", "US"). Empty if
+  // Google did not return a country component.
+  countryCode: string;
 }
 
 /**
@@ -54,6 +57,7 @@ export async function reverseGeocodeToAddress(
     let city = "";
     let state = "";
     let country = "";
+    let countryCode = "";
 
     (result.address_components || []).forEach((component: any) => {
       const types: string[] = component.types || [];
@@ -66,6 +70,8 @@ export async function reverseGeocodeToAddress(
         state = component.long_name;
       } else if (types.includes("country")) {
         country = component.long_name;
+        // short_name is the ISO 3166-1 alpha-2 code, e.g. "PK".
+        countryCode = String(component.short_name || "").toUpperCase();
       }
     });
 
@@ -74,7 +80,7 @@ export async function reverseGeocodeToAddress(
     const fullAddress = compact || result.formatted_address || "";
     if (!fullAddress) return null;
 
-    return { city, state, country, fullAddress };
+    return { city, state, country, fullAddress, countryCode };
   } catch {
     return null;
   }
