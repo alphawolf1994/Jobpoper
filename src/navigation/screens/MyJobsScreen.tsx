@@ -85,6 +85,11 @@ const MyJobsScreen = () => {
             try {
               await dispatch(deleteJob(job._id)).unwrap();
               dispatch(getUserJobs());
+              showAlert({
+                title: "Success",
+                message: "Job deleted successfully",
+                type: "success",
+              });
             } catch (error: any) {
               showAlert({
                 title: "Error",
