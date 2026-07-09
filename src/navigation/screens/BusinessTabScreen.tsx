@@ -391,7 +391,7 @@ const BusinessTabScreen = () => {
         <Text style={styles.emptyMessage}>
           {searchQuery.trim() || selectedCategory
             ? "Try adjusting your search or category filter."
-            : "Approved businesses within 50 km of your selected location will appear here."}
+            : "Approved businesses within 25 km of your selected location will appear here."}
         </Text>
       </View>
     );
