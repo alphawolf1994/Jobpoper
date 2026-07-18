@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { StatusBar } from "expo-status-bar";
+import Checkbox from "expo-checkbox";
 import { Colors } from "../../utils";
 import MyTextInput from "../../components/MyTextInput";
 import Button from "../../components/Button";
@@ -34,6 +35,7 @@ const BasicProfileScreen = () => {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [isProfessional, setIsProfessional] = useState(false);
+  const [agreeToTerms, setAgreeToTerms] = useState(true);
   const [location, setLocation] = useState<{
     city: string;
     state: string;
@@ -90,10 +92,14 @@ const BasicProfileScreen = () => {
       return;
     }
 
-    // if (!agree) {
-    //   showAlert({ title: 'Error', message: 'Please agree to the terms and conditions.', type: 'error' });
-    //   return;
-    // }
+    if (!agreeToTerms) {
+      showAlert({
+        title: "Error",
+        message: "Please accept the Terms and Conditions and Privacy Policy to continue.",
+        type: "error",
+      });
+      return;
+    }
     console.log("location", location);
 
     try {
@@ -246,13 +252,38 @@ const BasicProfileScreen = () => {
               </View>
             </View>
 
+            <View style={styles.termsRow}>
+              <Checkbox
+                value={agreeToTerms}
+                onValueChange={setAgreeToTerms}
+                color={agreeToTerms ? Colors.primary : undefined}
+                style={styles.termsCheckbox}
+              />
+              <Text style={styles.termsText}>
+                I agree to the{" "}
+                <Text
+                  style={styles.termsLink}
+                  onPress={() => (navigation as any).navigate("TermsAndConditionsScreen")}
+                >
+                  Terms and Conditions
+                </Text>{" "}
+                and{" "}
+                <Text
+                  style={styles.termsLink}
+                  onPress={() => (navigation as any).navigate("PrivacyPolicyScreen")}
+                >
+                  Privacy Policy
+                </Text>
+              </Text>
+            </View>
+
             <Button
               label={loading ? "Completing Profile..." : "Continue"}
               onPress={handleCompleteProfile}
-              disabled={loading}
+              disabled={loading || !agreeToTerms}
               style={[
                 styles.continueButton,
-                loading && styles.disabledActionButton,
+                (loading || !agreeToTerms) && styles.disabledActionButton,
               ]}
             />
           </ScrollView>
@@ -395,6 +426,26 @@ const styles = StyleSheet.create({
   },
   radioTextSelected: {
     color: Colors.primary,
+  },
+  termsRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginTop: 20,
+    gap: 10,
+  },
+  termsCheckbox: {
+    marginTop: 2,
+    borderRadius: 4,
+  },
+  termsText: {
+    flex: 1,
+    fontSize: 14,
+    lineHeight: 20,
+    color: Colors.gray,
+  },
+  termsLink: {
+    color: Colors.primary,
+    fontWeight: "600",
   },
 });
 

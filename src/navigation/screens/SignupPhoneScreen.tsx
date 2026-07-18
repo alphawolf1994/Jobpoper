@@ -21,6 +21,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { sendPhoneVerification, setPhoneNumber, clearError } from "../../redux/slices/authSlice";
 import { RootState, AppDispatch } from "../../redux/store";
 import { useAlertModal } from "../../hooks/useAlertModal";
+import { toE164, isValidE164 } from "../../utils/phoneFormat";
 
 const SignupPhoneScreen = () => {
   const navigation = useNavigation();
@@ -29,12 +30,20 @@ const SignupPhoneScreen = () => {
   const loading = authState?.loading || false;
   const error = authState?.error || null;
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
-  
+
+  // We deliberately do NOT trust `onChangeFormattedText` from the phone input —
+  // it passes through whatever the user typed/pasted (spaces, dashes, parens
+  // from copy-pasted numbers) unsanitized, which Twilio tolerates but our
+  // backend's strict digits-only schema regex rejects. Instead we keep the raw
+  // national digits plus the active calling code and assemble a clean E.164
+  // number ourselves on submit (see utils/phoneFormat.ts).
   const [phoneNumber, setPhoneNumber1] = useState("");
-  const [formattedPhoneNumber, setFormattedPhoneNumber] = useState("");
+  const [callingCode, setCallingCode] = useState("91"); // India default, matches PhoneNumberInput's defaultCode="IN"
 
   const handlePhoneSubmit = async () => {
-    if (!formattedPhoneNumber.trim()) {
+    const formattedPhoneNumber = toE164(phoneNumber, callingCode);
+
+    if (!phoneNumber.trim()) {
       showAlert({
         title: "Error",
         message: "Please enter your phone number.",
@@ -43,9 +52,7 @@ const SignupPhoneScreen = () => {
       return;
     }
 
-    // Basic phone number validation for formatted number with country code
-    const phoneRegex = /^\+[1-9]\d{1,14}$/;
-    if (!phoneRegex.test(formattedPhoneNumber)) {
+    if (!isValidE164(formattedPhoneNumber)) {
       showAlert({
         title: "Error",
         message: "Please enter a valid phone number with country code.",
@@ -57,10 +64,10 @@ const SignupPhoneScreen = () => {
     try {
       // Store phone number in Redux state
       dispatch(setPhoneNumber(formattedPhoneNumber));
-      
+
       // Send verification code
       const result = await dispatch(sendPhoneVerification(formattedPhoneNumber)).unwrap();
-      
+
       if (result.status === "success") {
         (navigation as any).navigate("PhoneVerificationScreen", {
           isSignup: true,
@@ -129,8 +136,8 @@ const SignupPhoneScreen = () => {
                     dispatch(clearError());
                   }
                 }}
-                onChangeFormattedText={(formattedText) => {
-                  setFormattedPhoneNumber(formattedText);
+                onChangeCallingCode={(code) => {
+                  setCallingCode(code);
                   if (error) {
                     dispatch(clearError());
                   }
@@ -138,14 +145,14 @@ const SignupPhoneScreen = () => {
                 error={error}
                 firstContainerStyle={{ marginTop: 0 }}
               />
-              <Button 
-                label={loading ? "Sending..." : "Create Account"} 
+              <Button
+                label={loading ? "Sending..." : "Create Account"}
                 onPress={handlePhoneSubmit}
                 style={[
                   styles.signupButton,
-                  (!formattedPhoneNumber.trim() || loading) && styles.disabledActionButton,
+                  (!phoneNumber.trim() || loading) && styles.disabledActionButton,
                 ]}
-                disabled={!formattedPhoneNumber.trim() || loading}
+                disabled={!phoneNumber.trim() || loading}
               />
             </View>
 

@@ -58,7 +58,7 @@ const UserDetailsScreen = () => {
     const [profileImage, setProfileImage] = useState<string | null>(null);
 
     // Professional profile state
-    const isProfessional = user?.isProfessional || false;
+    const [isProfessional, setIsProfessional] = useState(false);
     const [selectedCategories, setSelectedCategories] = useState<ServiceCategory[]>([]);
     const [workImages, setWorkImages] = useState<string[]>([]); // mix of local URIs and saved paths
     const [bio, setBio] = useState("");
@@ -88,6 +88,9 @@ const UserDetailsScreen = () => {
             }
 
             setProfileImage(user.profile?.profileImage || null);
+
+            // Sync the professional/worker toggle with the saved value
+            setIsProfessional(!!user.isProfessional);
 
             // Load professional profile data
             if (user.isProfessional && user.professionalProfile) {
@@ -184,6 +187,7 @@ const UserDetailsScreen = () => {
                 latitude: location.latitude,
                 longitude: location.longitude,
                 profileImage: profileImage || undefined,
+                isProfessional,
             };
 
             const result = await dispatch(completeProfile(profileData)).unwrap();
@@ -339,6 +343,37 @@ const UserDetailsScreen = () => {
                             firstContainerStyle={{ marginTop: 0 }}
                         />
 
+                    </View>
+
+                    {/* Professional / Worker toggle */}
+                    <View style={styles.toggleSection}>
+                        <Text style={styles.toggleLabel}>Are you a Professional / Worker?</Text>
+                        <Text style={styles.toggleHint}>
+                            Turn this on to show your professional profile (skills, categories, work images) to job owners. You can switch it off any time.
+                        </Text>
+                        <View style={styles.toggleRow}>
+                            <TouchableOpacity
+                                style={[styles.toggleOption, !isProfessional && styles.toggleOptionSelected]}
+                                onPress={() => setIsProfessional(false)}
+                                activeOpacity={0.8}
+                            >
+                                <View style={[styles.toggleCircle, !isProfessional && styles.toggleCircleSelected]}>
+                                    {!isProfessional && <View style={styles.toggleInner} />}
+                                </View>
+                                <Text style={[styles.toggleText, !isProfessional && styles.toggleTextSelected]}>No</Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                style={[styles.toggleOption, isProfessional && styles.toggleOptionSelected]}
+                                onPress={() => setIsProfessional(true)}
+                                activeOpacity={0.8}
+                            >
+                                <View style={[styles.toggleCircle, isProfessional && styles.toggleCircleSelected]}>
+                                    {isProfessional && <View style={styles.toggleInner} />}
+                                </View>
+                                <Text style={[styles.toggleText, isProfessional && styles.toggleTextSelected]}>Yes</Text>
+                            </TouchableOpacity>
+                        </View>
                     </View>
 
                     {/* ── Professional Profile Section (only if isProfessional) ── */}
@@ -581,6 +616,78 @@ const styles = StyleSheet.create({
         position: 'absolute',
         right: 16,
         bottom: 16,
+    },
+    // Professional / Worker toggle styles
+    toggleSection: {
+        marginTop: 20,
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+        shadowColor: '#000',
+        shadowOpacity: 0.04,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 2,
+    },
+    toggleLabel: {
+        fontSize: 15,
+        fontWeight: '700',
+        color: Colors.black,
+        marginBottom: 4,
+    },
+    toggleHint: {
+        fontSize: 13,
+        color: Colors.gray,
+        marginBottom: 14,
+        lineHeight: 18,
+    },
+    toggleRow: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    toggleOption: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+        paddingVertical: 12,
+        paddingHorizontal: 14,
+        borderRadius: 12,
+        borderWidth: 1.5,
+        borderColor: '#E5E7EB',
+        backgroundColor: '#F9FAFB',
+    },
+    toggleOptionSelected: {
+        borderColor: Colors.primary,
+        backgroundColor: '#EFF6FF',
+    },
+    toggleCircle: {
+        width: 20,
+        height: 20,
+        borderRadius: 10,
+        borderWidth: 2,
+        borderColor: '#D1D5DB',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    toggleCircleSelected: {
+        borderColor: Colors.primary,
+    },
+    toggleInner: {
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: Colors.primary,
+    },
+    toggleText: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: Colors.gray,
+    },
+    toggleTextSelected: {
+        color: Colors.primary,
     },
     // Professional section styles
     professionalSection: {

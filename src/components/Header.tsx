@@ -279,7 +279,7 @@ const Header: React.FC = () => {
   return (
     <View style={styles.container}>
       <View style={styles.titleRow}>
-        <View>
+        <View style={styles.titleContent}>
           <Text style={styles.titleText}>
             JobPopper
           </Text>
@@ -293,7 +293,11 @@ const Header: React.FC = () => {
               size={16}
               color={Colors.primary}
             />
-            <Text style={styles.locationText}>
+            <Text
+              style={styles.locationText}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
               {formatLocationDisplay()}
             </Text>
             <Ionicons
@@ -495,6 +499,12 @@ const styles = StyleSheet.create({
     flexDirection: "row", 
     alignItems: "center",
     flex: 1,
+    marginRight: 12,
+    minWidth: 0,
+  },
+  titleContent: {
+    flex: 1,
+    minWidth: 0,
   },
   titleText: {
     fontSize: 22,
@@ -505,8 +515,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     marginTop: 4,
+    maxWidth: "100%",
   },
   locationText: {
+    flexShrink: 1,
     fontSize: 14,
     color: Colors.primary,
     marginLeft: 6,
@@ -524,7 +536,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
   },
-  actions: { flexDirection: "row", alignItems: "center" },
+  actions: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexShrink: 0,
+  },
+
   bellWrapper: {
     width: 36,
     height: 36,

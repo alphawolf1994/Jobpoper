@@ -31,7 +31,7 @@ const PrivacyPolicyScreen = () => {
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Privacy Policy</Text>
-            <Text style={styles.headerSubtitle}>Last updated: December 2025</Text>
+            <Text style={styles.headerSubtitle}>Effective Date: 18 July 2026</Text>
           </View>
         </View>
       </View>
@@ -39,90 +39,88 @@ const PrivacyPolicyScreen = () => {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={styles.contentSection}>
           <Text style={styles.introText}>
-            At JobPopper, we are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our mobile application.
+            App Crafters ("we", "us", "our") operates the Make My Task mobile application (the "Platform"). This Privacy Policy explains how we collect, use, share, and protect your personal information when you use the Platform.
           </Text>
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>1. Information We Collect</Text>
-            <Text style={styles.sectionText}>
-              We collect information that you provide directly to us, including:
-            </Text>
-            <Text style={styles.bulletPoint}>• Personal information such as your name, email address, phone number, and profile picture</Text>
-            <Text style={styles.bulletPoint}>• Location data to help you find jobs and services in your area</Text>
-            <Text style={styles.bulletPoint}>• Job-related information including job postings, applications, and work history</Text>
-            <Text style={styles.bulletPoint}>• Payment information when you make transactions through our platform</Text>
+            <Text style={styles.bulletPoint}>• Name</Text>
+            <Text style={styles.bulletPoint}>• Mobile number</Text>
+            <Text style={styles.bulletPoint}>• Email address</Text>
+            <Text style={styles.bulletPoint}>• Profile details</Text>
+            <Text style={styles.bulletPoint}>• Profile photographs</Text>
+            <Text style={styles.bulletPoint}>• Device information</Text>
+            <Text style={styles.bulletPoint}>• IP address</Text>
+            <Text style={styles.bulletPoint}>• Location (only with permission)</Text>
+            <Text style={styles.bulletPoint}>• Usage analytics</Text>
+            <Text style={styles.bulletPoint}>• Communications through the Platform</Text>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>2. How We Use Your Information</Text>
-            <Text style={styles.sectionText}>
-              We use the information we collect to:
-            </Text>
-            <Text style={styles.bulletPoint}>• Provide, maintain, and improve our services</Text>
-            <Text style={styles.bulletPoint}>• Connect job seekers with job providers</Text>
-            <Text style={styles.bulletPoint}>• Process transactions and send related information</Text>
-            <Text style={styles.bulletPoint}>• Send you technical notices, updates, and support messages</Text>
-            <Text style={styles.bulletPoint}>• Respond to your comments, questions, and requests</Text>
-            <Text style={styles.bulletPoint}>• Monitor and analyze trends and usage</Text>
+            <Text style={styles.sectionTitle}>2. How We Use Information</Text>
+            <Text style={styles.bulletPoint}>• Create and manage accounts</Text>
+            <Text style={styles.bulletPoint}>• Facilitate connections between users and workers</Text>
+            <Text style={styles.bulletPoint}>• Improve services</Text>
+            <Text style={styles.bulletPoint}>• Enhance security</Text>
+            <Text style={styles.bulletPoint}>• Prevent fraud</Text>
+            <Text style={styles.bulletPoint}>• Respond to customer support requests</Text>
+            <Text style={styles.bulletPoint}>• Comply with legal obligations</Text>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>3. Information Sharing and Disclosure</Text>
+            <Text style={styles.sectionTitle}>3. Data Sharing</Text>
             <Text style={styles.sectionText}>
-              We do not sell your personal information. We may share your information in the following circumstances:
+              We may share information:
             </Text>
-            <Text style={styles.bulletPoint}>• With job providers when you apply for a job or accept a job offer</Text>
-            <Text style={styles.bulletPoint}>• With service providers who assist us in operating our platform</Text>
-            <Text style={styles.bulletPoint}>• When required by law or to protect our rights</Text>
-            <Text style={styles.bulletPoint}>• In connection with a business transfer or merger</Text>
+            <Text style={styles.bulletPoint}>• With service providers supporting our Platform.</Text>
+            <Text style={styles.bulletPoint}>• When required by law.</Text>
+            <Text style={styles.bulletPoint}>• To protect legal rights.</Text>
+            <Text style={styles.bulletPoint}>• During business restructuring or acquisition.</Text>
+            <Text style={styles.sectionText}>
+              We do not sell users' personal information.
+            </Text>
           </View>
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>4. Data Security</Text>
             <Text style={styles.sectionText}>
-              We implement appropriate technical and organizational measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. However, no method of transmission over the internet or electronic storage is 100% secure.
+              We implement reasonable technical and organisational measures to protect personal information. However, no electronic system is completely secure.
             </Text>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>5. Your Rights</Text>
+            <Text style={styles.sectionTitle}>5. User Rights</Text>
             <Text style={styles.sectionText}>
-              You have the right to:
+              Users may request to:
             </Text>
-            <Text style={styles.bulletPoint}>• Access and update your personal information</Text>
-            <Text style={styles.bulletPoint}>• Delete your account and personal data</Text>
-            <Text style={styles.bulletPoint}>• Opt-out of certain communications</Text>
-            <Text style={styles.bulletPoint}>• Request a copy of your data</Text>
+            <Text style={styles.bulletPoint}>• Access their personal information.</Text>
+            <Text style={styles.bulletPoint}>• Correct inaccurate information.</Text>
+            <Text style={styles.bulletPoint}>• Delete their account, subject to legal retention requirements.</Text>
+            <Text style={styles.bulletPoint}>• Withdraw consent where applicable.</Text>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>6. Location Services</Text>
+            <Text style={styles.sectionTitle}>6. Children's Privacy</Text>
             <Text style={styles.sectionText}>
-              We use location data to provide location-based services such as finding nearby jobs. You can control location permissions through your device settings.
+              The Platform is intended for persons aged 18 years or older.
             </Text>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>7. Children's Privacy</Text>
+            <Text style={styles.sectionTitle}>7. Policy Updates</Text>
             <Text style={styles.sectionText}>
-              Our services are not intended for individuals under the age of 18. We do not knowingly collect personal information from children.
+              App Crafters may revise this Privacy Policy periodically. Continued use of the Platform after updates constitutes acceptance of the revised policy.
             </Text>
           </View>
 
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>8. Changes to This Policy</Text>
-            <Text style={styles.sectionText}>
-              We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last updated" date.
-            </Text>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>9. Contact Us</Text>
+            <Text style={styles.sectionTitle}>8. Contact Us</Text>
             <Text style={styles.sectionText}>
               If you have any questions about this Privacy Policy, please contact us at:
             </Text>
-            <Text style={styles.contactText}>Email: privacy@jobpoper.com</Text>
-            <Text style={styles.contactText}>Phone: +1 (555) 123-4567</Text>
+            <Text style={styles.contactText}>App Crafters</Text>
+            <Text style={styles.contactText}>Registered Office: Vijayawada, Andhra Pradesh, India</Text>
+            <Text style={styles.contactText}>Email: contact@appcrafters.org</Text>
           </View>
         </View>
       </ScrollView>
@@ -211,4 +209,3 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
 });
-

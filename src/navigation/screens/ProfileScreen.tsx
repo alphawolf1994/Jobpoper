@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   ScrollView,
 } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as Clipboard from "expo-clipboard";
 import { Colors } from "../../utils";
 import Header from "../../components/Header";
 import { IMAGE_BASE_URL } from "../../api/baseURL";
@@ -45,6 +46,15 @@ const ProfileScreen = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
+  const [workerIdCopied, setWorkerIdCopied] = useState(false);
+
+  // Copy worker ID to clipboard with brief visual feedback
+  const handleCopyWorkerId = async () => {
+    if (!user?.workerId) return;
+    await Clipboard.setStringAsync(user.workerId);
+    setWorkerIdCopied(true);
+    setTimeout(() => setWorkerIdCopied(false), 1500);
+  };
 
   // Handle logout
   const handleLogout = () => {
@@ -147,6 +157,34 @@ const ProfileScreen = () => {
 
           {user?.isProfessional && (
             <>
+              {user?.workerId && (
+                <TouchableOpacity
+                  style={styles.workerIdBadge}
+                  activeOpacity={0.8}
+                  onPress={handleCopyWorkerId}
+                >
+                  <View style={styles.workerIdBadgeLeft}>
+                    <View style={styles.workerIdIconWrap}>
+                      <Ionicons name="shield-checkmark" size={16} color="#10B981" />
+                    </View>
+                    <View>
+                      <Text style={styles.workerIdBadgeLabel}>Worker ID</Text>
+                      <Text style={styles.workerIdBadgeValue}>{user.workerId}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.workerIdCopyWrap}>
+                    <Ionicons
+                      name={workerIdCopied ? "checkmark-circle" : "copy-outline"}
+                      size={18}
+                      color={workerIdCopied ? "#10B981" : Colors.primary}
+                    />
+                    <Text style={[styles.workerIdCopyText, workerIdCopied && { color: "#10B981" }]}>
+                      {workerIdCopied ? "Copied" : "Copy"}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+
               <View style={styles.ratingRow}>
                 {[1, 2, 3, 4, 5].map((s) => (
                   <Ionicons
@@ -312,6 +350,64 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.black,
     marginTop: 8,
+  },
+  workerIdBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: 14,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#6EE7B7',
+    minWidth: 220,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  workerIdBadgeLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  workerIdIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#D1FAE5',
+  },
+  workerIdBadgeLabel: {
+    fontSize: 10,
+    color: '#065F46',
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  workerIdBadgeValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#065F46',
+    letterSpacing: 2,
+  },
+  workerIdCopyWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginLeft: 14,
+    paddingLeft: 10,
+    borderLeftWidth: 1,
+    borderLeftColor: '#A7F3D0',
+  },
+  workerIdCopyText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.primary,
   },
   ratingRow: {
     flexDirection: 'row',

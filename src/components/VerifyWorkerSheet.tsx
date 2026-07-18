@@ -156,7 +156,7 @@ const VerifyWorkerSheet: React.FC<Props> = ({ visible, job, onClose, onStarted }
                 {workerLookupLoading ? (
                   <ActivityIndicator size="small" color={Colors.white} />
                 ) : (
-                  <Text style={styles.lookupBtnText}>Search</Text>
+                  <Text style={styles.lookupBtnText}>Verify</Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -172,6 +172,26 @@ const VerifyWorkerSheet: React.FC<Props> = ({ visible, job, onClose, onStarted }
             {/* Worker profile card */}
             {worker && !workerLookupError && (
               <View style={styles.profileCard}>
+                {/* View full profile */}
+                <View style={styles.viewProfileRow}>
+                  <TouchableOpacity
+                    style={styles.viewProfileBtn}
+                    activeOpacity={0.8}
+                    onPress={() => {
+                      onClose();
+                      navigation.navigate('WorkerProfileScreen', {
+                        workerId: worker._id,
+                        workerName: worker.profile?.fullName,
+                        workerImage: worker.profile?.profileImage,
+                      });
+                    }}
+                  >
+                    <Ionicons name="person-circle-outline" size={15} color={Colors.primary} />
+                    <Text style={styles.viewProfileBtnText}>View Profile</Text>
+                    <Ionicons name="chevron-forward" size={13} color={Colors.primary} />
+                  </TouchableOpacity>
+                </View>
+
                 {/* Avatar + name row */}
                 <View style={styles.profileTop}>
                   <View style={styles.avatarWrap}>
@@ -209,20 +229,6 @@ const VerifyWorkerSheet: React.FC<Props> = ({ visible, job, onClose, onStarted }
                         review{worker.rating?.count !== 1 ? "s" : ""})
                       </Text>
                     </View>
-                    {(worker.rating?.count ?? 0) > 0 && (
-                      <TouchableOpacity
-                        onPress={() =>
-                          navigation.navigate('WorkerProfileScreen', {
-                            workerId: worker._id,
-                            workerName: worker.profile?.fullName,
-                            workerImage: worker.profile?.profileImage,
-                          })
-                        }
-                        hitSlop={6}
-                      >
-                        <Text style={styles.viewReviewsLink}>View past reviews</Text>
-                      </TouchableOpacity>
-                    )}
                   </View>
                 </View>
 
@@ -410,6 +416,25 @@ const styles = StyleSheet.create({
     marginTop: 8,
     gap: 12,
   },
+  viewProfileRow: {
+    alignItems: "flex-end",
+  },
+  viewProfileBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#EFF6FF",
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+  },
+  viewProfileBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: Colors.primary,
+  },
   profileTop: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -481,12 +506,6 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 12,
     color: Colors.gray,
-  },
-  viewReviewsLink: {
-    fontSize: 12,
-    color: Colors.primary,
-    fontWeight: "600",
-    marginTop: 2,
   },
   bio: {
     fontSize: 13,

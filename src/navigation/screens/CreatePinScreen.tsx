@@ -179,7 +179,9 @@ const CreatePinScreen = () => {
         }
       }
     } catch (error: any) {
-      showErrorAlert(error.message || (isResetPin ? 'Failed to reset PIN. Please try again.' : 'Registration failed. Please try again.'));
+      const fallback = isResetPin ? 'Failed to reset PIN. Please try again.' : 'Registration failed. Please try again.';
+      const message = typeof error === 'string' ? error : error?.message;
+      showErrorAlert(message || fallback);
       setPin(['', '', '', '']);
       setConfirmPin(['', '', '', '']);
       setStep(1);
