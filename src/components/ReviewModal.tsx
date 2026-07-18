@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigation } from "@react-navigation/native";
 import { AppDispatch, RootState } from "../redux/store";
 import { submitReview, resetReviewSubmitted } from "../redux/slices/jobVerificationSlice";
 import { getUserJobs } from "../redux/slices/jobSlice";
@@ -40,12 +41,14 @@ const resolveImage = (uri?: string | null) => {
 const ReviewModal: React.FC<Props> = ({
   visible,
   job,
+  workerId,
   workerName,
   workerImage,
   onClose,
   onSubmitted,
 }) => {
   const dispatch = useDispatch<AppDispatch>();
+  const navigation = useNavigation<any>();
   const { submitReviewLoading, submitReviewError, reviewSubmitted } = useSelector(
     (state: RootState) => state.jobVerification
   );
@@ -128,6 +131,21 @@ const ReviewModal: React.FC<Props> = ({
                     <Text style={styles.jobTitle} numberOfLines={1}>
                       {job.title}
                     </Text>
+                  )}
+                  {workerId && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        onClose();
+                        navigation.navigate('WorkerProfileScreen', {
+                          workerId,
+                          workerName,
+                          workerImage,
+                        });
+                      }}
+                      hitSlop={6}
+                    >
+                      <Text style={styles.viewProfileLink}>View profile & past reviews</Text>
+                    </TouchableOpacity>
                   )}
                 </View>
               </View>
@@ -250,6 +268,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.gray,
     marginTop: 2,
+  },
+  viewProfileLink: {
+    fontSize: 12,
+    color: Colors.primary,
+    fontWeight: "600",
+    marginTop: 4,
   },
   rateLabel: {
     fontSize: 15,

@@ -3,6 +3,7 @@ import {
   getAdminDashboardApi,
   getAdminUsersApi,
   getAdminUserByIdApi,
+  deleteAdminWorkImageApi,
   getAdminJobsApi,
   getAdminJobByIdApi,
   getAdminBusinessApprovalRequestsApi,
@@ -26,6 +27,11 @@ export interface AdminUser {
   verificationStatus: string; // flat: "not_submitted"|"under_review"|"approved"|"rejected"
   isActive: boolean;
   role: "user" | "admin";
+  // Professional / worker fields (flat, always present via buildAdminUser)
+  isProfessional: boolean;
+  workerId?: string | null;
+  rating?: { average: number; count: number };
+  workImageCount?: number;
   createdAt: string;
   lastLogin?: string;
   // Present only in detail view (getAdminUserById) and verifications list
@@ -44,6 +50,13 @@ export interface AdminUser {
     reviewedAt?: string | null;
     reviewNotes?: string;
   };
+  // Present only in detail view (getAdminUserById) when isProfessional is true
+  professionalProfile?: {
+    bio: string;
+    yearsOfExperience: number | null;
+    serviceCategories: { id: string; name: string; slug: string }[];
+    workImages: string[];
+  } | null;
 }
 
 // The backend uses buildAdminJob() which also returns flat fields
@@ -133,6 +146,8 @@ interface AdminState {
   selectedUser: AdminUser | null;
   usersLoading: boolean;
   usersError: string | null;
+  workImageDeleteLoading: boolean;
+  workImageDeleteError: string | null;
 
   jobs: AdminJob[];
   selectedJob: AdminJob | null;
@@ -168,6 +183,8 @@ const initialState: AdminState = {
   selectedUser: null,
   usersLoading: false,
   usersError: null,
+  workImageDeleteLoading: false,
+  workImageDeleteError: null,
 
   jobs: [],
   selectedJob: null,
@@ -212,6 +229,17 @@ export const fetchAdminUserById = createAsyncThunk(
   async (userId: string, { rejectWithValue }) => {
     try { return await getAdminUserByIdApi(userId); }
     catch (e: any) { return rejectWithValue(e?.message || "Failed to fetch user"); }
+  }
+);
+
+export const deleteAdminWorkImage = createAsyncThunk(
+  "admin/deleteWorkImage",
+  async (
+    { userId, imagePath }: { userId: string; imagePath: string },
+    { rejectWithValue }
+  ) => {
+    try { return await deleteAdminWorkImageApi(userId, imagePath); }
+    catch (e: any) { return rejectWithValue(e?.message || "Failed to delete work image"); }
   }
 );
 
@@ -306,6 +334,7 @@ const adminSlice = createSlice({
       state.businessApprovalsError = null;
       state.approvedBusinessProfilesError = null;
       state.verificationsError = null;
+      state.workImageDeleteError = null;
     },
     clearSelectedUser: (state) => { state.selectedUser = null; },
     clearSelectedJob:  (state) => { state.selectedJob = null; },
@@ -370,6 +399,26 @@ const adminSlice = createSlice({
       .addCase(fetchAdminUserById.rejected, (state, action) => {
         state.usersLoading = false;
         state.usersError = action.payload as string;
+      });
+
+    // ── Delete work image ─────────────────────────────────────────────────────
+    builder
+      .addCase(deleteAdminWorkImage.pending, (state) => {
+        state.workImageDeleteLoading = true;
+        state.workImageDeleteError = null;
+      })
+      .addCase(deleteAdminWorkImage.fulfilled, (state, action) => {
+        state.workImageDeleteLoading = false;
+        // Response: { data: { professionalProfile: buildProfessionalProfile() } }
+        const updatedProfile = action.payload?.data?.professionalProfile;
+        if (state.selectedUser && updatedProfile) {
+          state.selectedUser.professionalProfile = updatedProfile;
+          state.selectedUser.workImageCount = updatedProfile.workImages?.length ?? 0;
+        }
+      })
+      .addCase(deleteAdminWorkImage.rejected, (state, action) => {
+        state.workImageDeleteLoading = false;
+        state.workImageDeleteError = action.payload as string;
       });
 
     // ── Jobs list ──────────────────────────────────────────────────────────────

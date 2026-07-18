@@ -144,6 +144,40 @@ const ProfileScreen = () => {
             )}
           </View>
           <Text style={styles.userName}>{user?.profile?.fullName || "User Name"}</Text>
+
+          {user?.isProfessional && (
+            <>
+              <View style={styles.ratingRow}>
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <Ionicons
+                    key={s}
+                    name={s <= Math.round(user?.rating?.average || 0) ? "star" : "star-outline"}
+                    size={16}
+                    color="#F59E0B"
+                  />
+                ))}
+                <Text style={styles.ratingText}>
+                  {(user?.rating?.average ?? 0).toFixed(1)} · {user?.rating?.count ?? 0} review
+                  {(user?.rating?.count ?? 0) !== 1 ? "s" : ""}
+                </Text>
+              </View>
+              <TouchableOpacity
+                style={styles.viewReviewsBtn}
+                activeOpacity={0.7}
+                onPress={() =>
+                  (navigation as any).navigate("WorkerProfileScreen", {
+                    workerId: user.id,
+                    workerName: user.profile?.fullName,
+                    workerImage: user.profile?.profileImage,
+                  })
+                }
+              >
+                <Ionicons name="star-outline" size={16} color={Colors.primary} />
+                <Text style={styles.viewReviewsText}>View all reviews</Text>
+                <Ionicons name="chevron-forward" size={16} color={Colors.primary} />
+              </TouchableOpacity>
+            </>
+          )}
         </View>
 
         {/* Menu Items */}
@@ -278,6 +312,33 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.black,
     marginTop: 8,
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  ratingText: {
+    fontSize: 13,
+    color: Colors.gray,
+    fontWeight: '500',
+    marginLeft: 4,
+  },
+  viewReviewsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#EFF6FF',
+  },
+  viewReviewsText: {
+    fontSize: 13,
+    color: Colors.primary,
+    fontWeight: '600',
   },
   menuSection: {
     paddingHorizontal: 16,

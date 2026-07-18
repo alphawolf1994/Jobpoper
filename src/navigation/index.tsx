@@ -18,6 +18,7 @@ import BusinessProfilesScreen from "./screens/BusinessProfilesScreen";
 import AddBusinessProfileScreen from "./screens/AddBusinessProfileScreen";
 import PostJobScreen from "./screens/PostJobScreen";
 import JobDetailsScreen from "./screens/JobDetailsScreen";
+import WorkerProfileScreen from "./screens/WorkerProfileScreen";
 import { NotFound } from "./screens/NotFound";
 import LoginScreen from "./screens/LoginScreen";
 import OTPScreen from "./screens/OTPScreen";
@@ -259,6 +260,10 @@ const RootStack = createNativeStackNavigator({
     },
     JobDetailsScreen: {
       screen: JobDetailsScreen,
+      options: { headerShown: false },
+    },
+    WorkerProfileScreen: {
+      screen: WorkerProfileScreen,
       options: { headerShown: false },
     },
     AllListedJobsScreen: {

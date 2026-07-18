@@ -13,7 +13,9 @@ import {
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigation } from "@react-navigation/native";
 import { AppDispatch, RootState } from "../redux/store";
 import { lookupWorker, startJob, clearLookedUpWorker } from "../redux/slices/jobVerificationSlice";
 import { getUserJobs } from "../redux/slices/jobSlice";
@@ -49,8 +51,10 @@ const StarRating = ({ rating }: { rating: number }) => (
 
 const VerifyWorkerSheet: React.FC<Props> = ({ visible, job, onClose, onStarted }) => {
   const dispatch = useDispatch<AppDispatch>();
+  const navigation = useNavigation<any>();
   const { lookedUpWorker, workerLookupLoading, workerLookupError, startJobLoading, startJobError } =
     useSelector((state: RootState) => state.jobVerification);
+  const insets = useSafeAreaInsets();
 
   const [workerIdInput, setWorkerIdInput] = useState("");
   const [confirmed, setConfirmed] = useState(false);
@@ -96,7 +100,7 @@ const VerifyWorkerSheet: React.FC<Props> = ({ visible, job, onClose, onStarted }
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.overlay}
       >
-        <View style={styles.sheet}>
+        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, Platform.OS === "ios" ? 32 : 16) }]}>
           {/* Handle bar */}
           <View style={styles.handleBar} />
 
@@ -205,6 +209,20 @@ const VerifyWorkerSheet: React.FC<Props> = ({ visible, job, onClose, onStarted }
                         review{worker.rating?.count !== 1 ? "s" : ""})
                       </Text>
                     </View>
+                    {(worker.rating?.count ?? 0) > 0 && (
+                      <TouchableOpacity
+                        onPress={() =>
+                          navigation.navigate('WorkerProfileScreen', {
+                            workerId: worker._id,
+                            workerName: worker.profile?.fullName,
+                            workerImage: worker.profile?.profileImage,
+                          })
+                        }
+                        hitSlop={6}
+                      >
+                        <Text style={styles.viewReviewsLink}>View past reviews</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
 
@@ -280,8 +298,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.white,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: "90%",
-    paddingBottom: Platform.OS === "ios" ? 32 : 16,
+    maxHeight: "92%",
   },
   handleBar: {
     width: 40,
@@ -464,6 +481,12 @@ const styles = StyleSheet.create({
   ratingText: {
     fontSize: 12,
     color: Colors.gray,
+  },
+  viewReviewsLink: {
+    fontSize: 12,
+    color: Colors.primary,
+    fontWeight: "600",
+    marginTop: 2,
   },
   bio: {
     fontSize: 13,

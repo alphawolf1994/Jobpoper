@@ -64,6 +64,13 @@ const UserRow: React.FC<UserRowProps> = ({ user, onPress }) => {
             {verStatus.replace(/_/g, " ")}
           </Text>
         </View>
+        {user.isProfessional && (
+          <View style={[styles.badge, { backgroundColor: "#7C3AED20", marginTop: 4 }]}>
+            <Text style={[styles.badgeText, { color: "#7C3AED" }]}>
+              {user.rating?.count ? `★ ${user.rating.average.toFixed(1)}` : "professional"}
+            </Text>
+          </View>
+        )}
         {user.role === "admin" && (
           <View style={[styles.badge, { backgroundColor: ADMIN_ACCENT + "20", marginTop: 4 }]}>
             <Text style={[styles.badgeText, { color: ADMIN_ACCENT }]}>admin</Text>
@@ -82,17 +89,22 @@ const AdminUsersScreen = () => {
   const dispatch   = useDispatch<AppDispatch>();
   const { users, usersLoading, usersError } = useSelector((state: RootState) => state.admin);
   const [search, setSearch] = useState("");
+  const [activeTab, setActiveTab] = useState<"users" | "professionals">("users");
 
   const load = useCallback(() => { dispatch(fetchAdminUsers(100)); }, [dispatch]);
   useEffect(() => { load(); }, [load]);
 
+  const normalUsers = users.filter((u) => !u.isProfessional);
+  const professionalUsers = users.filter((u) => u.isProfessional);
+  const tabUsers = activeTab === "professionals" ? professionalUsers : normalUsers;
+
   const filtered = search.trim()
-    ? users.filter(
+    ? tabUsers.filter(
         (u) =>
           u.fullName?.toLowerCase().includes(search.toLowerCase()) ||
           u.phoneNumber?.includes(search)
       )
-    : users;
+    : tabUsers;
 
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.container}>
@@ -100,6 +112,38 @@ const AdminUsersScreen = () => {
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Users</Text>
         <Text style={styles.headerCount}>{users.length} total</Text>
+      </View>
+
+      {/* Tabs */}
+      <View style={styles.tabRow}>
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === "users" && styles.tabBtnActive]}
+          onPress={() => setActiveTab("users")}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.tabText, activeTab === "users" && styles.tabTextActive]}>
+            Users
+          </Text>
+          <View style={[styles.tabCountPill, activeTab === "users" && styles.tabCountPillActive]}>
+            <Text style={[styles.tabCountText, activeTab === "users" && styles.tabCountTextActive]}>
+              {normalUsers.length}
+            </Text>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tabBtn, activeTab === "professionals" && styles.tabBtnActive]}
+          onPress={() => setActiveTab("professionals")}
+          activeOpacity={0.7}
+        >
+          <Text style={[styles.tabText, activeTab === "professionals" && styles.tabTextActive]}>
+            Professionals
+          </Text>
+          <View style={[styles.tabCountPill, activeTab === "professionals" && styles.tabCountPillActive]}>
+            <Text style={[styles.tabCountText, activeTab === "professionals" && styles.tabCountTextActive]}>
+              {professionalUsers.length}
+            </Text>
+          </View>
+        </TouchableOpacity>
       </View>
 
       {/* Search */}
@@ -144,7 +188,11 @@ const AdminUsersScreen = () => {
             <View style={styles.emptyBox}>
               <Ionicons name="people-outline" size={48} color={Colors.lightGray} />
               <Text style={styles.emptyText}>
-                {search ? "No users match your search" : "No users found"}
+                {search
+                  ? "No results match your search"
+                  : activeTab === "professionals"
+                  ? "No professionals found"
+                  : "No users found"}
               </Text>
             </View>
           ) : null
@@ -171,6 +219,39 @@ const styles = StyleSheet.create({
   },
   headerTitle:  { fontSize: 22, fontWeight: "700", color: ADMIN_ACCENT },
   headerCount:  { fontSize: 13, color: Colors.gray, fontWeight: "500" },
+  tabRow: {
+    flexDirection: "row",
+    marginHorizontal: 16,
+    marginTop: 14,
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: Colors.lightGray,
+  },
+  tabBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 9,
+    borderRadius: 9,
+  },
+  tabBtnActive: { backgroundColor: ADMIN_ACCENT },
+  tabText: { fontSize: 14, fontWeight: "600", color: Colors.gray },
+  tabTextActive: { color: Colors.white },
+  tabCountPill: {
+    minWidth: 22,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 10,
+    backgroundColor: ADMIN_LIGHT,
+    alignItems: "center",
+  },
+  tabCountPillActive: { backgroundColor: "rgba(255,255,255,0.25)" },
+  tabCountText: { fontSize: 11, fontWeight: "700", color: ADMIN_ACCENT },
+  tabCountTextActive: { color: Colors.white },
   searchWrap: {
     flexDirection: "row",
     alignItems: "center",

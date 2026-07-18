@@ -38,7 +38,7 @@
 
     // ── Files ────────────────────────────────────────────────────────────────
     "files.exclude": {
-      "**/node_modules": true,
+      "**/node_modules": false,
       "**/.expo": true,
       "**/.git": true,
       "**/dist": true,

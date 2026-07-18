@@ -31,6 +31,17 @@ export const getAdminUserByIdApi = async (userId: string) => {
   }
 };
 
+export const deleteAdminWorkImageApi = async (userId: string, imagePath: string) => {
+  try {
+    const res = await axiosInstance.delete(`/admin/users/${userId}/work-images`, {
+      data: { imagePath },
+    });
+    return res.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to delete work image");
+  }
+};
+
 // ─── Jobs ─────────────────────────────────────────────────────────────────────
 
 export const getAdminJobsApi = async (limit: number = 100) => {

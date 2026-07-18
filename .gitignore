@@ -39,6 +39,9 @@ yarn-error.*
 .DS_Store
 *.pem
 
+# Claude Code worktrees (local only, not part of the project)
+.claude/worktrees/
+
 # Local env files
 .env*.local
 

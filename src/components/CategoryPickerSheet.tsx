@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Colors } from "../utils";
 import { ServiceCategory } from "../interface/interfaces";
 
@@ -121,6 +122,7 @@ const CategoryPickerSheet: React.FC<CategoryPickerSheetProps> = ({
   subtitle,
 }) => {
   const [query, setQuery] = useState("");
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     // Reset the search field whenever the sheet opens, for consistency.
@@ -151,7 +153,10 @@ const CategoryPickerSheet: React.FC<CategoryPickerSheetProps> = ({
         style={styles.kbWrap}
       >
         <Pressable style={styles.backdrop} onPress={onClose}>
-          <Pressable style={styles.sheet} onPress={() => {}}>
+          <Pressable
+            style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, 20) }]}
+            onPress={() => {}}
+          >
             <View style={styles.handle} />
 
             <View style={styles.headerRow}>

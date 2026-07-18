@@ -9,13 +9,18 @@ import {
   Image,
   Modal,
   Dimensions,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { RootState, AppDispatch } from "../../../redux/store";
-import { fetchAdminUserById, clearSelectedUser } from "../../../redux/slices/adminSlice";
+import {
+  fetchAdminUserById,
+  clearSelectedUser,
+  deleteAdminWorkImage,
+} from "../../../redux/slices/adminSlice";
 import { Colors } from "../../../utils";
 import { IMAGE_BASE_URL } from "../../../api/baseURL";
 
@@ -51,15 +56,34 @@ const resolveImage = (uri?: string | null) => {
 interface ImageViewerProps {
   uri: string;
   onClose: () => void;
+  onDelete?: () => void;
+  deleting?: boolean;
 }
 
-const ImageViewer: React.FC<ImageViewerProps> = ({ uri, onClose }) => (
+const ImageViewer: React.FC<ImageViewerProps> = ({ uri, onClose, onDelete, deleting }) => (
   <Modal transparent animationType="fade" onRequestClose={onClose}>
     <View style={styles.imageViewerBg}>
-      <TouchableOpacity style={styles.imageViewerClose} onPress={onClose}>
+      <TouchableOpacity style={styles.imageViewerClose} onPress={onClose} disabled={deleting}>
         <Ionicons name="close" size={28} color={Colors.white} />
       </TouchableOpacity>
       <Image source={{ uri }} style={styles.imageViewerImg} resizeMode="contain" />
+      {onDelete && (
+        <TouchableOpacity
+          style={styles.imageViewerDeleteBtn}
+          onPress={onDelete}
+          disabled={deleting}
+          activeOpacity={0.8}
+        >
+          {deleting ? (
+            <ActivityIndicator size="small" color={Colors.white} />
+          ) : (
+            <>
+              <Ionicons name="trash-outline" size={18} color={Colors.white} />
+              <Text style={styles.imageViewerDeleteText}>Delete Image</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      )}
     </View>
   </Modal>
 );
@@ -102,7 +126,9 @@ const AdminUserDetailScreen = () => {
   const route      = useRoute();
   const dispatch   = useDispatch<AppDispatch>();
   const { userId } = (route.params as any) || {};
-  const [viewingImage, setViewingImage] = useState<string | null>(null);
+  // rawPath is only set for deletable work images (holds the raw path the API expects)
+  const [viewingImage, setViewingImage] = useState<{ uri: string; rawPath?: string } | null>(null);
+  const [deletingPath, setDeletingPath] = useState<string | null>(null);
 
   const { selectedUser, usersLoading, usersError } = useSelector(
     (state: RootState) => state.admin
@@ -112,6 +138,34 @@ const AdminUserDetailScreen = () => {
     if (userId) dispatch(fetchAdminUserById(userId));
     return () => { dispatch(clearSelectedUser()); };
   }, [userId, dispatch]);
+
+  const handleDeleteWorkImage = (imagePath: string) => {
+    Alert.alert(
+      "Delete Image",
+      "Are you sure you want to delete this work image? This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            if (!userId) return;
+            try {
+              setDeletingPath(imagePath);
+              await dispatch(deleteAdminWorkImage({ userId, imagePath })).unwrap();
+              setViewingImage((current) =>
+                current?.rawPath === imagePath ? null : current
+              );
+            } catch (e: any) {
+              Alert.alert("Error", e?.message || "Failed to delete work image");
+            } finally {
+              setDeletingPath(null);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   if (usersLoading || !selectedUser) {
     return (
@@ -168,6 +222,11 @@ const AdminUserDetailScreen = () => {
                 {verStatus.replace(/_/g, " ")}
               </Text>
             </View>
+            {u.isProfessional && (
+              <View style={[styles.badge, { backgroundColor: "#7C3AED20" }]}>
+                <Text style={[styles.badgeText, { color: "#7C3AED" }]}>Professional</Text>
+              </View>
+            )}
             {u.role === "admin" && (
               <View style={[styles.badge, { backgroundColor: ADMIN_ACCENT + "20" }]}>
                 <Text style={[styles.badgeText, { color: ADMIN_ACCENT }]}>Admin</Text>
@@ -220,6 +279,85 @@ const AdminUserDetailScreen = () => {
           </View>
         </View>
 
+        {/* Professional Info */}
+        {u.isProfessional && (
+          <>
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Professional Information</Text>
+              <View style={styles.card}>
+                <InfoRow label="Worker ID"  value={u.workerId || ""} />
+                <InfoRow
+                  label="Rating"
+                  value={
+                    u.rating?.count
+                      ? `★ ${u.rating.average.toFixed(1)} (${u.rating.count} review${u.rating.count === 1 ? "" : "s"})`
+                      : "No ratings yet"
+                  }
+                />
+                <InfoRow
+                  label="Experience"
+                  value={
+                    u.professionalProfile?.yearsOfExperience != null
+                      ? `${u.professionalProfile.yearsOfExperience} year${u.professionalProfile.yearsOfExperience === 1 ? "" : "s"}`
+                      : ""
+                  }
+                />
+                <InfoRow
+                  label="Service Categories"
+                  value={
+                    u.professionalProfile?.serviceCategories?.length
+                      ? u.professionalProfile.serviceCategories.map((c) => c.name).join(", ")
+                      : ""
+                  }
+                />
+                {u.professionalProfile?.bio ? (
+                  <InfoRow label="Bio" value={u.professionalProfile.bio} />
+                ) : null}
+              </View>
+            </View>
+
+            {!!u.professionalProfile?.workImages?.length && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>
+                  Work Images ({u.professionalProfile.workImages.length})
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.workImagesRow}>
+                  {u.professionalProfile.workImages.map((img, idx) => {
+                    const resolved = resolveImage(img);
+                    if (!resolved) return null;
+                    const isDeleting = deletingPath === img;
+                    return (
+                      <View key={idx} style={styles.workImageWrap}>
+                        <TouchableOpacity
+                          onPress={() => setViewingImage({ uri: resolved, rawPath: img })}
+                          activeOpacity={0.8}
+                        >
+                          <Image source={{ uri: resolved }} style={styles.workImageThumb} resizeMode="cover" />
+                          <View style={styles.workImageExpandHint}>
+                            <Ionicons name="expand-outline" size={14} color={Colors.white} />
+                          </View>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.workImageDeleteBadge}
+                          onPress={() => handleDeleteWorkImage(img)}
+                          disabled={isDeleting}
+                          activeOpacity={0.8}
+                        >
+                          {isDeleting ? (
+                            <ActivityIndicator size="small" color={Colors.white} />
+                          ) : (
+                            <Ionicons name="trash-outline" size={16} color={Colors.white} />
+                          )}
+                        </TouchableOpacity>
+                      </View>
+                    );
+                  })}
+                </ScrollView>
+              </View>
+            )}
+          </>
+        )}
+
         {/* Verification Info */}
         {u.verification && verStatus !== "not_submitted" && (
           <>
@@ -241,12 +379,12 @@ const AdminUserDetailScreen = () => {
                 <DocCard
                   label="Selfie Photo"
                   uri={u.verification.selfieImage}
-                  onPress={setViewingImage}
+                  onPress={(uri) => setViewingImage({ uri })}
                 />
                 <DocCard
                   label="ID Document"
                   uri={u.verification.idPhotoImage}
-                  onPress={setViewingImage}
+                  onPress={(uri) => setViewingImage({ uri })}
                 />
               </View>
             </View>
@@ -255,7 +393,16 @@ const AdminUserDetailScreen = () => {
       </ScrollView>
 
       {viewingImage && (
-        <ImageViewer uri={viewingImage} onClose={() => setViewingImage(null)} />
+        <ImageViewer
+          uri={viewingImage.uri}
+          onClose={() => setViewingImage(null)}
+          onDelete={
+            viewingImage.rawPath
+              ? () => handleDeleteWorkImage(viewingImage.rawPath as string)
+              : undefined
+          }
+          deleting={!!viewingImage.rawPath && deletingPath === viewingImage.rawPath}
+        />
       )}
     </SafeAreaView>
   );
@@ -329,6 +476,39 @@ const styles = StyleSheet.create({
   docsRow: {
     flexDirection: "row",
     gap: 12,
+  },
+  workImagesRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  workImageWrap: {
+    position: "relative",
+  },
+  workImageThumb: {
+    width: 120,
+    height: 120,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: Colors.lightGray,
+  },
+  workImageExpandHint: {
+    position: "absolute",
+    bottom: 6,
+    left: 6,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    borderRadius: 8,
+    padding: 4,
+  },
+  workImageDeleteBadge: {
+    position: "absolute",
+    top: 6,
+    right: 6,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "rgba(220,38,38,0.9)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   docCard: {
     flex: 1,
@@ -416,5 +596,21 @@ const styles = StyleSheet.create({
   imageViewerImg: {
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT * 0.8,
+  },
+  imageViewerDeleteBtn: {
+    position: "absolute",
+    bottom: 40,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "rgba(220,38,38,0.9)",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 24,
+  },
+  imageViewerDeleteText: {
+    color: Colors.white,
+    fontSize: 14,
+    fontWeight: "600",
   },
 });

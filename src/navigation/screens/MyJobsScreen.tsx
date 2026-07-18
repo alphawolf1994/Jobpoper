@@ -35,31 +35,35 @@ const MyJobsScreen = () => {
     }
   }, [activeTab, dispatch]);
 
-  const handleCompleteJob = (job: Job) => {
+  // Job owners can only cancel an open job here. Marking a job "completed" is
+  // no longer possible from this screen — it can only happen when the worker
+  // enters the correct Job PIN (see CompleteJobSheet), which is what keeps the
+  // PIN verification step from being skipped.
+  const handleCancelJob = (job: Job) => {
     showAlert({
-      title: "Complete Job",
-      message: `Are you sure you want to mark "${job.title}" as completed?`,
+      title: "Cancel Job",
+      message: `Are you sure you want to cancel "${job.title}"?`,
       type: "warning",
       buttons: [
         {
-          label: "Cancel",
+          label: "Keep Job",
           variant: "secondary",
         },
         {
-          label: "Complete",
+          label: "Cancel Job",
           onPress: async () => {
             try {
-              await dispatch(updateJobStatus({ jobId: job._id, status: "completed" })).unwrap();
+              await dispatch(updateJobStatus({ jobId: job._id, status: "cancelled" })).unwrap();
               dispatch(getUserJobs());
               showAlert({
-                title: "Success",
-                message: "Job status updated to completed",
+                title: "Job Cancelled",
+                message: "The job has been cancelled.",
                 type: "success",
               });
             } catch (error: any) {
               showAlert({
                 title: "Error",
-                message: error || "Failed to update job status",
+                message: error || "Failed to cancel job",
                 type: "error",
               });
             }
@@ -175,6 +179,14 @@ const MyJobsScreen = () => {
 
       </View>
 
+      {/* Job ID reference — always visible so the owner can note it down */}
+      {item.jobPin && (
+        <View style={styles.jobIdRow}>
+          <Ionicons name="key-outline" size={13} color={Colors.gray} />
+          <Text style={styles.jobIdText}>Job ID: {item.jobPin}</Text>
+        </View>
+      )}
+
       {/* Description */}
       <Text style={styles.description} numberOfLines={2}>
         {item.description}
@@ -217,8 +229,8 @@ const MyJobsScreen = () => {
         </View>
       )}
 
-      {/* Verify Worker button — for open jobs with response preference show_interest */}
-      {item.status === 'open' && item.responsePreference === 'show_interest' && (
+      {/* Verify Worker button — shown on every open job, regardless of responsePreference */}
+      {item.status === 'open' && (
         <TouchableOpacity
           style={styles.verifyWorkerBtn}
           activeOpacity={0.8}
@@ -228,6 +240,30 @@ const MyJobsScreen = () => {
           <Text style={styles.verifyWorkerBtnText}>Verify & Start Job</Text>
         </TouchableOpacity>
       )}
+
+      {/* Assigned worker chip — tap to view their public profile & reviews */}
+      {(item.status === 'job_started' || item.status === 'completed') &&
+        typeof item.assignedWorker === 'object' &&
+        item.assignedWorker && (
+          <TouchableOpacity
+            style={styles.workerChip}
+            activeOpacity={0.7}
+            onPress={() => {
+              const w: any = item.assignedWorker;
+              navigation.navigate('WorkerProfileScreen', {
+                workerId: w._id,
+                workerName: w.profile?.fullName,
+                workerImage: w.profile?.profileImage,
+              });
+            }}
+          >
+            <Ionicons name="person-circle-outline" size={18} color={Colors.primary} />
+            <Text style={styles.workerChipText} numberOfLines={1}>
+              {(item.assignedWorker as any)?.profile?.fullName || 'Assigned worker'}
+            </Text>
+            <Ionicons name="chevron-forward" size={14} color={Colors.gray} />
+          </TouchableOpacity>
+        )}
 
       {/* Leave a review button — for completed+unreviewed jobs */}
       {item.status === 'completed' && item.isReviewed === false && item.assignedWorker && (
@@ -243,13 +279,13 @@ const MyJobsScreen = () => {
 
       {/* Action Buttons */}
       <View style={styles.actionRow}>
-        {item.status !== 'completed' && item.status !== 'job_started' && (
+        {item.status === 'open' && (
           <TouchableOpacity
-            style={[styles.actionButton, styles.completeButton]}
-            onPress={() => handleCompleteJob(item)}
+            style={[styles.actionButton, styles.cancelButton]}
+            onPress={() => handleCancelJob(item)}
           >
-            <Ionicons name="checkmark-circle-outline" size={18} color={Colors.white} />
-            <Text style={styles.completeButtonText}>Complete Job</Text>
+            <Ionicons name="close-circle-outline" size={18} color="#F59E0B" />
+            <Text style={styles.cancelButtonText}>Cancel Job</Text>
           </TouchableOpacity>
         )}
 
@@ -452,6 +488,9 @@ const MyJobsScreen = () => {
       <ReviewModal
         visible={!!reviewJob}
         job={reviewJob}
+        workerId={typeof reviewJob?.assignedWorker === 'object' ? (reviewJob?.assignedWorker as any)?._id : undefined}
+        workerName={typeof reviewJob?.assignedWorker === 'object' ? (reviewJob?.assignedWorker as any)?.profile?.fullName : undefined}
+        workerImage={typeof reviewJob?.assignedWorker === 'object' ? (reviewJob?.assignedWorker as any)?.profile?.profileImage : undefined}
         onClose={() => setReviewJob(null)}
         onSubmitted={() => {
           dispatch(getUserJobs());
@@ -643,14 +682,14 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
   },
-  completeButton: {
-    backgroundColor: Colors.primary,
-    borderColor: Colors.primary,
+  cancelButton: {
+    backgroundColor: '#FFFBEB',
+    borderColor: '#F59E0B',
   },
-  completeButtonText: {
+  cancelButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.white,
+    color: '#92400E',
     marginLeft: 6,
   },
   deleteButton: {
@@ -705,6 +744,18 @@ const styles = StyleSheet.create({
     borderColor:Colors.red,
     borderRadius: 50,
     marginRight: 8,
+  },
+  jobIdRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 10,
+  },
+  jobIdText: {
+    fontSize: 12,
+    color: Colors.gray,
+    fontWeight: '600',
+    letterSpacing: 1,
   },
   jobPinBanner: {
     flexDirection: 'row',
@@ -775,5 +826,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#92400E',
+  },
+  workerChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginBottom: 10,
+    maxWidth: '100%',
+  },
+  workerChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.primary,
+    flexShrink: 1,
   },
 });

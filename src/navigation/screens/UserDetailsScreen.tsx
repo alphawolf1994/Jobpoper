@@ -92,7 +92,13 @@ const UserDetailsScreen = () => {
             // Load professional profile data
             if (user.isProfessional && user.professionalProfile) {
                 const pp = user.professionalProfile;
-                setSelectedCategories((pp.serviceCategories as ServiceCategory[]) || []);
+                // Defensively drop any falsy/unpopulated entries (e.g. stray
+                // nulls or raw ID strings from legacy/unpopulated data) so a
+                // corrupted category list can never crash the chip renderer.
+                const validCategories = ((pp.serviceCategories as ServiceCategory[]) || []).filter(
+                    (cat): cat is ServiceCategory => !!cat && typeof cat === "object" && !!cat._id
+                );
+                setSelectedCategories(validCategories);
                 setWorkImages(pp.workImages || []);
                 setBio(pp.bio || "");
                 setYearsOfExperience(pp.yearsOfExperience != null ? String(pp.yearsOfExperience) : "");
@@ -385,7 +391,7 @@ const UserDetailsScreen = () => {
                             {/* Selected category chips with remove button */}
                             {selectedCategories.length > 0 && (
                                 <View style={styles.selectedChipsWrap}>
-                                    {selectedCategories.map(cat => {
+                                    {selectedCategories.filter(cat => !!cat && !!cat._id).map(cat => {
                                         const visual = getCategoryVisual(cat);
                                         return (
                                             <View key={cat._id} style={[styles.selectedChip, { backgroundColor: visual.backgroundColor }]}>

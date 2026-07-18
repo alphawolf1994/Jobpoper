@@ -855,7 +855,15 @@ export interface Job {
   voiceNote?: string | null;
   status: 'open' | 'job_started' | 'completed' | 'cancelled';
   jobPin?: string | null;
-  assignedWorker?: string | null;
+  assignedWorker?:
+    | string
+    | {
+        _id: string;
+        workerId?: string | null;
+        rating?: { average: number; count: number };
+        profile?: { fullName?: string; profileImage?: string };
+      }
+    | null;
   startedAt?: string | null;
   isReviewed?: boolean;
   jobType?: 'OnSite' | 'Pickup';

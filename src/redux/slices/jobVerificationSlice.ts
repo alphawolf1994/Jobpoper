@@ -6,7 +6,7 @@ import {
   submitReviewApi,
   getWorkerReviewsApi,
 } from "../../api/jobApis";
-import { WorkerProfile, WorkerReview } from "../../interface/interfaces";
+import { WorkerProfile, WorkerReview, ProfessionalProfile } from "../../interface/interfaces";
 
 interface JobVerificationState {
   // Worker lookup
@@ -34,8 +34,18 @@ interface JobVerificationState {
   workerReviewsPagination: {
     currentPage: number;
     totalPages: number;
-    total: number;
+    totalReviews: number;
     hasNextPage: boolean;
+  } | null;
+  workerReviewsWorkerInfo: {
+    _id: string;
+    fullName?: string;
+    profileImage?: string;
+    location?: string;
+    workerId?: string | null;
+    rating?: { average: number; count: number };
+    verification?: { status: string };
+    professionalProfile?: ProfessionalProfile;
   } | null;
 }
 
@@ -58,6 +68,7 @@ const initialState: JobVerificationState = {
   workerReviewsLoading: false,
   workerReviewsError: null,
   workerReviewsPagination: null,
+  workerReviewsWorkerInfo: null,
 };
 
 // Lookup worker by Worker ID string
@@ -143,6 +154,12 @@ const jobVerificationSlice = createSlice({
     resetReviewSubmitted(state) {
       state.reviewSubmitted = false;
     },
+    clearWorkerReviews(state) {
+      state.workerReviews = [];
+      state.workerReviewsPagination = null;
+      state.workerReviewsWorkerInfo = null;
+      state.workerReviewsError = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -216,8 +233,12 @@ const jobVerificationSlice = createSlice({
         state.workerReviewsLoading = false;
         const res = action.payload as any;
         if (res?.status === "success" && res?.data) {
-          state.workerReviews = res.data.reviews ?? [];
+          const incoming = res.data.reviews ?? [];
+          const page = res.data.pagination?.currentPage ?? 1;
+          // Page 1 replaces the list (fresh load); subsequent pages append (load more)
+          state.workerReviews = page > 1 ? [...state.workerReviews, ...incoming] : incoming;
           state.workerReviewsPagination = res.data.pagination ?? null;
+          state.workerReviewsWorkerInfo = res.data.worker ?? state.workerReviewsWorkerInfo;
         }
       })
       .addCase(getWorkerReviews.rejected, (state, action) => {
@@ -227,6 +248,6 @@ const jobVerificationSlice = createSlice({
   },
 });
 
-export const { clearLookedUpWorker, clearVerificationErrors, resetReviewSubmitted } =
+export const { clearLookedUpWorker, clearVerificationErrors, resetReviewSubmitted, clearWorkerReviews } =
   jobVerificationSlice.actions;
 export default jobVerificationSlice.reducer;
