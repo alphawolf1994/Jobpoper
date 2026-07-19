@@ -70,7 +70,7 @@ const SplashScreen = () => {
      >
         <View style={styles.logoContainer}>
           <Image source={ImagePath.newLogo} style={styles.logo} />
-          <Text style={styles.brandText}>Job Popper</Text>
+          <Text style={styles.brandText}>MakeMy Task</Text>
         </View>
      </LinearGradient>
   );

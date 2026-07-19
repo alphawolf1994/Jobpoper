@@ -82,7 +82,7 @@ function makeNotification(
 
 function syncFromMessage(dispatch: AppDispatch, remote: RemoteMessage) {
   const d = remote.data as Record<string, string> | undefined;
-  const title = remote.notification?.title ?? d?.title ?? "JobPoper";
+  const title = remote.notification?.title ?? d?.title ?? "MakeMy Task";
   const body = remote.notification?.body ?? d?.body ?? "";
   const n = makeNotification(d, String(title), String(body));
   if (n) {

@@ -56,10 +56,10 @@ const RegisterScreen = () => {
 
           <View style={styles.logoWrap}>
             <Image source={ImagePath.Logo} style={styles.logo} />
-            <Text style={styles.brandText}>JobPopper</Text>
+            <Text style={styles.brandText}>MakeMy Task</Text>
           </View>
 
-          <Text style={styles.title}>Join JobPopper 🚀</Text>
+          <Text style={styles.title}>Join MakeMy Task 🚀</Text>
           <Text style={styles.subtitle}>Enter your phone number to get started</Text>
 
           <PhoneNumberInput

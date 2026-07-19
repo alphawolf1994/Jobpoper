@@ -310,7 +310,7 @@ const LoginScreen = () => {
 
             <View style={styles.logoWrap}>
               <Image source={ImagePath.newLogo} style={styles.logoImage} />
-              {/* <Text style={styles.brandText}>JobPoper</Text> */}
+              {/* <Text style={styles.brandText}>MakeMy Task</Text> */}
               <Text style={styles.title}>
                 {step === 1 ? 'Welcome back' : 'Enter your PIN'}
               </Text>

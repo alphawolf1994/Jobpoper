@@ -48,7 +48,7 @@ module.exports = {
           NSAllowsArbitraryLoads: true,
         },
         NSUserNotificationsUsageDescription:
-          "We send notifications for jobs, interest, and important updates on JobPoper.",
+          "We send notifications for jobs, interest, and important updates on MakeMy Task.",
         // Required so FCM can deliver background/data messages to the app while it
         // is suspended. Without this, setBackgroundMessageHandler never fires and
         // silent / data-only pushes are dropped on iOS.

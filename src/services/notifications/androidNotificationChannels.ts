@@ -17,7 +17,7 @@ export async function createAndroidNotificationChannels(): Promise<void> {
       {
         id: ANDROID_CHANNEL_IDS.DEFAULT,
         name: "General",
-        description: "General JobPoper notifications",
+        description: "General MakeMy Task notifications",
         importance: AndroidImportance.HIGH,
       },
       {

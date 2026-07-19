@@ -263,14 +263,22 @@ const BasicProfileScreen = () => {
                 I agree to the{" "}
                 <Text
                   style={styles.termsLink}
-                  onPress={() => (navigation as any).navigate("TermsAndConditionsScreen")}
+                  onPress={() =>
+                    (navigation as any).navigate("TermsAndConditionsScreen", {
+                      hideAppHeader: true,
+                    })
+                  }
                 >
                   Terms and Conditions
                 </Text>{" "}
                 and{" "}
                 <Text
                   style={styles.termsLink}
-                  onPress={() => (navigation as any).navigate("PrivacyPolicyScreen")}
+                  onPress={() =>
+                    (navigation as any).navigate("PrivacyPolicyScreen", {
+                      hideAppHeader: true,
+                    })
+                  }
                 >
                   Privacy Policy
                 </Text>

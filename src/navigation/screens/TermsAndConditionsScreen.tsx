@@ -10,14 +10,16 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors } from "../../utils";
 import Header from "../../components/Header";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 
 const TermsAndConditionsScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute();
+  const hideAppHeader = Boolean((route.params as any)?.hideAppHeader);
 
   return (
     <SafeAreaView edges={['top', 'bottom', 'left', 'right']} style={styles.container}>
-      <Header />
+      {!hideAppHeader && <Header />}
 
       {/* Header Section */}
       <View style={styles.headerSection}>

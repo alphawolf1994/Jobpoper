@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Job Popper",
+    "name": "MakeMy Task",
     "slug": "jobpoper",
-    "version": "1.4.0",
+    "version": "1.4.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "jobpoper",
@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.appcrafters.jobpoper",
-      "buildNumber": "1.0.17",
+      "buildNumber": "1.0.18",
       "icon": "./assets/images/icon.png",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "We use your location to place the delivery pin and find your address.",
@@ -26,7 +26,7 @@
     },
     "android": {
       "package": "com.anonymous.Jobpoper",
-      "versionCode": 16,
+      "versionCode": 17,
       "icon": "./assets/images/icon.png",
       "permissions": [
         "ACCESS_COARSE_LOCATION",
