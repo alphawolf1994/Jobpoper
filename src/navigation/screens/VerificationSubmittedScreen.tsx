@@ -30,7 +30,7 @@ const VerificationSubmittedScreen = () => {
 
   const subtitle =
     verificationStatus === "approved"
-      ? "Your verification is approved. You can now take up quick jobs and build trust faster."
+      ? "Your verification is approved. You can now take up quick tasks and build trust faster."
       : verificationStatus === "rejected"
       ? "Your last submission was rejected. Please review the details and upload clearer documents."
       : "Your documents have been submitted successfully. They are now under review and admin can change the status after review.";

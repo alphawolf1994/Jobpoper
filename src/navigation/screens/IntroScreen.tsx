@@ -11,12 +11,12 @@ const data = [
   {
     title: "Find Gigs Around You 🔍",
     subtitle:
-      "Discover hundreds of quick jobs nearby! From small errands to skilled tasks — pick what suits you and start earning instantly.",
+      "Discover hundreds of quick tasks nearby! From small errands to skilled tasks — pick what suits you and start earning instantly.",
     image: ImagePath.Image1,
     bgColor: Colors.white,
   },
   {
-    title: "Post Jobs in Seconds ⚡",
+    title: "Post Tasks in Seconds ⚡",
     subtitle: "Need help? Post your gig in just a few taps! Connect with reliable people ready to get it done fast and efficiently.",
     image: ImagePath.Image2,
     bgColor: Colors.white,

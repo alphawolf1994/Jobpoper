@@ -247,7 +247,7 @@ export const fetchAdminJobs = createAsyncThunk(
   "admin/fetchJobs",
   async (limit: number = 100, { rejectWithValue }) => {
     try { return await getAdminJobsApi(limit); }
-    catch (e: any) { return rejectWithValue(e?.message || "Failed to fetch jobs"); }
+    catch (e: any) { return rejectWithValue(e?.message || "Failed to fetch tasks"); }
   }
 );
 
@@ -255,7 +255,7 @@ export const fetchAdminJobById = createAsyncThunk(
   "admin/fetchJobById",
   async (jobId: string, { rejectWithValue }) => {
     try { return await getAdminJobByIdApi(jobId); }
-    catch (e: any) { return rejectWithValue(e?.message || "Failed to fetch job"); }
+    catch (e: any) { return rejectWithValue(e?.message || "Failed to fetch task"); }
   }
 );
 

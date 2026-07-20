@@ -148,7 +148,7 @@ const VerificationDetailsScreen = () => {
       case "approved":
         return {
           label: "Approved",
-          text: "Your verification is approved. You can continue using quick jobs with more trust.",
+          text: "Your verification is approved. You can continue using quick tasks with more trust.",
           accent: "#12B264",
           bg: "#ECFDF3",
           icon: "checkmark-circle" as const,

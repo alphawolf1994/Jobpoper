@@ -256,7 +256,7 @@ const VehiclePreferenceScreen = () => {
                         </View>
                         <Text style={styles.infoBannerText}>
                             Provide your vehicle details so customers can match you for nearby pickup
-                            and delivery jobs.
+                            and delivery tasks.
                         </Text>
                     </View>
 

@@ -86,7 +86,7 @@ const BasicProfileScreen = () => {
     if (location.latitude == null || location.longitude == null) {
       showAlert({
         title: "Error",
-        message: "Please select a listed location so nearby jobs and notifications can use it.",
+        message: "Please select a listed location so nearby tasks and notifications can use it.",
         type: "error",
       });
       return;
@@ -225,7 +225,7 @@ const BasicProfileScreen = () => {
             <View style={styles.professionalSection}>
               <Text style={styles.professionalLabel}>Are you a Professional / Worker?</Text>
               <Text style={styles.professionalHint}>
-                Select Yes if you offer services and want to showcase your skills to job owners.
+                Select Yes if you offer services and want to showcase your skills to task owners.
               </Text>
               <View style={styles.radioRow}>
                 <TouchableOpacity

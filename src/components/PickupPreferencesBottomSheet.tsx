@@ -114,7 +114,7 @@ const PickupPreferencesBottomSheet = forwardRef<
             </View>
             <Text style={styles.sheetTitle}>Set Pickup Service Preferences</Text>
             <Text style={styles.sheetSubtitle}>
-              Before showing interest in pickup jobs, set your service
+              Before showing interest in pickup tasks, set your service
               preferences (price per km) so we can calculate your estimated
               earnings for each pickup.
             </Text>
@@ -137,7 +137,7 @@ const PickupPreferencesBottomSheet = forwardRef<
                   color={Colors.primary}
                 />
                 <Text style={styles.sheetPointText}>
-                  See estimated price for every pickup job
+                  See estimated price for every pickup task
                 </Text>
               </View>
             </View>

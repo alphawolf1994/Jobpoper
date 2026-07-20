@@ -22,8 +22,8 @@ export async function createAndroidNotificationChannels(): Promise<void> {
       },
       {
         id: ANDROID_CHANNEL_IDS.JOBS,
-        name: "Jobs & activity",
-        description: "New jobs, interest, and work updates",
+        name: "Tasks & activity",
+        description: "New tasks, interest, and work updates",
         importance: AndroidImportance.HIGH,
       },
     ]);

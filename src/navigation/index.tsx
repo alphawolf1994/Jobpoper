@@ -97,8 +97,8 @@ const BottomTabNavigator = () => {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Hot Jobs" component={HotJobsScreen} />
-      <Tab.Screen name="My Jobs" component={MyJobsScreen} />
+      <Tab.Screen name="Hot Jobs" component={HotJobsScreen} options={{ title: "Hot Tasks" }} />
+      <Tab.Screen name="My Jobs" component={MyJobsScreen} options={{ title: "My Tasks" }} />
       <Tab.Screen name="Business" component={BusinessTabScreen} />
       <Tab.Screen name="Profile" component={ProfileScreen} />
     </Tab.Navigator>
@@ -145,7 +145,7 @@ const AdminTabNavigator = () => {
       <AdminTab.Screen
         name="AdminJobsTab"
         component={AdminJobsScreen}
-        options={{ title: "Jobs" }}
+        options={{ title: "Tasks" }}
       />
       <AdminTab.Screen
         name="AdminVerificationsTab"

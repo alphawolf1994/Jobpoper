@@ -164,7 +164,7 @@ const UserDetailsScreen = () => {
         if (location.latitude == null || location.longitude == null) {
             showAlert({
                 title: "Error",
-                message: "Please select a listed location so nearby jobs and notifications can use it.",
+                message: "Please select a listed location so nearby tasks and notifications can use it.",
                 type: "error",
             });
             return;
@@ -349,7 +349,7 @@ const UserDetailsScreen = () => {
                     <View style={styles.toggleSection}>
                         <Text style={styles.toggleLabel}>Are you a Professional / Worker?</Text>
                         <Text style={styles.toggleHint}>
-                            Turn this on to show your professional profile (skills, categories, work images) to job owners. You can switch it off any time.
+                            Turn this on to show your professional profile (skills, categories, work images) to task owners. You can switch it off any time.
                         </Text>
                         <View style={styles.toggleRow}>
                             <TouchableOpacity
@@ -384,7 +384,7 @@ const UserDetailsScreen = () => {
                                 <Text style={styles.professionalTitle}>Professional Profile</Text>
                             </View>
                             <Text style={styles.professionalSubtitle}>
-                                This info is shown to job owners when you show interest in their jobs.
+                                This info is shown to task owners when you show interest in their tasks.
                             </Text>
 
                             {/* Worker ID Card */}
@@ -397,7 +397,7 @@ const UserDetailsScreen = () => {
                                             <Text style={styles.workerIdValue}>{user.workerId}</Text>
                                         </View>
                                     </View>
-                                    <Text style={styles.workerIdHint}>Share with job owners to verify you</Text>
+                                    <Text style={styles.workerIdHint}>Share with task owners to verify you</Text>
                                 </View>
                             ) : (
                                 <View style={styles.workerIdCardPending}>

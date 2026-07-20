@@ -125,7 +125,7 @@ const PostJobScreen = () => {
   // existingVoiceNote: path from backend (edit mode)
   const [existingVoiceNote, setExistingVoiceNote] = useState<string | null>(null);
 
-  // Post on behalf of another person (not on JobPoper)
+  // Post on behalf of another person (not on MakeMy Task)
   const [postedOnBehalf, setPostedOnBehalf] = useState(false);
   const [externalContactName, setExternalContactName] = useState('');
   const [externalContactPhone, setExternalContactPhone] = useState('');
@@ -435,7 +435,7 @@ const PostJobScreen = () => {
   const handleSubmit = async () => {
     // Validate form
     if (!formData.title.trim()) {
-      showErrorAlert('Please enter a job title');
+      showErrorAlert('Please enter a task title');
       return;
     }
     if (!formData.cost.trim()) {
@@ -448,7 +448,7 @@ const PostJobScreen = () => {
     }
     // Validate locations based on job type
     if (jobType === 'OnSite' && !selectedOnSiteLocation) {
-      showErrorAlert('Please select the job location');
+      showErrorAlert('Please select the task location');
       return;
     }
     if (jobType === 'Pickup') {
@@ -462,25 +462,25 @@ const PostJobScreen = () => {
       }
     }
     if (!selectedDate) {
-      showErrorAlert('Please select the date for this job');
+      showErrorAlert('Please select the date for this task');
       return;
     }
     if (!selectedTime) {
-      showErrorAlert('Please select the preferred time for this job');
+      showErrorAlert('Please select the preferred time for this task');
       return;
     }
     if (postedOnBehalf) {
       if (!externalContactName.trim()) {
-        showErrorAlert('Please enter the job seeker\'s name');
+        showErrorAlert('Please enter the task seeker\'s name');
         return;
       }
       const normalizedPhone = externalContactPhone.replace(/[\s\-()]/g, '');
       if (!normalizedPhone) {
-        showErrorAlert('Please enter the job seeker\'s phone number');
+        showErrorAlert('Please enter the task seeker\'s phone number');
         return;
       }
       if (!PHONE_REGEX.test(normalizedPhone)) {
-        showErrorAlert('Please enter a valid phone number for the job seeker');
+        showErrorAlert('Please enter a valid phone number for the task seeker');
         return;
       }
     }
@@ -533,7 +533,7 @@ const PostJobScreen = () => {
       }
 
       if (result.status === 'success') {
-        showSuccessAlert(isEditMode ? 'Your job has been updated successfully!' : 'Your job has been posted successfully!', () => {
+        showSuccessAlert(isEditMode ? 'Your task has been updated successfully!' : 'Your task has been posted successfully!', () => {
           setFormData({
             title: '',
             description: '',
@@ -566,7 +566,7 @@ const PostJobScreen = () => {
       const errorMessage =
         (typeof error === 'string' && error.trim()) ? error :
         (typeof error?.message === 'string' && error.message.trim()) ? error.message :
-        (isEditMode ? 'Failed to update job. Please try again.' : 'Failed to post job. Please try again.');
+        (isEditMode ? 'Failed to update task. Please try again.' : 'Failed to post task. Please try again.');
       showErrorAlert(errorMessage);
     }
   };
@@ -586,13 +586,13 @@ const PostJobScreen = () => {
               color={Colors.black}
             />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>{isEditMode ? 'Edit Job' : 'Post Jobs Super Fast'}</Text>
+          <Text style={styles.headerTitle}>{isEditMode ? 'Edit Task' : 'Post Tasks Super Fast'}</Text>
         </View>
 
 
         {/* Header Section */}
         <View style={styles.headerSection}>
-          {/* <Text style={styles.headerTitle}>Post Jobs Super Fast </Text> */}
+          {/* <Text style={styles.headerTitle}>Post Tasks Super Fast </Text> */}
           <Text style={styles.headerSubtitle}>Post it in seconds and let nearby helpers pop in to get it done.</Text>
         </View>
 
@@ -603,9 +603,9 @@ const PostJobScreen = () => {
           contentContainerStyle={styles.scrollContent}
           scrollEnabled={!showDatePicker && !showTimePicker}
         >
-          {/* Job Title */}
+          {/* Task Title */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Job Title *</Text>
+            <Text style={styles.label}>Task Title *</Text>
             <MyTextInput
               placeholder="e.g., Need House Cleaner"
               value={formData.title}
@@ -615,11 +615,11 @@ const PostJobScreen = () => {
             />
           </View>
 
-          {/* Job Description */}
+          {/* Task Description */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Job Description (optional)</Text>
+            <Text style={styles.label}>Task Description (optional)</Text>
             <MyTextArea
-              placeholder="Describe the job requirements, what you need done, and any specific details..."
+              placeholder="Describe the task requirements, what you need done, and any specific details..."
               value={formData.description}
               onChangeText={(value) => handleInputChange('description', value)}
               containerStyle={styles.textArea}
@@ -680,7 +680,7 @@ const PostJobScreen = () => {
 
           {/* Job Type Selection */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Job Type *</Text>
+            <Text style={styles.label}>Task Type *</Text>
             <View style={styles.radioGroupHorizontal}>
               <TouchableOpacity
                 style={[styles.radioOptionHorizontal, jobType === 'OnSite' && styles.radioSelected]}
@@ -778,7 +778,7 @@ const PostJobScreen = () => {
 
           {/* Response Preference Selection */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>How should users respond to your job? *</Text>
+            <Text style={styles.label}>How should users respond to your task? *</Text>
             <View style={styles.radioGroup}>
               <TouchableOpacity
                 style={[styles.radioOption, responsePreference === 'direct_contact' && styles.radioSelected]}
@@ -793,7 +793,7 @@ const PostJobScreen = () => {
                     Direct Contact
                   </Text>
                   <Text style={styles.radioDescription}>
-                    Users can contact you directly for this job
+                    Users can contact you directly for this task
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -823,7 +823,7 @@ const PostJobScreen = () => {
 
           {/* Urgency Selection */}
           <View style={styles.pickerContainer}>
-            <Text style={styles.pickerLabel}>How urgent is this job?</Text>
+            <Text style={styles.pickerLabel}>How urgent is this task?</Text>
             <DropDownPicker
               open={urgencyOpen}
               value={urgencyValue}
@@ -831,7 +831,7 @@ const PostJobScreen = () => {
               setOpen={setUrgencyOpen}
               setValue={handleUrgencyChange}
               setItems={setUrgencyItems}
-              placeholder="Select job type..."
+              placeholder="Select task type..."
               style={styles.dropdown}
               dropDownContainerStyle={styles.dropdownContainer}
               placeholderStyle={styles.placeholder}
@@ -840,12 +840,12 @@ const PostJobScreen = () => {
               zIndexInverse={3000}
             />
             <Text style={styles.helpText}>
-              💡 Urgent: Job needed today (date auto-selected) • Normal: Job can be scheduled for later
+              💡 Urgent: Task needed today (date auto-selected) • Normal: Task can be scheduled for later
             </Text>
           </View>
-          {/* Job Timing */}
+          {/* Task Timing */}
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Job Timing *</Text>
+            <Text style={styles.label}>Task Timing *</Text>
 
             {/* Day Selection (Date Picker) */}
             <View style={styles.pickerContainer}>
@@ -914,7 +914,7 @@ const PostJobScreen = () => {
               )}
               {urgencyValue === 'Urgent' && (
                 <Text style={[styles.helpText, { marginTop: 8 }]}>
-                  📍 Date is locked to today for urgent jobs
+                  📍 Date is locked to today for urgent tasks
                 </Text>
               )}
             </View>
@@ -982,8 +982,8 @@ const PostJobScreen = () => {
             <Text style={styles.infoTitle}>Important Information</Text>
           </View>
           <Text style={styles.infoText}>
-            • Your job will be visible to potential workers in your area{'\n'}
-            • You can edit or delete your job anytime from "My Jobs"{'\n'}
+            • Your task will be visible to potential workers in your area{'\n'}
+            • You can edit or delete your task anytime from "My Tasks"{'\n'}
             • Respond to applicants promptly for better results{'\n'}
             • Be specific about requirements to attract the right candidates
           </Text>
@@ -1037,12 +1037,12 @@ const PostJobScreen = () => {
               <Text style={styles.checkboxLabel}>Post for someone behalf</Text>
             </TouchableOpacity>
             <Text style={styles.checkboxHelper}>
-              You're posting a job for someone else to help them fulfil their needs.
+              You're posting a task for someone else to help them fulfil their needs.
             </Text>
             {postedOnBehalf && (
               <View style={styles.externalContactFields}>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Job seeker name *</Text>
+                  <Text style={styles.label}>Task seeker name *</Text>
                   <MyTextInput
                     placeholder="Enter their full name"
                     value={externalContactName}
@@ -1052,7 +1052,7 @@ const PostJobScreen = () => {
                   />
                 </View>
                 <View style={[styles.inputGroup, { marginBottom: 0 }]}>
-                  <Text style={styles.label}>Job seeker phone number *</Text>
+                  <Text style={styles.label}>Task seeker phone number *</Text>
                   <MyTextInput
                     placeholder="e.g. +923001234567"
                     value={externalContactPhone}

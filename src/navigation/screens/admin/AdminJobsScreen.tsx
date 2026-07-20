@@ -96,7 +96,7 @@ const AdminJobsScreen = () => {
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Jobs</Text>
+        <Text style={styles.headerTitle}>Tasks</Text>
         <Text style={styles.headerCount}>{jobs.length} total</Text>
       </View>
 
@@ -139,7 +139,7 @@ const AdminJobsScreen = () => {
             <View style={styles.emptyBox}>
               <Ionicons name="briefcase-outline" size={48} color={Colors.lightGray} />
               <Text style={styles.emptyText}>
-                {search ? "No jobs match your search" : "No jobs found"}
+                {search ? "No tasks match your search" : "No tasks found"}
               </Text>
             </View>
           ) : null

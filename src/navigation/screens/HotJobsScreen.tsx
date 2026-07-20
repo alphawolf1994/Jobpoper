@@ -243,7 +243,7 @@ const HotJobsScreen = () => {
     return (
       <View style={styles.footerLoader}>
         <ActivityIndicator size="small" color={Colors.primary} />
-        <Text style={styles.loadingMoreText}>Loading more jobs...</Text>
+        <Text style={styles.loadingMoreText}>Loading more tasks...</Text>
       </View>
     );
   };
@@ -255,8 +255,8 @@ const HotJobsScreen = () => {
         <Ionicons name="flame-outline" size={64} color={Colors.gray} />
         <Text style={styles.emptyText} numberOfLines={3} ellipsizeMode="tail">
           {searchQuery.trim()
-            ? `No jobs found for "${searchQuery}"`
-            : 'No hot jobs available in your area'}
+            ? `No tasks found for "${searchQuery}"`
+            : 'No hot tasks available in your area'}
         </Text>
       </View>
     );
@@ -270,7 +270,7 @@ const HotJobsScreen = () => {
       <View style={styles.searchRow}>
         <View style={styles.inputWrapper}>
           <MyTextInput
-            placeholder="Search a job"
+            placeholder="Search a task"
             containerStyle={styles.searchInput}
             value={searchQuery}
             onChange={setSearchQuery}
@@ -335,7 +335,7 @@ const HotJobsScreen = () => {
       {loading && allHotJobs.length === 0 ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Loading hot jobs...</Text>
+          <Text style={styles.loadingText}>Loading hot tasks...</Text>
         </View>
       ) : (
         <FlatList

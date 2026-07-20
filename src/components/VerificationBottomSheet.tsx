@@ -148,7 +148,7 @@ const VerificationBottomSheet = forwardRef<VerificationBottomSheetHandle, Props>
                 </View>
                 <Text style={styles.sheetTitle}>Verification in progress</Text>
                 <Text style={styles.sheetSubtitle}>
-                  You have already submitted your documents. Our team is reviewing them. You will be able to post jobs
+                  You have already submitted your documents. Our team is reviewing them. You will be able to post tasks
                   and use full features once your profile is verified.
                 </Text>
                 <View style={styles.sheetPoints}>
@@ -211,12 +211,12 @@ const VerificationBottomSheet = forwardRef<VerificationBottomSheetHandle, Props>
                 </View>
                 <Text style={styles.sheetTitle}>Verify yourself</Text>
                 <Text style={styles.sheetSubtitle}>
-                  Verify yourself to take up the quick jobs and start earning.
+                  Verify yourself to take up the quick tasks and start earning.
                 </Text>
                 <View style={styles.sheetPoints}>
                   <View style={styles.sheetPoint}>
                     <Ionicons name="flash-outline" size={16} color={Colors.primary} />
-                    <Text style={styles.sheetPointText}>Unlock quick jobs faster</Text>
+                    <Text style={styles.sheetPointText}>Unlock quick tasks faster</Text>
                   </View>
                   <View style={styles.sheetPoint}>
                     <Ionicons name="checkmark-circle-outline" size={16} color={Colors.primary} />

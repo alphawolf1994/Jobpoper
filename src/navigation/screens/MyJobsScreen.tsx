@@ -37,33 +37,33 @@ const MyJobsScreen = () => {
 
   // Job owners can only cancel an open job here. Marking a job "completed" is
   // no longer possible from this screen — it can only happen when the worker
-  // enters the correct Job PIN (see CompleteJobSheet), which is what keeps the
+  // enters the correct Task PIN (see CompleteJobSheet), which is what keeps the
   // PIN verification step from being skipped.
   const handleCancelJob = (job: Job) => {
     showAlert({
-      title: "Cancel Job",
+      title: "Cancel Task",
       message: `Are you sure you want to cancel "${job.title}"?`,
       type: "warning",
       buttons: [
         {
-          label: "Keep Job",
+          label: "Keep Task",
           variant: "secondary",
         },
         {
-          label: "Cancel Job",
+          label: "Cancel Task",
           onPress: async () => {
             try {
               await dispatch(updateJobStatus({ jobId: job._id, status: "cancelled" })).unwrap();
               dispatch(getUserJobs());
               showAlert({
-                title: "Job Cancelled",
-                message: "The job has been cancelled.",
+                title: "Task Cancelled",
+                message: "The task has been cancelled.",
                 type: "success",
               });
             } catch (error: any) {
               showAlert({
                 title: "Error",
-                message: error || "Failed to cancel job",
+                message: error || "Failed to cancel task",
                 type: "error",
               });
             }
@@ -75,7 +75,7 @@ const MyJobsScreen = () => {
 
   const handleDeleteJob = (job: Job) => {
     showAlert({
-      title: "Delete Job",
+      title: "Delete Task",
       message: `Are you sure you want to delete "${job.title}"?`,
       type: "warning",
       buttons: [
@@ -91,13 +91,13 @@ const MyJobsScreen = () => {
               dispatch(getUserJobs());
               showAlert({
                 title: "Success",
-                message: "Job deleted successfully",
+                message: "Task deleted successfully",
                 type: "success",
               });
             } catch (error: any) {
               showAlert({
                 title: "Error",
-                message: error || "Failed to delete job",
+                message: error || "Failed to delete task",
                 type: "error",
               });
             }
@@ -218,12 +218,12 @@ const MyJobsScreen = () => {
         </View>
       </View>
 
-      {/* Job PIN Banner — visible when job has started */}
+      {/* Task PIN Banner — visible when job has started */}
       {item.status === 'job_started' && item.jobPin && (
         <View style={styles.jobPinBanner}>
           <Ionicons name="key-outline" size={16} color="#92400E" />
           <View style={{ flex: 1 }}>
-            <Text style={styles.jobPinLabel}>Job PIN (worker enters this to complete)</Text>
+            <Text style={styles.jobPinLabel}>Task PIN (worker enters this to complete)</Text>
             <Text style={styles.jobPinValue}>{item.jobPin}</Text>
           </View>
         </View>
@@ -237,7 +237,7 @@ const MyJobsScreen = () => {
           onPress={() => setVerifySheetJob(item)}
         >
           <Ionicons name="shield-checkmark-outline" size={17} color={Colors.white} />
-          <Text style={styles.verifyWorkerBtnText}>Verify & Start Job</Text>
+          <Text style={styles.verifyWorkerBtnText}>Verify & Start Task</Text>
         </TouchableOpacity>
       )}
 
@@ -285,7 +285,7 @@ const MyJobsScreen = () => {
             onPress={() => handleCancelJob(item)}
           >
             <Ionicons name="close-circle-outline" size={18} color="#F59E0B" />
-            <Text style={styles.cancelButtonText}>Cancel Job</Text>
+            <Text style={styles.cancelButtonText}>Cancel Task</Text>
           </TouchableOpacity>
         )}
 
@@ -365,7 +365,7 @@ const MyJobsScreen = () => {
         </Text>
       </View>
 
-      {/* Enter Job PIN button — worker sees this when job is started */}
+      {/* Enter Task PIN button — worker sees this when job is started */}
       {item.status === 'job_started' && (
         <TouchableOpacity
           style={styles.enterPinBtn}
@@ -373,7 +373,7 @@ const MyJobsScreen = () => {
           onPress={() => setCompleteSheetJob(item)}
         >
           <Ionicons name="key-outline" size={17} color={Colors.white} />
-          <Text style={styles.enterPinBtnText}>Enter Job PIN to Complete</Text>
+          <Text style={styles.enterPinBtnText}>Enter Task PIN to Complete</Text>
         </TouchableOpacity>
       )}
     </TouchableOpacity>
@@ -384,15 +384,15 @@ const MyJobsScreen = () => {
       <Ionicons name="briefcase-outline" size={64} color={Colors.gray} />
       <Text style={styles.emptyText}>
         {activeTab === 'myJobs' 
-          ? 'No jobs posted yet' 
-          : 'No interested jobs yet'}
+          ? 'No tasks posted yet' 
+          : 'No interested tasks yet'}
       </Text>
       {activeTab === 'myJobs' && (
         <TouchableOpacity 
           style={styles.emptyButton}
           onPress={() => navigation.navigate('PostJobScreen')}
         >
-          <Text style={styles.emptyButtonText}>Post Your First Job</Text>
+          <Text style={styles.emptyButtonText}>Post Your First Task</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -414,11 +414,11 @@ const MyJobsScreen = () => {
       {/* Header Section */}
       <View style={styles.headerSection}>
         <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>My Jobs</Text>
+          <Text style={styles.headerTitle}>My Tasks</Text>
           <Text style={styles.headerSubtitle}>
             {activeTab === 'myJobs' 
-              ? `${jobCount} jobs posted` 
-              : `${jobCount} jobs interested`}
+              ? `${jobCount} tasks posted` 
+              : `${jobCount} tasks interested`}
           </Text>
         </View>
         {activeTab === 'myJobs' && (
@@ -439,7 +439,7 @@ const MyJobsScreen = () => {
           onPress={() => setActiveTab('myJobs')}
         >
           <Text style={[styles.tabText, activeTab === 'myJobs' && styles.activeTabText]}>
-            My Jobs
+            My Tasks
           </Text>
           {activeTab === 'myJobs' && <View style={styles.tabIndicator} />}
         </TouchableOpacity>
@@ -449,7 +449,7 @@ const MyJobsScreen = () => {
           onPress={() => setActiveTab('interested')}
         >
           <Text style={[styles.tabText, activeTab === 'interested' && styles.activeTabText]}>
-            My Interested Jobs
+            My Interested Tasks
           </Text>
           {activeTab === 'interested' && <View style={styles.tabIndicator} />}
         </TouchableOpacity>
@@ -460,7 +460,7 @@ const MyJobsScreen = () => {
         {loading && (currentJobs?.length ?? 0) === 0 ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={Colors.primary} />
-            <Text style={styles.loadingText}>Loading jobs...</Text>
+            <Text style={styles.loadingText}>Loading tasks...</Text>
           </View>
         ) : (currentJobs?.length ?? 0) === 0 ? (
           renderEmptyState()
@@ -483,7 +483,7 @@ const MyJobsScreen = () => {
         onClose={() => setVerifySheetJob(null)}
         onStarted={() => {
           dispatch(getUserJobs());
-          showAlert({ title: "Job Started", message: "The job has been started and the worker has been notified.", type: "success" });
+          showAlert({ title: "Task Started", message: "The task has been started and the worker has been notified.", type: "success" });
         }}
       />
 
@@ -493,7 +493,7 @@ const MyJobsScreen = () => {
         onClose={() => setCompleteSheetJob(null)}
         onCompleted={() => {
           dispatch(getMyInterestedJobs({ page: 1, limit: 10 }));
-          showAlert({ title: "Job Completed!", message: "Great work! The job owner will now be prompted to leave a review.", type: "success" });
+          showAlert({ title: "Task Completed!", message: "Great work! The task owner will now be prompted to leave a review.", type: "success" });
         }}
       />
 

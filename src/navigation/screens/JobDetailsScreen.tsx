@@ -308,7 +308,7 @@ const JobDetailsScreen = () => {
   const handleBookmark = () => {
     showAlert({
       title: "Bookmark",
-      message: "Job bookmarked successfully!",
+      message: "Task bookmarked successfully!",
       type: "success",
     });
   };
@@ -663,11 +663,11 @@ const JobDetailsScreen = () => {
     return (
       <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Job Description</Text>
+          <Text style={styles.sectionTitle}>Task Description</Text>
           <Text style={styles.descriptionText}>{currentJob.description}</Text>
         </View>
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Job Details</Text>
+          <Text style={styles.sectionTitle}>Task Details</Text>
           <View style={styles.detailRow}>
             <Ionicons name="calendar-outline" size={20} color={Colors.primary} />
             <Text style={styles.detailText}>
@@ -750,7 +750,7 @@ const JobDetailsScreen = () => {
               onPress={handleEditJob}
             >
               <AntDesign name="edit" size={16} color={Colors.white} />
-              <Text style={styles.editButtonText}>Edit Job</Text>
+              <Text style={styles.editButtonText}>Edit Task</Text>
             </TouchableOpacity>
           </View>
         )} */}
@@ -776,7 +776,7 @@ const JobDetailsScreen = () => {
             <View style={styles.posterInfo}>
               <Text style={styles.posterName}>{seekerName}</Text>
               <Text style={styles.posterTitle}>
-                {externalSeeker ? 'Job Seeker' : 'Job Poster'}
+                {externalSeeker ? 'Task Seeker' : 'Task Poster'}
               </Text>
             </View>
           </View>
@@ -816,7 +816,7 @@ const JobDetailsScreen = () => {
       <SafeAreaView edges={['top']} style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Loading job details...</Text>
+          <Text style={styles.loadingText}>Loading task details...</Text>
         </View>
       </SafeAreaView>
     );
@@ -827,7 +827,7 @@ const JobDetailsScreen = () => {
       <SafeAreaView edges={['top']} style={styles.container}>
         <View style={styles.errorContainer}>
           <Ionicons name="alert-circle-outline" size={64} color={Colors.gray} />
-          <Text style={styles.errorText}>{error || 'Job not found'}</Text>
+          <Text style={styles.errorText}>{error || 'Task not found'}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={() => navigation.goBack()}>
             <Text style={styles.retryButtonText}>Go Back</Text>
           </TouchableOpacity>
@@ -983,7 +983,7 @@ const JobDetailsScreen = () => {
           <Text style={styles.jobTitle}>{currentJob.title}</Text>
           <Text style={styles.companyName}>
             {externalSeeker
-              ? `Job seeker: ${seekerDisplayName}`
+              ? `Task seeker: ${seekerDisplayName}`
               : `Posted by ${seekerDisplayName}`}
           </Text>
 

@@ -137,8 +137,8 @@ const AdminDashboardScreen = () => {
         <Text style={styles.sectionTitle}>Overview</Text>
         <View style={styles.statsGrid}>
           <StatCard label="Total Users" value={dashboardStats?.totalUsers ?? 0} icon="people-outline" color={ADMIN_ACCENT} bg={ADMIN_LIGHT} />
-          <StatCard label="Total Jobs" value={dashboardStats?.totalJobs ?? 0} icon="briefcase-outline" color="#7C3AED" bg="#F5F3FF" />
-          <StatCard label="Active Jobs" value={dashboardStats?.activeJobs ?? 0} icon="checkmark-circle-outline" color={Colors.green} bg={Colors.lightMintGreen} />
+          <StatCard label="Total Tasks" value={dashboardStats?.totalJobs ?? 0} icon="briefcase-outline" color="#7C3AED" bg="#F5F3FF" />
+          <StatCard label="Active Tasks" value={dashboardStats?.activeJobs ?? 0} icon="checkmark-circle-outline" color={Colors.green} bg={Colors.lightMintGreen} />
           <StatCard label="Verified Users" value={dashboardStats?.verifiedUsers ?? 0} icon="shield-checkmark-outline" color="#0891B2" bg="#E0F7FA" />
           <StatCard label="Pending Reviews" value={dashboardStats?.pendingVerifications ?? 0} icon="time-outline" color={Colors.orange} bg="#FFF3E0" />
           <StatCard label="Business Requests" value={dashboardStats?.pendingBusinessApprovals ?? 0} icon="storefront-outline" color="#EA580C" bg="#FFF7ED" />
@@ -170,9 +170,9 @@ const AdminDashboardScreen = () => {
           )}
         </View>
 
-        {/* Recent Jobs */}
+        {/* Recent Tasks */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent Jobs</Text>
+          <Text style={styles.sectionTitle}>Recent Tasks</Text>
           <TouchableOpacity onPress={() => (navigation as any).navigate("AdminJobsTab")}>
             <Text style={styles.seeAll}>See all</Text>
           </TouchableOpacity>
@@ -180,7 +180,7 @@ const AdminDashboardScreen = () => {
 
         <View style={styles.card}>
           {recentJobs.length === 0 && !dashboardLoading ? (
-            <Text style={styles.emptyText}>No jobs yet</Text>
+            <Text style={styles.emptyText}>No tasks yet</Text>
           ) : (
             recentJobs.map((j, i) => (
               <RecentRow

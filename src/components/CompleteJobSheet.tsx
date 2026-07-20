@@ -47,7 +47,7 @@ const CompleteJobSheet: React.FC<Props> = ({ visible, job, onClose, onCompleted 
     const trimmed = pinInput.trim().toUpperCase();
     if (!job) return;
     if (trimmed.length !== 5) {
-      setLocalError("Please enter the full 5-character Job PIN.");
+      setLocalError("Please enter the full 5-character Task PIN.");
       return;
     }
     setLocalError(null);
@@ -60,7 +60,7 @@ const CompleteJobSheet: React.FC<Props> = ({ visible, job, onClose, onCompleted 
         onClose();
       }, 1500);
     } catch (err: any) {
-      setLocalError(err || "Incorrect PIN or job cannot be completed.");
+      setLocalError(err || "Incorrect PIN or task cannot be completed.");
     }
   };
 
@@ -78,7 +78,7 @@ const CompleteJobSheet: React.FC<Props> = ({ visible, job, onClose, onCompleted 
 
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.headerTitle}>Complete Job</Text>
+            <Text style={styles.headerTitle}>Complete Task</Text>
             <TouchableOpacity onPress={onClose} hitSlop={12}>
               <Ionicons name="close" size={24} color={Colors.black} />
             </TouchableOpacity>
@@ -99,15 +99,15 @@ const CompleteJobSheet: React.FC<Props> = ({ visible, job, onClose, onCompleted 
             <View style={styles.instructionBox}>
               <Ionicons name="key" size={28} color="#F59E0B" />
               <View style={{ flex: 1 }}>
-                <Text style={styles.instructionTitle}>Enter the Job PIN</Text>
+                <Text style={styles.instructionTitle}>Enter the Task PIN</Text>
                 <Text style={styles.instructionText}>
-                  Ask the job owner for the 5-character Job PIN to confirm you have completed the work.
+                  Ask the task owner for the 5-character Task PIN to confirm you have completed the work.
                 </Text>
               </View>
             </View>
 
             {/* PIN input */}
-            <Text style={styles.label}>Job PIN</Text>
+            <Text style={styles.label}>Task PIN</Text>
             <TextInput
               style={styles.pinInput}
               placeholder="A B C 1 2"
@@ -136,7 +136,7 @@ const CompleteJobSheet: React.FC<Props> = ({ visible, job, onClose, onCompleted 
             {done ? (
               <View style={styles.successBanner}>
                 <Ionicons name="checkmark-circle" size={22} color="#10B981" />
-                <Text style={styles.successText}>Job completed! The owner has been notified.</Text>
+                <Text style={styles.successText}>Task completed! The owner has been notified.</Text>
               </View>
             ) : (
               <TouchableOpacity
@@ -158,7 +158,7 @@ const CompleteJobSheet: React.FC<Props> = ({ visible, job, onClose, onCompleted 
 
             {/* Attempts warning */}
             <Text style={styles.attemptsNote}>
-              You have a maximum of 5 PIN attempts per job.
+              You have a maximum of 5 PIN attempts per task.
             </Text>
           </View>
         </View>

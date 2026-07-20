@@ -90,19 +90,19 @@ export const startJob = createAsyncThunk(
     try {
       return await startJobApi(jobId, workerId);
     } catch (error: any) {
-      return rejectWithValue(error?.message || "Failed to start job");
+      return rejectWithValue(error?.message || "Failed to start task");
     }
   }
 );
 
-// Worker enters Job PIN → status becomes completed
+// Worker enters Task PIN → status becomes completed
 export const completeJob = createAsyncThunk(
   "jobVerification/completeJob",
   async ({ jobId, jobPin }: { jobId: string; jobPin: string }, { rejectWithValue }) => {
     try {
       return await completeJobApi(jobId, jobPin);
     } catch (error: any) {
-      return rejectWithValue(error?.message || "Failed to complete job");
+      return rejectWithValue(error?.message || "Failed to complete task");
     }
   }
 );

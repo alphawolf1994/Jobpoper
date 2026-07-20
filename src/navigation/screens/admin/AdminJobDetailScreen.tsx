@@ -74,7 +74,7 @@ const AdminJobDetailScreen = () => {
           ? <ActivityIndicator size="large" color={ADMIN_ACCENT} />
           : <>
               <Ionicons name="alert-circle-outline" size={40} color={Colors.gray} />
-              <Text style={styles.errorText}>{jobsError || "Job not found"}</Text>
+              <Text style={styles.errorText}>{jobsError || "Task not found"}</Text>
             </>
         }
       </SafeAreaView>
@@ -92,7 +92,7 @@ const AdminJobDetailScreen = () => {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={22} color={ADMIN_ACCENT} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle} numberOfLines={1}>Job Details</Text>
+        <Text style={styles.headerTitle} numberOfLines={1}>Task Details</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -123,7 +123,7 @@ const AdminJobDetailScreen = () => {
 
         {/* Job Info */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Job Information</Text>
+          <Text style={styles.sectionTitle}>Task Information</Text>
           <View style={styles.card}>
             <InfoRow label="Cost"           value={`PKR ${j.cost}`}                            valueColor={Colors.green} />
             <InfoRow label="Type"           value={j.jobType || "OnSite"} />
@@ -159,7 +159,7 @@ const AdminJobDetailScreen = () => {
         {/* Posted By — postedBy.fullName is FLAT (not postedBy.profile.fullName) */}
         {j.postedOnBehalf && j.externalContact && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Job Seeker (External Contact)</Text>
+            <Text style={styles.sectionTitle}>Task Seeker (External Contact)</Text>
             <View style={styles.card}>
               <InfoRow label="Name"  value={j.externalContact.name} />
               <InfoRow label="Phone" value={j.externalContact.phoneNumber} />

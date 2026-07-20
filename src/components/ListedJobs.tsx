@@ -135,7 +135,7 @@ const ListedJobs: React.FC<ListedJobsProps> = ({ searchQuery = '', scrollEnabled
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Listed Jobs</Text>
+        <Text style={styles.headerTitle}>Listed Tasks</Text>
         <TouchableOpacity onPress={() => navigation.navigate('AllListedJobsScreen')}>
           <Text style={styles.seeAllText}>See all</Text>
         </TouchableOpacity>
@@ -144,7 +144,7 @@ const ListedJobs: React.FC<ListedJobsProps> = ({ searchQuery = '', scrollEnabled
       {/* Job Cards List */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading listed jobs...</Text>
+          <Text style={styles.loadingText}>Loading listed tasks...</Text>
         </View>
       ) : (displayJobs && displayJobs.length > 0) ? (
         <FlatList
@@ -160,8 +160,8 @@ const ListedJobs: React.FC<ListedJobsProps> = ({ searchQuery = '', scrollEnabled
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText} numberOfLines={3} ellipsizeMode="tail">
             {searchQuery.trim()
-              ? `No listed jobs found for "${searchQuery}"`
-              : 'No listed jobs available in your area'}
+              ? `No listed tasks found for "${searchQuery}"`
+              : 'No listed tasks available in your area'}
           </Text>
         </View>
       )}

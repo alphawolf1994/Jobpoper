@@ -170,7 +170,7 @@ const TermsAndConditionsScreen = () => {
             <Text style={styles.sectionTitle}>10. Prohibited Activities</Text>
             <Text style={styles.sectionText}>Users and workers shall not:</Text>
             <Text style={styles.bulletPoint}>• Commit fraud</Text>
-            <Text style={styles.bulletPoint}>• Post illegal jobs</Text>
+            <Text style={styles.bulletPoint}>• Post illegal tasks</Text>
             <Text style={styles.bulletPoint}>• Offer prohibited services</Text>
             <Text style={styles.bulletPoint}>• Upload malicious software</Text>
             <Text style={styles.bulletPoint}>• Harass others</Text>

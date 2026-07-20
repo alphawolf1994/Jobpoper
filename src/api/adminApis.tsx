@@ -49,7 +49,7 @@ export const getAdminJobsApi = async (limit: number = 100) => {
     const res = await axiosInstance.get("/admin/jobs", { params: { limit } });
     return res.data;
   } catch (error: any) {
-    throw new Error(error.response?.data?.message || "Failed to fetch jobs");
+    throw new Error(error.response?.data?.message || "Failed to fetch tasks");
   }
 };
 
@@ -58,7 +58,7 @@ export const getAdminJobByIdApi = async (jobId: string) => {
     const res = await axiosInstance.get(`/admin/jobs/${jobId}`);
     return res.data;
   } catch (error: any) {
-    throw new Error(error.response?.data?.message || "Failed to fetch job details");
+    throw new Error(error.response?.data?.message || "Failed to fetch task details");
   }
 };
 

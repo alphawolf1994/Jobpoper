@@ -96,7 +96,7 @@ const Header: React.FC = () => {
       Toast.show({
         type: "error",
         text1: "Please select a listed location",
-        text2: "Coordinates are required for nearby jobs and notifications.",
+        text2: "Coordinates are required for nearby tasks and notifications.",
       });
     }
     setIsLocationModalVisible(false);
@@ -376,7 +376,7 @@ const Header: React.FC = () => {
           
           <ScrollView style={styles.modalContent}>
             <Text style={styles.modalSubtitle}>
-              Select your preferred location to see relevant job opportunities
+              Select your preferred location to see relevant task opportunities
             </Text>
             
             <TouchableOpacity

@@ -152,7 +152,7 @@ const HotJobs: React.FC<HotJobsProps> = ({ searchQuery = '' }) => {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Hot Jobs</Text>
+        <Text style={styles.headerTitle}>Hot Tasks</Text>
         <TouchableOpacity onPress={() => navigation.navigate('Hot Jobs')}>
           <Text style={styles.seeAllText}>See all</Text>
         </TouchableOpacity>
@@ -161,7 +161,7 @@ const HotJobs: React.FC<HotJobsProps> = ({ searchQuery = '' }) => {
       {/* Job Cards ScrollView */}
       {loading ? (
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>Loading hot jobs...</Text>
+          <Text style={styles.loadingText}>Loading hot tasks...</Text>
         </View>
       ) : (displayJobs && displayJobs.length > 0) ? (
         <ScrollView
@@ -178,8 +178,8 @@ const HotJobs: React.FC<HotJobsProps> = ({ searchQuery = '' }) => {
         <View style={styles.emptyContainer}>
           <Text style={styles.emptyText} numberOfLines={3} ellipsizeMode="tail">
             {searchQuery.trim()
-              ? `No hot jobs found for "${searchQuery}"`
-              : 'No hot jobs available in your area'}
+              ? `No hot tasks found for "${searchQuery}"`
+              : 'No hot tasks available in your area'}
           </Text>
         </View>
       )}

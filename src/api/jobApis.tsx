@@ -86,7 +86,7 @@ export const createJobApi = async (jobData: {
         });
         return res.data;
     } catch (error: any) {
-        throw new Error(error.response?.data?.message || "Failed to create job");
+        throw new Error(error.response?.data?.message || "Failed to create task");
     }
 };
 
@@ -96,7 +96,7 @@ export const getAllJobsApi = async () => {
         const res = await axiosInstance.get("/jobs");
         return res.data;
     } catch (error: any) {
-        throw new Error(error.response?.data?.message || "Failed to fetch jobs");
+        throw new Error(error.response?.data?.message || "Failed to fetch tasks");
     }
 };
 
@@ -106,7 +106,7 @@ export const getJobByIdApi = async (jobId: string) => {
         const res = await axiosInstance.get(`/jobs/${jobId}`);
         return res.data;
     } catch (error: any) {
-        throw new Error(error.response?.data?.message || "Failed to fetch job");
+        throw new Error(error.response?.data?.message || "Failed to fetch task");
     }
 };
 
@@ -206,17 +206,17 @@ export const updateJobApi = async (jobId: string, jobData: {
         return res.data;
     } catch (error: any) {
         console.log("Error in updateJobApi:", error);
-        throw new Error(error.response?.data?.message || "Failed to update job");
+        throw new Error(error.response?.data?.message || "Failed to update task");
     }
 };
 
-// Delete Job API
+// Delete Task API
 export const deleteJobApi = async (jobId: string) => {
     try {
         const res = await axiosInstance.delete(`/jobs/${jobId}`);
         return res.data;
     } catch (error: any) {
-        throw new Error(error.response?.data?.message || "Failed to delete job");
+        throw new Error(error.response?.data?.message || "Failed to delete task");
     }
 };
 
@@ -236,7 +236,7 @@ export const getUserJobsApi = async () => {
         const res = await axiosInstance.get("/jobs/my-jobs");
         return res.data;
     } catch (error: any) {
-        throw new Error(error.response?.data?.message || "Failed to fetch user jobs");
+        throw new Error(error.response?.data?.message || "Failed to fetch user tasks");
     }
 };
 
@@ -267,7 +267,7 @@ export const getHotJobsApi = async (
         if (__DEV__) {
             console.warn("[getHotJobsApi] error:", error.response?.status, error.response?.data, error.message);
         }
-        throw new Error(error.response?.data?.message || "Failed to fetch hot jobs");
+        throw new Error(error.response?.data?.message || "Failed to fetch hot tasks");
     }
 };
 
@@ -300,7 +300,7 @@ export const searchHotJobsApi = async (
         });
         return res.data;
     } catch (error: any) {
-        throw new Error(error.response?.data?.message || "Failed to search hot jobs");
+        throw new Error(error.response?.data?.message || "Failed to search hot tasks");
     }
 };
 
@@ -333,7 +333,7 @@ export const searchListedJobsApi = async (
         });
         return res.data;
     } catch (error: any) {
-        throw new Error(error.response?.data?.message || "Failed to search listed jobs");
+        throw new Error(error.response?.data?.message || "Failed to search listed tasks");
     }
 };
 
@@ -364,7 +364,7 @@ export const getListedJobsApi = async (
         if (__DEV__) {
             console.warn("[getListedJobsApi] error:", error.response?.status, error.response?.data, error.message);
         }
-        throw new Error(error.response?.data?.message || "Failed to fetch listed jobs");
+        throw new Error(error.response?.data?.message || "Failed to fetch listed tasks");
     }
 };
 
@@ -383,7 +383,7 @@ export const getMyInterestedJobsApi = async (page: number = 1, limit: number = 1
         });
         return res.data;
     } catch (error: any) {
-        throw new Error(error.response?.data?.message || "Failed to fetch interested jobs");
+        throw new Error(error.response?.data?.message || "Failed to fetch interested tasks");
     }
 };
 
@@ -395,7 +395,7 @@ export const updateJobStatusApi = async (jobId: string, status: string) => {
         });
         return res.data;
     } catch (error: any) {
-        throw new Error(error.response?.data?.message || "Failed to update job status");
+        throw new Error(error.response?.data?.message || "Failed to update task status");
     }
 };
 
@@ -405,7 +405,7 @@ export const expireOldJobsApi = async () => {
         const res = await axiosInstance.post("/jobs/expire-old");
         return res.data;
     } catch (error: any) {
-        throw new Error(error.response?.data?.message || "Failed to expire old jobs");
+        throw new Error(error.response?.data?.message || "Failed to expire old tasks");
     }
 };
 
@@ -425,17 +425,17 @@ export const startJobApi = async (jobId: string, workerId: string) => {
         const res = await axiosInstance.post(`/jobs/${jobId}/start`, { workerId });
         return res.data;
     } catch (error: any) {
-        throw new Error(error.response?.data?.message || "Failed to start job");
+        throw new Error(error.response?.data?.message || "Failed to start task");
     }
 };
 
-// Worker enters Job PIN to mark job as completed
+// Worker enters Task PIN to mark job as completed
 export const completeJobApi = async (jobId: string, jobPin: string) => {
     try {
         const res = await axiosInstance.post(`/jobs/${jobId}/complete`, { jobPin });
         return res.data;
     } catch (error: any) {
-        throw new Error(error.response?.data?.message || "Failed to complete job");
+        throw new Error(error.response?.data?.message || "Failed to complete task");
     }
 };
 

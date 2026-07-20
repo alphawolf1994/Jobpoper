@@ -124,7 +124,7 @@ export const createJob = createAsyncThunk(
       const response = await createJobApi(jobData);
       return response;
     } catch (error: any) {
-      return rejectWithValue(error?.message || "Failed to create job");
+      return rejectWithValue(error?.message || "Failed to create task");
     }
   }
 );
@@ -137,7 +137,7 @@ export const getAllJobs = createAsyncThunk(
       const response = await getAllJobsApi();
       return response;
     } catch (error: any) {
-      return rejectWithValue(error?.message || "Failed to fetch jobs");
+      return rejectWithValue(error?.message || "Failed to fetch tasks");
     }
   }
 );
@@ -150,7 +150,7 @@ export const getJobById = createAsyncThunk(
       const response = await getJobByIdApi(jobId);
       return response;
     } catch (error: any) {
-      return rejectWithValue(error?.message || "Failed to fetch job");
+      return rejectWithValue(error?.message || "Failed to fetch task");
     }
   }
 );
@@ -164,12 +164,12 @@ export const updateJob = createAsyncThunk(
       return response;
     } catch (error: any) {
       console.log("Error in updateJob thunk:", error);
-      return rejectWithValue(error?.message || error?.Error || "Failed to update job");
+      return rejectWithValue(error?.message || error?.Error || "Failed to update task");
     }
   }
 );
 
-// Delete Job Async Thunk
+// Delete Task Async Thunk
 export const deleteJob = createAsyncThunk(
   "job/deleteJob",
   async (jobId: string, { rejectWithValue }) => {
@@ -177,7 +177,7 @@ export const deleteJob = createAsyncThunk(
       const response = await deleteJobApi(jobId);
       return response;
     } catch (error: any) {
-      return rejectWithValue(error?.message || "Failed to delete job");
+      return rejectWithValue(error?.message || "Failed to delete task");
     }
   }
 );
@@ -190,12 +190,12 @@ export const getUserJobs = createAsyncThunk(
       const response = await getUserJobsApi();
       return response;
     } catch (error: any) {
-      return rejectWithValue(error?.message || "Failed to fetch user jobs");
+      return rejectWithValue(error?.message || "Failed to fetch user tasks");
     }
   }
 );
 
-// Get Hot Jobs Async Thunk
+// Get Hot Tasks Async Thunk
 export const getHotJobs = createAsyncThunk(
   "job/getHotJobs",
   async ({ location, page = 1, limit = 10, sortOrder = 'desc', category }: {
@@ -211,12 +211,12 @@ export const getHotJobs = createAsyncThunk(
       const response = await getHotJobsApi(latitude, longitude, page, limit, sortOrder, category ?? null);
       return response;
     } catch (error: any) {
-      return rejectWithValue(error?.message || "Failed to fetch hot jobs");
+      return rejectWithValue(error?.message || "Failed to fetch hot tasks");
     }
   }
 );
 
-// Get Listed Jobs Async Thunk
+// Get Listed Tasks Async Thunk
 export const getListedJobs = createAsyncThunk(
   "job/getListedJobs",
   async ({ location, page = 1, limit = 10, sortOrder = 'desc', category }: {
@@ -232,12 +232,12 @@ export const getListedJobs = createAsyncThunk(
       const response = await getListedJobsApi(latitude, longitude, page, limit, sortOrder, category ?? null);
       return response;
     } catch (error: any) {
-      return rejectWithValue(error?.message || "Failed to fetch listed jobs");
+      return rejectWithValue(error?.message || "Failed to fetch listed tasks");
     }
   }
 );
 
-// Get All Hot Jobs with Pagination (for AllHotJobsScreen)
+// Get All Hot Tasks with Pagination (for AllHotJobsScreen)
 export const getAllHotJobsPaginated = createAsyncThunk(
   "job/getAllHotJobsPaginated",
   async ({ location, page = 1, limit = 10, sortOrder = 'desc', append = false, category }: {
@@ -254,12 +254,12 @@ export const getAllHotJobsPaginated = createAsyncThunk(
       const response = await getHotJobsApi(latitude, longitude, page, limit, sortOrder, category ?? null);
       return { ...response, append };
     } catch (error: any) {
-      return rejectWithValue(error?.message || "Failed to fetch hot jobs");
+      return rejectWithValue(error?.message || "Failed to fetch hot tasks");
     }
   }
 );
 
-// Search Hot Jobs with Pagination
+// Search Hot Tasks with Pagination
 export const searchHotJobsPaginated = createAsyncThunk(
   "job/searchHotJobsPaginated",
   async ({
@@ -287,12 +287,12 @@ export const searchHotJobsPaginated = createAsyncThunk(
       const response = await searchHotJobsApi(latitude, longitude, search, page, limit, sortBy, sortOrder, category ?? null);
       return { ...response, append };
     } catch (error: any) {
-      return rejectWithValue(error?.message || "Failed to search hot jobs");
+      return rejectWithValue(error?.message || "Failed to search hot tasks");
     }
   }
 );
 
-// Search Listed Jobs with Pagination
+// Search Listed Tasks with Pagination
 export const searchListedJobsPaginated = createAsyncThunk(
   "job/searchListedJobsPaginated",
   async ({
@@ -320,12 +320,12 @@ export const searchListedJobsPaginated = createAsyncThunk(
       const response = await searchListedJobsApi(latitude, longitude, search, page, limit, sortBy, sortOrder, category ?? null);
       return { ...response, append };
     } catch (error: any) {
-      return rejectWithValue(error?.message || "Failed to search listed jobs");
+      return rejectWithValue(error?.message || "Failed to search listed tasks");
     }
   }
 );
 
-// Get All Listed Jobs with Pagination (for AllListedJobsScreen)
+// Get All Listed Tasks with Pagination (for AllListedJobsScreen)
 export const getAllListedJobsPaginated = createAsyncThunk(
   "job/getAllListedJobsPaginated",
   async ({ location, page = 1, limit = 10, sortOrder = 'desc', append = false, category }: {
@@ -342,12 +342,12 @@ export const getAllListedJobsPaginated = createAsyncThunk(
       const response = await getListedJobsApi(latitude, longitude, page, limit, sortOrder, category ?? null);
       return { ...response, append };
     } catch (error: any) {
-      return rejectWithValue(error?.message || "Failed to fetch listed jobs");
+      return rejectWithValue(error?.message || "Failed to fetch listed tasks");
     }
   }
 );
 
-// Get My Interested Jobs Async Thunk
+// Get My Interested Tasks Async Thunk
 export const getMyInterestedJobs = createAsyncThunk(
   "job/getMyInterestedJobs",
   async ({ page = 1, limit = 10, sortBy, sortOrder, append = false }: { 
@@ -361,7 +361,7 @@ export const getMyInterestedJobs = createAsyncThunk(
       const response = await getMyInterestedJobsApi(page, limit, sortBy, sortOrder);
       return { ...response, append };
     } catch (error: any) {
-      return rejectWithValue(error?.message || "Failed to fetch interested jobs");
+      return rejectWithValue(error?.message || "Failed to fetch interested tasks");
     }
   }
 );
@@ -374,7 +374,7 @@ export const updateJobStatus = createAsyncThunk(
       const response = await updateJobStatusApi(jobId, status);
       return response;
     } catch (error: any) {
-      return rejectWithValue(error?.message || "Failed to update job status");
+      return rejectWithValue(error?.message || "Failed to update task status");
     }
   }
 );
@@ -387,7 +387,7 @@ export const expireOldJobs = createAsyncThunk(
       const response = await expireOldJobsApi();
       return response;
     } catch (error: any) {
-      return rejectWithValue(error?.message || "Failed to expire old jobs");
+      return rejectWithValue(error?.message || "Failed to expire old tasks");
     }
   }
 );
@@ -515,7 +515,7 @@ const jobSlice = createSlice({
         state.error = action.payload as string;
         state.loading = false;
       })
-      // Delete Job
+      // Delete Task
       .addCase(deleteJob.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -554,7 +554,7 @@ const jobSlice = createSlice({
         state.error = action.payload as string;
         state.loading = false;
       })
-      // Get Hot Jobs
+      // Get Hot Tasks
       .addCase(getHotJobs.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -571,7 +571,7 @@ const jobSlice = createSlice({
         state.error = action.payload as string;
         state.loading = false;
       })
-      // Get Listed Jobs
+      // Get Listed Tasks
       .addCase(getListedJobs.pending, (state) => {
         state.loading = true;
         state.error = null;
@@ -588,7 +588,7 @@ const jobSlice = createSlice({
         state.error = action.payload as string;
         state.loading = false;
       })
-      // Get All Hot Jobs Paginated
+      // Get All Hot Tasks Paginated
       .addCase(getAllHotJobsPaginated.pending, (state, action) => {
         if (action.meta.arg.append) {
           state.loadingMore = true;
@@ -621,7 +621,7 @@ const jobSlice = createSlice({
         state.loading = false;
         state.loadingMore = false;
       })
-      // Search Hot Jobs Paginated
+      // Search Hot Tasks Paginated
       .addCase(searchHotJobsPaginated.pending, (state, action) => {
         if (action.meta.arg.append) {
           state.loadingMore = true;
@@ -654,7 +654,7 @@ const jobSlice = createSlice({
         state.loading = false;
         state.loadingMore = false;
       })
-      // Get All Listed Jobs Paginated
+      // Get All Listed Tasks Paginated
       .addCase(getAllListedJobsPaginated.pending, (state, action) => {
         if (action.meta.arg.append) {
           state.loadingMore = true;
@@ -687,7 +687,7 @@ const jobSlice = createSlice({
         state.loading = false;
         state.loadingMore = false;
       })
-      // Search Listed Jobs Paginated
+      // Search Listed Tasks Paginated
       .addCase(searchListedJobsPaginated.pending, (state, action) => {
         if (action.meta.arg.append) {
           state.loadingMore = true;
@@ -720,7 +720,7 @@ const jobSlice = createSlice({
         state.loading = false;
         state.loadingMore = false;
       })
-      // Get My Interested Jobs
+      // Get My Interested Tasks
       .addCase(getMyInterestedJobs.pending, (state, action) => {
         if (action.meta.arg.append) {
           state.loadingMore = true;

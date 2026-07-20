@@ -151,7 +151,7 @@ const OrdersScreen: React.FC = () => {
 
     return (
       <View style={styles.jobCard}>
-        {/* Top label — newest indicator (mirrors Hot Jobs "fire" label) */}
+        {/* Top label — newest indicator (mirrors Hot Tasks "fire" label) */}
         <View style={styles.hotLabel}>
           <Ionicons name="cart" size={16} color={Colors.primary} />
         </View>

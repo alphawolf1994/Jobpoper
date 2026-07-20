@@ -264,7 +264,7 @@ const VerifyWorkerSheet: React.FC<Props> = ({ visible, job, onClose, onStarted }
                 {confirmed ? (
                   <View style={styles.successBanner}>
                     <Ionicons name="checkmark-circle" size={20} color="#10B981" />
-                    <Text style={styles.successText}>Job started! Worker has been notified.</Text>
+                    <Text style={styles.successText}>Task started! Worker has been notified.</Text>
                   </View>
                 ) : (
                   <TouchableOpacity
@@ -278,7 +278,7 @@ const VerifyWorkerSheet: React.FC<Props> = ({ visible, job, onClose, onStarted }
                     ) : (
                       <>
                         <Ionicons name="checkmark-circle-outline" size={18} color={Colors.white} />
-                        <Text style={styles.startBtnText}>Confirm & Start Job</Text>
+                        <Text style={styles.startBtnText}>Confirm & Start Task</Text>
                       </>
                     )}
                   </TouchableOpacity>
