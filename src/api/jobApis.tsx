@@ -221,9 +221,16 @@ export const deleteJobApi = async (jobId: string) => {
 };
 
 // Show interest in a job API
-export const showInterestOnJobApi = async (jobId: string) => {
+export const showInterestOnJobApi = async (
+    jobId: string,
+    proposedPrice?: number | null
+) => {
     try {
-        const res = await axiosInstance.post(`/jobs/${jobId}/interest`);
+        const body =
+            proposedPrice !== undefined && proposedPrice !== null
+                ? { proposedPrice }
+                : {};
+        const res = await axiosInstance.post(`/jobs/${jobId}/interest`, body);
         return res.data;
     } catch (error: any) {
         throw new Error(error.response?.data?.message || "Failed to record interest");

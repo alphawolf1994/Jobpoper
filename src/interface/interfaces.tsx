@@ -807,6 +807,8 @@ export interface InterestedUserEntry {
   };
   notedAt: string;
   _id: string;
+  /** Worker's proposed price; null/undefined means they accepted the client's offered price */
+  proposedPrice?: number | null;
 }
 
 // Worker lookup / verification interfaces

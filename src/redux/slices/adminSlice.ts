@@ -99,6 +99,7 @@ export interface AdminJob {
     phoneNumber: string;
     fullName: string;   // flat
     notedAt: string;
+    proposedPrice?: number | null;
   }[];
 }
 

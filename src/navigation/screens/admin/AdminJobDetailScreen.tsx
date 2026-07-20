@@ -219,6 +219,15 @@ const AdminJobDetailScreen = () => {
                     <Text style={styles.interestedSub}>
                       {entry.phoneNumber} · {entry.notedAt ? new Date(entry.notedAt).toLocaleDateString() : ""}
                     </Text>
+                    {entry.proposedPrice != null ? (
+                      <Text style={[styles.interestedSub, { color: "#065F46", fontWeight: "600", marginTop: 2 }]}>
+                        Proposed: {entry.proposedPrice}
+                      </Text>
+                    ) : (
+                      <Text style={[styles.interestedSub, { marginTop: 2 }]}>
+                        Accepts offered price
+                      </Text>
+                    )}
                   </View>
                   <Ionicons name="chevron-forward" size={16} color={Colors.gray} />
                 </TouchableOpacity>

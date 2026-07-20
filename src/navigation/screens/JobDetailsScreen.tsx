@@ -24,13 +24,12 @@ import { AppDispatch, RootState } from '../../redux/store';
 import { Job, SavedLocationData, InterestedUserEntry } from '../../interface/interfaces';
 import { Image } from 'expo-image';
 import { IMAGE_BASE_URL } from '../../api/baseURL';
-import { showInterestOnJobApi } from '../../api/jobApis';
 import { useAlertModal } from "../../hooks/useAlertModal";
 import { formatDateDDMMYYYY, getJobCategoryName } from "../../utils";
 import VerificationBottomSheet, { VerificationBottomSheetHandle } from "../../components/VerificationBottomSheet";
 import PickupPreferencesBottomSheet, { PickupPreferencesBottomSheetHandle } from "../../components/PickupPreferencesBottomSheet";
+import ShowInterestSheet from "../../components/ShowInterestSheet";
 import { fetchVerificationStatus } from "../../redux/slices/verificationSlice";
-import { getCategoryVisual } from "../../components/CategoryPickerSheet";
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -48,14 +47,20 @@ const JobDetailsScreen = () => {
   // Get jobId from route params
   const jobId = (route.params as any)?.jobId;
 
-  // Image modal state for attachment preview
+  // Image modal state for attachment / work-image preview
   const [imageModalVisible, setImageModalVisible] = useState(false);
   const [imageModalUri, setImageModalUri] = useState<string | null>(null);
+  const [modalImages, setModalImages] = useState<string[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [expandedInterestIds, setExpandedInterestIds] = useState<Record<string, boolean>>({});
 
   // Optimistic flag so the Show Interest button flips to "Showed Interest"
   // immediately on success, before the re-fetch resolves.
   const [optimisticInterested, setOptimisticInterested] = useState(false);
+  const [optimisticProposedPrice, setOptimisticProposedPrice] = useState<
+    number | null | undefined
+  >(undefined);
+  const [showInterestSheetVisible, setShowInterestSheetVisible] = useState(false);
 
   // Voice note player state
   const voiceSoundRef = useRef<Audio.Sound | null>(null);
@@ -70,6 +75,7 @@ const JobDetailsScreen = () => {
       // Reset optimistic interest flag when navigating to a different job —
       // the backend response is the source of truth for that job.
       setOptimisticInterested(false);
+      setOptimisticProposedPrice(undefined);
     }
   }, [dispatch, jobId]);
 
@@ -269,40 +275,20 @@ const JobDetailsScreen = () => {
       return;
     }
 
+    setShowInterestSheetVisible(true);
+  };
+
+  const handleInterestSubmitted = (message?: string, proposedPrice?: number | null) => {
+    setOptimisticInterested(true);
+    setOptimisticProposedPrice(proposedPrice ?? null);
     showAlert({
-      title: "Show Interest",
-      message: `Show interest in "${currentJob.title}"?`,
-      type: "info",
-      buttons: [
-        {
-          label: "Cancel",
-          variant: "secondary",
-        },
-        {
-          label: "Show Interest",
-          onPress: async () => {
-            try {
-              const res = await showInterestOnJobApi(currentJob._id);
-              setOptimisticInterested(true);
-              showAlert({
-                title: "Success",
-                message: res?.message || "Interest recorded successfully",
-                type: "success",
-              });
-              if ((route.params as any)?.jobId) {
-                dispatch(getJobById((route.params as any).jobId));
-              }
-            } catch (e: any) {
-              showAlert({
-                title: "Error",
-                message: e?.message || "Failed to record interest",
-                type: "error",
-              });
-            }
-          },
-        },
-      ],
+      title: "Interest Submitted",
+      message: message || "Your interest has been sent to the task owner.",
+      type: "success",
     });
+    if ((route.params as any)?.jobId) {
+      dispatch(getJobById((route.params as any).jobId));
+    }
   };
 
   const handleBookmark = () => {
@@ -422,10 +408,12 @@ const JobDetailsScreen = () => {
 
   // Try to detect a currency symbol from the job's `cost` string (e.g. "₹500", "$50").
   // Falls back to "₹" — matches the example in the spec.
+  // Try to detect a currency symbol from the job's `cost` string (e.g. "₹500", "$50").
+  // If the budget is a bare number like "10", do not invent a default currency.
   const getCurrencySymbol = (cost?: string): string => {
-    if (!cost) return '₹';
+    if (!cost) return '';
     const match = cost.trim().match(/^[^\d.,\s]+/);
-    return match?.[0] || '₹';
+    return match?.[0] || '';
   };
 
   // Render-friendly label for the stored vehicleType enum.
@@ -620,37 +608,59 @@ const JobDetailsScreen = () => {
     }
   };
 
+  const openImageGallery = (images: string[], index: number) => {
+    if (!images.length) return;
+    setModalImages(images);
+    setCurrentImageIndex(index);
+    setImageModalUri(images[index] || null);
+    setImageModalVisible(true);
+  };
+
+  const closeImageGallery = () => {
+    setImageModalVisible(false);
+    setImageModalUri(null);
+    setModalImages([]);
+    setCurrentImageIndex(0);
+  };
+
+  const toggleInterestExpanded = (entryId: string) => {
+    setExpandedInterestIds((prev) => ({
+      ...prev,
+      [entryId]: !prev[entryId],
+    }));
+  };
+
   const renderAttachments = () => {
     if (!currentJob || !currentJob.attachments || currentJob.attachments.length === 0) {
       return null;
     }
 
+    const attachmentUris = currentJob.attachments.map(
+      (item) => `${IMAGE_BASE_URL}${item.startsWith("/") ? item : `/${item}`}`
+    );
+
     return (
       <View style={styles.attachmentsSection}>
         <Text style={styles.sectionTitle}>Attachments ({currentJob.attachments.length})</Text>
         <FlatList
-          data={currentJob.attachments}
+          data={attachmentUris}
           horizontal
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item, index) => `${item}-${index}`}
-          renderItem={({ item, index }) => {
-            const uri = `${IMAGE_BASE_URL}${item.startsWith("/") ? item : `/${item}`}`;
-            return (
-              <TouchableOpacity onPress={() => {
-                setCurrentImageIndex(index);
-                setImageModalUri(uri);
-                setImageModalVisible(true);
-              }} activeOpacity={0.9}>
-                <View style={styles.attachmentCard}>
-                  <Image
-                    source={{ uri }}
-                    style={styles.attachmentImage}
-                    contentFit="cover"
-                  />
-                </View>
-              </TouchableOpacity>
-            );
-          }}
+          renderItem={({ item, index }) => (
+            <TouchableOpacity
+              onPress={() => openImageGallery(attachmentUris, index)}
+              activeOpacity={0.9}
+            >
+              <View style={styles.attachmentCard}>
+                <Image
+                  source={{ uri: item }}
+                  style={styles.attachmentImage}
+                  contentFit="cover"
+                />
+              </View>
+            </TouchableOpacity>
+          )}
           ItemSeparatorComponent={() => <View style={{ width: 12 }} />}
         />
       </View>
@@ -857,6 +867,22 @@ const JobDetailsScreen = () => {
     (!!user?.id &&
       interestedUsers.some((entry) => entry.user?._id === user.id));
 
+  const myInterestEntry =
+    !!user?.id
+      ? interestedUsers.find((entry) => entry.user?._id === user.id)
+      : undefined;
+  const myProposedPrice =
+    optimisticProposedPrice !== undefined
+      ? optimisticProposedPrice
+      : myInterestEntry?.proposedPrice != null
+        ? myInterestEntry.proposedPrice
+        : null;
+  const hasCustomProposedPrice =
+    optimisticProposedPrice !== undefined
+      ? optimisticProposedPrice != null
+      : myInterestEntry?.proposedPrice != null;
+  const currencySymbol = getCurrencySymbol(currentJob.cost);
+
   return (
     <SafeAreaView edges={['top']} style={styles.container}>
       {/* Image preview modal */}
@@ -864,36 +890,25 @@ const JobDetailsScreen = () => {
         visible={imageModalVisible}
         transparent
         animationType="fade"
-        onRequestClose={() => {
-          setImageModalVisible(false);
-          setImageModalUri(null);
-          setCurrentImageIndex(0);
-        }}
+        onRequestClose={closeImageGallery}
       >
         <View style={styles.modalOverlay}>
-          <TouchableOpacity 
-            style={styles.modalClose} 
-            onPress={() => {
-              setImageModalVisible(false);
-              setImageModalUri(null);
-              setCurrentImageIndex(0);
-            }}
-          >
+          <TouchableOpacity style={styles.modalClose} onPress={closeImageGallery}>
             <Ionicons name="close" size={28} color={Colors.white} />
           </TouchableOpacity>
           
           {/* Image counter */}
-          {currentJob?.attachments && currentJob.attachments.length > 1 && (
+          {modalImages.length > 1 && (
             <View style={styles.imageCounter}>
               <Text style={styles.imageCounterText}>
-                {currentImageIndex + 1} / {currentJob.attachments.length}
+                {currentImageIndex + 1} / {modalImages.length}
               </Text>
             </View>
           )}
           
-          {currentJob?.attachments && currentJob.attachments.length > 1 ? (
+          {modalImages.length > 1 ? (
             <FlatList
-              data={currentJob.attachments}
+              data={modalImages}
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
@@ -905,33 +920,25 @@ const JobDetailsScreen = () => {
                 index,
               })}
               onMomentumScrollEnd={(event) => {
-                if (!currentJob?.attachments) return;
                 const index = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
                 setCurrentImageIndex(index);
-                const attachment = currentJob.attachments[index];
-                if (attachment) {
-                  const uri = `${IMAGE_BASE_URL}${attachment.startsWith("/") ? attachment : `/${attachment}`}`;
-                  setImageModalUri(uri);
-                }
+                setImageModalUri(modalImages[index] || null);
               }}
-              renderItem={({ item }) => {
-                const uri = `${IMAGE_BASE_URL}${item.startsWith("/") ? item : `/${item}`}`;
-                return (
-                  <ScrollView
-                    style={styles.modalScroll}
-                    contentContainerStyle={styles.modalContent}
-                    maximumZoomScale={3}
-                    minimumZoomScale={1}
-                    centerContent
-                  >
-                    <Image
-                      source={{ uri }}
-                      style={styles.modalImage}
-                      contentFit="contain"
-                    />
-                  </ScrollView>
-                );
-              }}
+              renderItem={({ item }) => (
+                <ScrollView
+                  style={styles.modalScroll}
+                  contentContainerStyle={styles.modalContent}
+                  maximumZoomScale={3}
+                  minimumZoomScale={1}
+                  centerContent
+                >
+                  <Image
+                    source={{ uri: item }}
+                    style={styles.modalImage}
+                    contentFit="contain"
+                  />
+                </ScrollView>
+              )}
             />
           ) : (
             <ScrollView
@@ -1083,10 +1090,57 @@ const JobDetailsScreen = () => {
                   typeof pref?.pricePerKm === 'number'
                     ? Math.round(pref.pricePerKm * distanceKm * 100) / 100
                     : null;
+                const isExpanded = !!expandedInterestIds[entry._id];
+                const prof = entry.user.professionalProfile;
+                const workImageUris =
+                  prof?.workImages?.map(
+                    (imgPath) =>
+                      `${IMAGE_BASE_URL}${imgPath.startsWith('/') ? imgPath : `/${imgPath}`}`
+                  ) || [];
+
+                const handleContactPress = () => {
+                  if (entry.user.phoneNumber) {
+                    showAlert({
+                      title: "Contact",
+                      message: `Phone: ${entry.user.phoneNumber}`,
+                      type: "info",
+                      buttons: [
+                        {
+                          label: "Cancel",
+                          variant: "secondary",
+                        },
+                        {
+                          label: "Call",
+                          onPress: () => {
+                            if (!entry.user.phoneNumber) return;
+                            const phoneNumber = entry.user.phoneNumber.replace(/[\s\-\(\)]/g, '');
+                            Linking.openURL(`tel:${phoneNumber}`).catch(() => {
+                              showAlert({
+                                title: "Error",
+                                message: "Could not open phone dialer. Please check if the phone number is valid.",
+                                type: "error",
+                              });
+                            });
+                          },
+                        },
+                      ],
+                    });
+                  } else {
+                    showAlert({
+                      title: "Contact",
+                      message: "No phone number available",
+                      type: "error",
+                    });
+                  }
+                };
 
                 return (
                   <View key={entry._id} style={styles.interestCard}>
-                    <View style={styles.interestTopRow}>
+                    <TouchableOpacity
+                      style={styles.interestTopRow}
+                      activeOpacity={0.75}
+                      onPress={() => toggleInterestExpanded(entry._id)}
+                    >
                       <View style={styles.interestLeft}>
                         <View style={styles.interestAvatar}>
                           {entry.user.profile.profileImage ? (
@@ -1102,154 +1156,143 @@ const JobDetailsScreen = () => {
                           )}
                         </View>
                         <View style={styles.interestInfo}>
-                          <Text style={styles.interestName}>{entry.user.profile.fullName}</Text>
+                          <Text style={styles.interestName} numberOfLines={1}>
+                            {entry.user.profile.fullName}
+                          </Text>
                           <Text style={styles.interestEmail}>{entry.user.profile.email}</Text>
                           <Text style={styles.interestNotedAt}>Noted at {new Date(entry.notedAt).toLocaleString()}</Text>
-                        </View>
-                      </View>
-                      <TouchableOpacity
-                        style={styles.contactSmallButton}
-                        onPress={() => {
-                          if (entry.user.phoneNumber) {
-                            showAlert({
-                              title: "Contact",
-                              message: `Phone: ${entry.user.phoneNumber}`,
-                              type: "info",
-                              buttons: [
-                                {
-                                  label: "Cancel",
-                                  variant: "secondary",
-                                },
-                                {
-                                  label: "Call",
-                                  onPress: () => {
-                                    if (!entry.user.phoneNumber) return;
-                                    // Format phone number for tel: URL (remove spaces, dashes, etc.)
-                                    const phoneNumber = entry.user.phoneNumber.replace(/[\s\-\(\)]/g, '');
-                                    const telUrl = `tel:${phoneNumber}`;
-
-                                    Linking.openURL(telUrl).catch((err) => {
-                                      showAlert({
-                                        title: "Error",
-                                        message: "Could not open phone dialer. Please check if the phone number is valid.",
-                                        type: "error",
-                                      });
-                                    });
-                                  },
-                                },
-                              ],
-                            });
-                          } else {
-                            showAlert({
-                              title: "Contact",
-                              message: "No phone number available",
-                              type: "error",
-                            });
-                          }
-                        }}
-                      >
-                        <Text style={styles.contactSmallButtonText}>Contact</Text>
-                      </TouchableOpacity>
-                    </View>
-
-                    {/* Pickup service preferences panel */}
-                    <View style={styles.prefsPanel}>
-                      <View style={styles.prefsHeaderRow}>
-                        <Ionicons name="car-outline" size={14} color={Colors.primary} />
-                        <Text style={styles.prefsHeaderText}>Pickup Service Preferences</Text>
-                      </View>
-
-                      {hasPrefs ? (
-                        <View style={styles.prefsGrid}>
-                          <View style={styles.prefRow}>
-                            <Text style={styles.prefLabel}>Vehicle</Text>
-                            <Text style={styles.prefValue}>
-                              {formatVehicleType(pref?.vehicleType)}
-                            </Text>
-                          </View>
-                          <View style={styles.prefRow}>
-                            <Text style={styles.prefLabel}>Number</Text>
-                            <Text style={styles.prefValue}>
-                              {pref?.vehicleNumber || '—'}
-                            </Text>
-                          </View>
-                          <View style={styles.prefRow}>
-                            <Text style={styles.prefLabel}>Rate / km</Text>
-                            <Text style={styles.prefValue}>
-                              {symbol}{pref?.pricePerKm}
-                            </Text>
-                          </View>
-                          {isPickupJob && (
-                            <View style={[styles.prefRow, styles.prefRowHighlight]}>
-                              <Text style={styles.prefLabelHighlight}>Estimated price</Text>
-                              <Text style={styles.prefValueHighlight}>
-                                {estimatedForEntry !== null
-                                  ? `${symbol}${estimatedForEntry}`
-                                  : '—'}
+                          {entry.proposedPrice != null ? (
+                            <View style={styles.proposedPriceBadge}>
+                              <Ionicons name="construct-outline" size={12} color="#065F46" />
+                              <Text style={styles.proposedPriceText}>
+                                Will do this job for {symbol}{entry.proposedPrice}
+                              </Text>
+                            </View>
+                          ) : (
+                            <View style={styles.acceptsPriceBadge}>
+                              <Ionicons name="checkmark-circle" size={12} color={Colors.primary} />
+                              <Text style={styles.acceptsPriceText}>
+                                Happy with your offered price
                               </Text>
                             </View>
                           )}
                         </View>
-                      ) : (
-                        <Text style={styles.prefsMissing}>
-                          Pickup preferences not set
-                        </Text>
-                      )}
-                    </View>
+                      </View>
+                      <View style={styles.interestChevronBtn}>
+                        <Ionicons
+                          name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                          size={18}
+                          color={Colors.gray}
+                        />
+                      </View>
+                    </TouchableOpacity>
 
-                    {/* Professional Profile Panel */}
-                    {entry.user.isProfessional && entry.user.professionalProfile && (
-                      <View style={styles.professionalPanel}>
-                        <View style={styles.professionalPanelHeader}>
-                          <Ionicons name="briefcase-outline" size={14} color="#7C3AED" />
-                          <Text style={styles.professionalPanelTitle}>Professional / Worker</Text>
-                        </View>
-
-                        {/* Service Categories */}
-                        {entry.user.professionalProfile.serviceCategories && entry.user.professionalProfile.serviceCategories.length > 0 && (
-                          <View style={styles.profCategoriesWrap}>
-                            {entry.user.professionalProfile.serviceCategories.map((cat: any) => {
-                              const visual = getCategoryVisual(cat);
-                              return (
-                                <View key={cat._id} style={[styles.profCategoryChip, { backgroundColor: visual.backgroundColor }]}>
-                                  <Ionicons name={visual.icon as any} size={11} color={visual.color} />
-                                  <Text style={[styles.profCategoryChipText, { color: visual.color }]}>{cat.name}</Text>
+                    {isExpanded && (
+                      <View style={styles.interestExpandedBody}>
+                        {/* Pickup prefs — only when set */}
+                        {hasPrefs && (
+                          <View style={styles.prefsPanel}>
+                            <View style={styles.prefsHeaderRow}>
+                              <Ionicons name="car-outline" size={14} color={Colors.primary} />
+                              <Text style={styles.prefsHeaderText}>Pickup Service Preferences</Text>
+                            </View>
+                            <View style={styles.prefsGrid}>
+                              <View style={styles.prefRow}>
+                                <Text style={styles.prefLabel}>Vehicle</Text>
+                                <Text style={styles.prefValue}>
+                                  {formatVehicleType(pref?.vehicleType)}
+                                </Text>
+                              </View>
+                              <View style={styles.prefRow}>
+                                <Text style={styles.prefLabel}>Number</Text>
+                                <Text style={styles.prefValue}>
+                                  {pref?.vehicleNumber || '—'}
+                                </Text>
+                              </View>
+                              <View style={styles.prefRow}>
+                                <Text style={styles.prefLabel}>Rate / km</Text>
+                                <Text style={styles.prefValue}>
+                                  {symbol}{pref?.pricePerKm}
+                                </Text>
+                              </View>
+                              {isPickupJob && (
+                                <View style={[styles.prefRow, styles.prefRowHighlight]}>
+                                  <Text style={styles.prefLabelHighlight}>Estimated price</Text>
+                                  <Text style={styles.prefValueHighlight}>
+                                    {estimatedForEntry !== null
+                                      ? `${symbol}${estimatedForEntry}`
+                                      : '—'}
+                                  </Text>
                                 </View>
-                              );
-                            })}
+                              )}
+                            </View>
                           </View>
                         )}
 
-                        {/* Experience & Bio */}
-                        <View style={styles.profDetailsRow}>
-                          {entry.user.professionalProfile.yearsOfExperience != null && (
-                            <View style={styles.profBadge}>
-                              <Ionicons name="time-outline" size={12} color="#7C3AED" />
-                              <Text style={styles.profBadgeText}>{entry.user.professionalProfile.yearsOfExperience} yrs exp</Text>
-                            </View>
-                          )}
-                        </View>
+                        {/* Experience + work images only */}
+                        {entry.user.isProfessional &&
+                          prof &&
+                          (prof.yearsOfExperience != null || workImageUris.length > 0) && (
+                          <View style={styles.professionalPanel}>
+                            {prof.yearsOfExperience != null && (
+                              <View style={styles.profDetailsRow}>
+                                <View style={styles.profBadge}>
+                                  <Ionicons name="time-outline" size={12} color="#7C3AED" />
+                                  <Text style={styles.profBadgeText}>
+                                    {prof.yearsOfExperience} yrs exp
+                                  </Text>
+                                </View>
+                              </View>
+                            )}
 
-                        {entry.user.professionalProfile.bio ? (
-                          <Text style={styles.profBio}>{entry.user.professionalProfile.bio}</Text>
-                        ) : null}
-
-                        {/* Work Images */}
-                        {entry.user.professionalProfile.workImages && entry.user.professionalProfile.workImages.length > 0 && (
-                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.workImagesScroll}>
-                            {entry.user.professionalProfile.workImages.map((imgPath: string, idx: number) => {
-                              const uri = `${IMAGE_BASE_URL}${imgPath.startsWith('/') ? imgPath : `/${imgPath}`}`;
-                              return (
-                                <Image
-                                  key={idx}
-                                  source={{ uri }}
-                                  style={styles.workImageThumb}
-                                  contentFit="cover"
-                                />
-                              );
-                            })}
-                          </ScrollView>
+                            {workImageUris.length > 0 && (
+                              <ScrollView
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                style={styles.workImagesScroll}
+                              >
+                                {workImageUris.map((uri, idx) => (
+                                  <TouchableOpacity
+                                    key={idx}
+                                    activeOpacity={0.85}
+                                    onPress={() => openImageGallery(workImageUris, idx)}
+                                  >
+                                    <Image
+                                      source={{ uri }}
+                                      style={styles.workImageThumb}
+                                      contentFit="cover"
+                                    />
+                                  </TouchableOpacity>
+                                ))}
+                              </ScrollView>
+                            )}
+                          </View>
                         )}
+
+                        <View style={styles.interestActionRow}>
+                          <TouchableOpacity
+                            style={styles.interestViewProfileBtn}
+                            activeOpacity={0.85}
+                            onPress={() => {
+                              navigation.navigate('WorkerProfileScreen', {
+                                workerId: entry.user._id,
+                                workerName: entry.user.profile?.fullName,
+                                workerImage: entry.user.profile?.profileImage,
+                              });
+                            }}
+                          >
+                            <Ionicons name="person-outline" size={16} color={Colors.primary} />
+                            <Text style={styles.interestViewProfileBtnText}>View Profile</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.interestContactBtn}
+                            activeOpacity={0.85}
+                            onPress={handleContactPress}
+                          >
+                            <Ionicons name="call-outline" size={16} color={Colors.white} />
+                            <Text style={styles.interestContactBtnText}>Contact</Text>
+                          </TouchableOpacity>
+                        </View>
                       </View>
                     )}
                   </View>
@@ -1263,6 +1306,30 @@ const JobDetailsScreen = () => {
       {/* Action Button — hidden when the job has been cancelled */}
       {!isMyJob && !isJobCancelled && (
         <View style={styles.contactButtonContainer}>
+          {!isDirectContact && hasShownInterest && (
+            <View
+              style={[
+                styles.myOfferBanner,
+                !hasCustomProposedPrice && styles.myOfferBannerAccepted,
+              ]}
+            >
+              <Ionicons
+                name={hasCustomProposedPrice ? "pricetag" : "checkmark-circle"}
+                size={16}
+                color={hasCustomProposedPrice ? "#065F46" : Colors.primary}
+              />
+              <Text
+                style={[
+                  styles.myOfferBannerText,
+                  !hasCustomProposedPrice && styles.myOfferBannerTextAccepted,
+                ]}
+              >
+                {hasCustomProposedPrice
+                  ? `You'll do this job for ${currencySymbol}${myProposedPrice}`
+                  : `You accepted the offered price (${currentJob.cost})`}
+              </Text>
+            </View>
+          )}
           <TouchableOpacity
             style={[
               styles.contactButton,
@@ -1287,6 +1354,12 @@ const JobDetailsScreen = () => {
         ref={pickupPrefSheetRef}
         // Per spec: after saving preferences, do NOT auto-show interest.
         // The user must explicitly tap Show Interest again.
+      />
+      <ShowInterestSheet
+        visible={showInterestSheetVisible}
+        job={currentJob}
+        onClose={() => setShowInterestSheetVisible(false)}
+        onSuccess={handleInterestSubmitted}
       />
       {alertModal}
     </SafeAreaView>
@@ -1787,6 +1860,31 @@ const styles = StyleSheet.create({
     paddingBottom: 50,
     backgroundColor: Colors.white,
   },
+  myOfferBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 10,
+  },
+  myOfferBannerAccepted: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#BFDBFE',
+  },
+  myOfferBannerText: {
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#065F46',
+  },
+  myOfferBannerTextAccepted: {
+    color: Colors.primary,
+  },
   contactButton: {
     backgroundColor: Colors.primary,
     borderRadius: 12,
@@ -1827,13 +1925,61 @@ const styles = StyleSheet.create({
   },
   interestTopRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
+    gap: 10,
   },
   interestLeft: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     flex: 1,
+    gap: 12,
+  },
+  interestChevronBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  interestActionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 4,
+  },
+  interestViewProfileBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 10,
+    paddingVertical: 11,
+  },
+  interestViewProfileBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  interestContactBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
+    paddingVertical: 11,
+  },
+  interestContactBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.white,
   },
   prefsPanel: {
     backgroundColor: Colors.white,
@@ -1921,6 +2067,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: Colors.black,
+    flex: 1,
+  },
+  interestExpandedBody: {
+    gap: 10,
+    marginTop: 4,
   },
   interestEmail: {
     fontSize: 12,
@@ -1930,6 +2081,42 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.gray,
     marginTop: 2,
+  },
+  proposedPriceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    marginTop: 6,
+    backgroundColor: '#ECFDF5',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+  },
+  proposedPriceText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#065F46',
+  },
+  acceptsPriceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    marginTop: 6,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  acceptsPriceText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: Colors.primary,
   },
   contactSmallButton: {
     backgroundColor: Colors.primary,
