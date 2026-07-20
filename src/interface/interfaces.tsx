@@ -863,8 +863,22 @@ export interface Job {
     | {
         _id: string;
         workerId?: string | null;
+        phoneNumber?: string;
         rating?: { average: number; count: number };
-        profile?: { fullName?: string; profileImage?: string };
+        isProfessional?: boolean;
+        profile?: {
+          fullName?: string;
+          profileImage?: string;
+          email?: string;
+        };
+        verification?: {
+          status?: string;
+          selfieImage?: string | null;
+        };
+        professionalProfile?: {
+          yearsOfExperience?: number | null;
+          bio?: string;
+        };
       }
     | null;
   startedAt?: string | null;
@@ -977,7 +991,7 @@ export interface ListedJobsResponse {
 export interface Notification {
   _id: string;
   recipient: string;
-  type: 'job_created' | 'job_interest' | 'verification_review' | 'business_profile_review' | 'order_received';
+  type: 'job_created' | 'job_interest' | 'job_started' | 'job_completed' | 'verification_review' | 'business_profile_review' | 'order_received';
   title: string;
   message: string;
   relatedEntityType: string;

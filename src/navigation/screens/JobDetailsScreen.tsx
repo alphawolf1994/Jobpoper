@@ -667,11 +667,156 @@ const JobDetailsScreen = () => {
     );
   };
 
+  const renderSelectedWorkerCard = () => {
+    if (!currentJob) return null;
+    const worker =
+      typeof currentJob.assignedWorker === "object" && currentJob.assignedWorker
+        ? currentJob.assignedWorker
+        : null;
+    if (!worker) return null;
+
+    const status = (currentJob.status || "").toLowerCase();
+    if (status !== "job_started" && status !== "completed") return null;
+
+    const resolveUri = (uri?: string | null) => {
+      if (!uri) return null;
+      if (uri.startsWith("http") || uri.startsWith("file:")) return uri;
+      return `${IMAGE_BASE_URL}${uri.startsWith("/") ? uri : `/${uri}`}`;
+    };
+
+    const selfieApproved = worker.verification?.status === "approved";
+    const avatarUri = resolveUri(
+      (selfieApproved ? worker.verification?.selfieImage : null) ||
+        worker.profile?.profileImage
+    );
+    const fullName = worker.profile?.fullName || "Selected worker";
+    const ratingAvg = worker.rating?.average ?? 0;
+    const ratingCount = worker.rating?.count ?? 0;
+    const interestEntry = (currentJob.interestedUsers || []).find(
+      (entry) => entry.user?._id === worker._id
+    );
+    const proposedPrice = interestEntry?.proposedPrice;
+    const symbol = getCurrencySymbol(currentJob.cost);
+
+    return (
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Selected Professional</Text>
+        <View style={styles.selectedWorkerCard}>
+          <View style={styles.selectedWorkerTop}>
+            <View style={styles.selectedWorkerAvatar}>
+              {avatarUri ? (
+                <Image
+                  source={{ uri: avatarUri }}
+                  style={styles.selectedWorkerAvatarImage}
+                  contentFit="cover"
+                />
+              ) : (
+                <Text style={styles.selectedWorkerAvatarText}>
+                  {getInitials(fullName)}
+                </Text>
+              )}
+              {selfieApproved && (
+                <View style={styles.selectedWorkerVerifiedBadge}>
+                  <Ionicons name="shield-checkmark" size={12} color={Colors.white} />
+                </View>
+              )}
+            </View>
+
+            <View style={styles.selectedWorkerInfo}>
+              <Text style={styles.selectedWorkerName} numberOfLines={1}>
+                {fullName}
+              </Text>
+              {worker.workerId ? (
+                <Text style={styles.selectedWorkerMeta}>ID: {worker.workerId}</Text>
+              ) : null}
+              <View style={styles.selectedWorkerRatingRow}>
+                <Ionicons name="star" size={13} color="#F59E0B" />
+                <Text style={styles.selectedWorkerRatingText}>
+                  {ratingAvg.toFixed(1)} ({ratingCount} review{ratingCount !== 1 ? "s" : ""})
+                </Text>
+              </View>
+              {proposedPrice != null ? (
+                <View style={styles.proposedPriceBadge}>
+                  <Ionicons name="construct-outline" size={12} color="#065F46" />
+                  <Text style={styles.proposedPriceText}>
+                    Will do this job for {symbol}{proposedPrice}
+                  </Text>
+                </View>
+              ) : interestEntry ? (
+                <View style={styles.acceptsPriceBadge}>
+                  <Ionicons name="checkmark-circle" size={12} color={Colors.primary} />
+                  <Text style={styles.acceptsPriceText}>
+                    Happy with your offered price
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          </View>
+
+          <View style={styles.selectedWorkerActions}>
+            <TouchableOpacity
+              style={styles.interestViewProfileBtn}
+              activeOpacity={0.85}
+              onPress={() => {
+                navigation.navigate("WorkerProfileScreen", {
+                  workerId: worker._id,
+                  workerName: fullName,
+                  workerImage:
+                    (selfieApproved ? worker.verification?.selfieImage : null) ||
+                    worker.profile?.profileImage,
+                });
+              }}
+            >
+              <Ionicons name="person-outline" size={16} color={Colors.primary} />
+              <Text style={styles.interestViewProfileBtnText}>View Profile</Text>
+            </TouchableOpacity>
+            {worker.phoneNumber ? (
+              <TouchableOpacity
+                style={styles.interestContactBtn}
+                activeOpacity={0.85}
+                onPress={() => {
+                  showAlert({
+                    title: "Contact",
+                    message: `Phone: ${worker.phoneNumber}`,
+                    type: "info",
+                    buttons: [
+                      { label: "Cancel", variant: "secondary" },
+                      {
+                        label: "Call",
+                        onPress: () => {
+                          const phoneNumber = (worker.phoneNumber || "").replace(
+                            /[\s\-\(\)]/g,
+                            ""
+                          );
+                          Linking.openURL(`tel:${phoneNumber}`).catch(() => {
+                            showAlert({
+                              title: "Error",
+                              message: "Could not open phone dialer.",
+                              type: "error",
+                            });
+                          });
+                        },
+                      },
+                    ],
+                  });
+                }}
+              >
+                <Ionicons name="call-outline" size={16} color={Colors.white} />
+                <Text style={styles.interestContactBtnText}>Contact</Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   const renderSummaryTab = () => {
     if (!currentJob) return null;
 
     return (
       <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+        {renderSelectedWorkerCard()}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Task Description</Text>
           <Text style={styles.descriptionText}>{currentJob.description}</Text>
@@ -1562,6 +1707,80 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: Colors.black,
     marginBottom: 12,
+  },
+  selectedWorkerCard: {
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+    borderRadius: 14,
+    padding: 14,
+    gap: 12,
+  },
+  selectedWorkerTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  selectedWorkerAvatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#DCFCE7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    overflow: 'visible',
+  },
+  selectedWorkerAvatarImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+  },
+  selectedWorkerAvatarText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#166534',
+  },
+  selectedWorkerVerifiedBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#10B981',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: Colors.white,
+  },
+  selectedWorkerInfo: {
+    flex: 1,
+  },
+  selectedWorkerName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: Colors.black,
+  },
+  selectedWorkerMeta: {
+    fontSize: 12,
+    color: Colors.gray,
+    marginTop: 2,
+  },
+  selectedWorkerRatingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  selectedWorkerRatingText: {
+    fontSize: 12,
+    color: Colors.gray,
+    fontWeight: '500',
+  },
+  selectedWorkerActions: {
+    flexDirection: 'row',
+    gap: 10,
   },
   descriptionText: {
     fontSize: 14,

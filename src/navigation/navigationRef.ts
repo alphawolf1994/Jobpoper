@@ -50,5 +50,22 @@ export function navigateFromPushPayload(
     navigateToOrdersScreen();
     return;
   }
+  // Job-related pushes (interest, started, completed, etc.) → job details when id present
+  if (navId.startsWith("job:")) {
+    const jobId = navId.split(":")[1];
+    if (jobId) {
+      try {
+        navigationRef.dispatch(
+          CommonActions.navigate({
+            name: "JobDetailsScreen",
+            params: { jobId },
+          } as any)
+        );
+        return;
+      } catch {
+        // fall through
+      }
+    }
+  }
   navigateToNotificationScreen();
 }
