@@ -91,7 +91,10 @@ const VerifyWorkerSheet: React.FC<Props> = ({ visible, job, onClose, onStarted }
 
   const worker: WorkerProfile | null = lookedUpWorker;
   const categories = worker?.professionalProfile?.serviceCategories ?? [];
-  const avatarUri = resolveImage(worker?.profile?.profileImage);
+  // Prefer admin-approved verification selfie over optional profile photo
+  const avatarUri = resolveImage(
+    worker?.verification?.selfieImage || worker?.profile?.profileImage
+  );
   const isVerified = worker?.verification?.status === "approved";
 
   return (
@@ -182,7 +185,9 @@ const VerifyWorkerSheet: React.FC<Props> = ({ visible, job, onClose, onStarted }
                       navigation.navigate('WorkerProfileScreen', {
                         workerId: worker._id,
                         workerName: worker.profile?.fullName,
-                        workerImage: worker.profile?.profileImage,
+                        workerImage:
+                          worker.verification?.selfieImage ||
+                          worker.profile?.profileImage,
                       });
                     }}
                   >

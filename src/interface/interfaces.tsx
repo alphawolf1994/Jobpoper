@@ -824,6 +824,7 @@ export interface WorkerProfile {
   rating: { average: number; count: number };
   verification?: {
     status: 'not_submitted' | 'under_review' | 'approved' | 'rejected';
+    selfieImage?: string | null;
   };
 }
 
