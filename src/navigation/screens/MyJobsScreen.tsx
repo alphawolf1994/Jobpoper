@@ -297,6 +297,18 @@ const MyJobsScreen = () => {
           <Text style={styles.deleteButtonText}>Delete</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Safety note — remind owners to verify the worker before starting */}
+      {item.status === 'open' && (
+        <View style={styles.safetyNote}>
+          <View style={styles.safetyNoteIcon}>
+            <Ionicons name="warning" size={14} color="#F59E0B" />
+          </View>
+          <Text style={styles.safetyNoteText}>
+            Note: Please verify the professional before starting the work for your safety and security purpose.
+          </Text>
+        </View>
+      )}
     </TouchableOpacity>
   );
 
@@ -701,6 +713,31 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: Colors.red,
     marginLeft: 6,
+  },
+  safetyNote: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: Colors.lightGray,
+  },
+  safetyNoteIcon: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#FEF3C7',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 1,
+  },
+  safetyNoteText: {
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 17,
+    color: '#92400E',
+    fontWeight: '500',
   },
   loadingContainer: {
     flex: 1,
