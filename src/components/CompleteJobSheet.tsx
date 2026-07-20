@@ -14,7 +14,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
 import { AppDispatch, RootState } from "../redux/store";
 import { completeJob } from "../redux/slices/jobVerificationSlice";
-import { getMyInterestedJobs } from "../redux/slices/jobSlice";
+import { getMyInterestedJobs, markJobStatusLocally } from "../redux/slices/jobSlice";
 import { Colors } from "../utils";
 import { Job } from "../interface/interfaces";
 
@@ -52,7 +52,16 @@ const CompleteJobSheet: React.FC<Props> = ({ visible, job, onClose, onCompleted 
     }
     setLocalError(null);
     try {
-      await dispatch(completeJob({ jobId: job._id, jobPin: trimmed })).unwrap();
+      const res: any = await dispatch(completeJob({ jobId: job._id, jobPin: trimmed })).unwrap();
+      const completedAt =
+        res?.data?.completedAt || new Date().toISOString();
+      dispatch(
+        markJobStatusLocally({
+          jobId: job._id,
+          status: "completed",
+          completedAt,
+        })
+      );
       dispatch(getMyInterestedJobs({ page: 1, limit: 10 }));
       setDone(true);
       setTimeout(() => {

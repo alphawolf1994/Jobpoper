@@ -213,6 +213,8 @@ const Header: React.FC = () => {
         navigation.navigate("JobDetailsScreen", { jobId: id });
       } else if (type === "verification") {
         navigation.navigate("VerificationDetailsScreen");
+      } else if (type === "worker-profile" && id) {
+        navigation.navigate("WorkerProfileScreen", { workerId: id });
       }
     },
     [navigation, dispatch]

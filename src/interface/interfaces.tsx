@@ -882,6 +882,7 @@ export interface Job {
       }
     | null;
   startedAt?: string | null;
+  completedAt?: string | null;
   isReviewed?: boolean;
   jobType?: 'OnSite' | 'Pickup';
   responsePreference?: 'direct_contact' | 'show_interest';
@@ -991,7 +992,7 @@ export interface ListedJobsResponse {
 export interface Notification {
   _id: string;
   recipient: string;
-  type: 'job_created' | 'job_interest' | 'job_started' | 'job_completed' | 'verification_review' | 'business_profile_review' | 'order_received';
+  type: 'job_created' | 'job_interest' | 'job_started' | 'job_completed' | 'job_review' | 'verification_review' | 'business_profile_review' | 'order_received';
   title: string;
   message: string;
   relatedEntityType: string;

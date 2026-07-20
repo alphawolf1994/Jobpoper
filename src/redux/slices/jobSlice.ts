@@ -431,6 +431,32 @@ const jobSlice = createSlice({
       state.currentLocationCoordinates = { latitude, longitude };
       state.locationSource = source;
     },
+    // Keep lists/detail in sync after start/complete without waiting for a refetch
+    markJobStatusLocally: (
+      state,
+      action: PayloadAction<{ jobId: string; status: Job["status"]; completedAt?: string | null }>
+    ) => {
+      const { jobId, status, completedAt } = action.payload;
+      const patch = (job: Job | null | undefined) => {
+        if (!job || job._id !== jobId) return job;
+        return {
+          ...job,
+          status,
+          ...(completedAt !== undefined ? { completedAt } : {}),
+        };
+      };
+
+      state.userJobs = state.userJobs.map((j) => patch(j) as Job);
+      state.interestedJobs = state.interestedJobs.map((entry: any) => {
+        if (entry?.job) {
+          return { ...entry, job: patch(entry.job) };
+        }
+        return patch(entry) as Job;
+      });
+      if (state.currentJob?._id === jobId) {
+        state.currentJob = patch(state.currentJob) as Job;
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -795,5 +821,5 @@ const jobSlice = createSlice({
   },
 });
 
-export const { clearError, resetCreateJobSuccess, setCurrentJob, setCurrentLocation, setCurrentLocationCoordinates, setLocationSource, setIsDetectingLocation, setLocationPermissionStatus, setDetectedLocation } = jobSlice.actions;
+export const { clearError, resetCreateJobSuccess, setCurrentJob, setCurrentLocation, setCurrentLocationCoordinates, setLocationSource, setIsDetectingLocation, setLocationPermissionStatus, setDetectedLocation, markJobStatusLocally } = jobSlice.actions;
 export default jobSlice.reducer;

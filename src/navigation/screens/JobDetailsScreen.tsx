@@ -143,10 +143,13 @@ const JobDetailsScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
+      if (jobId) {
+        dispatch(getJobById(jobId));
+      }
       if (user?.id && !user?.isVerified) {
         dispatch(fetchVerificationStatus());
       }
-    }, [dispatch, user?.id, user?.isVerified])
+    }, [dispatch, jobId, user?.id, user?.isVerified])
   );
 
   const getInitials = (name: string) => {

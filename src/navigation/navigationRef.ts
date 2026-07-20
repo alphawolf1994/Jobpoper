@@ -67,5 +67,22 @@ export function navigateFromPushPayload(
       }
     }
   }
+  // Review notifications → worker's public profile (reviews tab)
+  if (type === "job_review" || navId.startsWith("worker-profile:")) {
+    const workerId = navId.split(":")[1];
+    if (workerId) {
+      try {
+        navigationRef.dispatch(
+          CommonActions.navigate({
+            name: "WorkerProfileScreen",
+            params: { workerId },
+          } as any)
+        );
+        return;
+      } catch {
+        // fall through
+      }
+    }
+  }
   navigateToNotificationScreen();
 }

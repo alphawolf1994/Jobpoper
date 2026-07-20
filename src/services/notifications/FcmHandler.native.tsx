@@ -21,6 +21,7 @@ import {
   getUnreadOrdersCount,
   incrementUnreadOrders,
 } from "@/src/redux/slices/orderSlice";
+import { getUserJobs, markJobStatusLocally } from "@/src/redux/slices/jobSlice";
 import type { Notification } from "@/src/interface/interfaces";
 import type { AppDispatch, RootState } from "@/src/redux/store";
 import {
@@ -99,6 +100,24 @@ function syncFromMessage(dispatch: AppDispatch, remote: RemoteMessage) {
   if (type === "order_received") {
     dispatch(incrementUnreadOrders());
     void dispatch(getUnreadOrdersCount());
+  }
+  // When a worker completes a task, refresh owner's My Tasks so status flips to
+  // Completed and the Leave a Review button appears without a manual reload.
+  if (type === "job_completed") {
+    const jobId = String(d?.relatedEntityId || "").trim();
+    if (jobId) {
+      dispatch(
+        markJobStatusLocally({
+          jobId,
+          status: "completed",
+          completedAt: new Date().toISOString(),
+        })
+      );
+    }
+    void dispatch(getUserJobs());
+  }
+  if (type === "job_started") {
+    void dispatch(getUserJobs());
   }
   Toast.show({
     type: "info",

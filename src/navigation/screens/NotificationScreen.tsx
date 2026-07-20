@@ -154,6 +154,8 @@ const NotificationScreen = () => {
         navigation.navigate("VerificationDetailsScreen");
       } else if (type === "business-profile") {
         navigation.navigate("BusinessProfilesScreen");
+      } else if (type === "worker-profile" && id) {
+        navigation.navigate("WorkerProfileScreen", { workerId: id });
       }
     },
     [navigation, handleMarkAsRead]

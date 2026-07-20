@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useCallback } from "react";
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Colors, getJobCategoryName } from "../../utils";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../components/Header";
 import { Ionicons } from "@expo/vector-icons";
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import { AppDispatch, RootState } from '../../redux/store';
 import { getUserJobs, getMyInterestedJobs, deleteJob, updateJobStatus } from '../../redux/slices/jobSlice';
@@ -26,14 +26,17 @@ const MyJobsScreen = () => {
   const [completeSheetJob, setCompleteSheetJob] = useState<Job | null>(null);
   const [reviewJob, setReviewJob] = useState<Job | null>(null);
 
-  useEffect(() => {
-    // Fetch data when component mounts
-    if (activeTab === 'myJobs') {
-      dispatch(getUserJobs());
-    } else {
-      dispatch(getMyInterestedJobs({ page: 1, limit: 10 }));
-    }
-  }, [activeTab, dispatch]);
+  // Always refresh when this screen is focused so owner sees Completed + Leave Review
+  // after the worker finishes via Task PIN.
+  useFocusEffect(
+    useCallback(() => {
+      if (activeTab === 'myJobs') {
+        dispatch(getUserJobs());
+      } else {
+        dispatch(getMyInterestedJobs({ page: 1, limit: 10 }));
+      }
+    }, [activeTab, dispatch])
+  );
 
   // Job owners can only cancel an open job here. Marking a job "completed" is
   // no longer possible from this screen — it can only happen when the worker
