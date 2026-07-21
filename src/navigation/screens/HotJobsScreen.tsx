@@ -27,7 +27,7 @@ const HotJobsScreen = () => {
   const navigation = useNavigation<any>();
   const dispatch = useDispatch<AppDispatch>();
   const jobState = useSelector((state: RootState) => state.job);
-  const { allHotJobs = [], loading = false, loadingMore = false, allHotJobsPagination, currentLocation } = jobState || {};
+  const { allHotJobs = [], listLoading: loading = false, loadingMore = false, allHotJobsPagination, currentLocation } = jobState || {};
   const { user } = useSelector((state: RootState) => state.auth);
   
   const [searchQuery, setSearchQuery] = useState('');

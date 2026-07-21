@@ -27,7 +27,7 @@ const AllListedJobsScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const dispatch = useDispatch<AppDispatch>();
   const jobState = useSelector((state: RootState) => state.job);
-  const { allListedJobs = [], loading = false, loadingMore = false, allListedJobsPagination, currentLocation } = jobState || {};
+  const { allListedJobs = [], listLoading: loading = false, loadingMore = false, allListedJobsPagination, currentLocation } = jobState || {};
   const { user } = useSelector((state: RootState) => state.auth);
   
   const [searchQuery, setSearchQuery] = useState('');

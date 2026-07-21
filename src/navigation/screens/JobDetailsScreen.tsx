@@ -38,7 +38,7 @@ const JobDetailsScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute();
   const dispatch = useDispatch<AppDispatch>();
-  const { currentJob, loading, error } = useSelector((state: RootState) => state.job);
+  const { currentJob, jobDetailsLoading, error } = useSelector((state: RootState) => state.job);
   const { user } = useSelector((state: RootState) => state.auth);
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
   const verificationSheetRef = useRef<VerificationBottomSheetHandle>(null);
@@ -143,13 +143,14 @@ const JobDetailsScreen = () => {
 
   useFocusEffect(
     useCallback(() => {
-      if (jobId) {
+      // Soft refresh only when this job is already on screen — avoids a full blank loader.
+      if (jobId && currentJob?._id === jobId) {
         dispatch(getJobById(jobId));
       }
       if (user?.id && !user?.isVerified) {
         dispatch(fetchVerificationStatus());
       }
-    }, [dispatch, jobId, user?.id, user?.isVerified])
+    }, [dispatch, jobId, currentJob?._id, user?.id, user?.isVerified])
   );
 
   const getInitials = (name: string) => {
@@ -820,10 +821,12 @@ const JobDetailsScreen = () => {
     return (
       <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
         {renderSelectedWorkerCard()}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Task Description</Text>
-          <Text style={styles.descriptionText}>{currentJob.description}</Text>
-        </View>
+        {!!currentJob.description?.trim() && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Task Description</Text>
+            <Text style={styles.descriptionText}>{currentJob.description}</Text>
+          </View>
+        )}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Task Details</Text>
           <View style={styles.detailRow}>
@@ -969,18 +972,20 @@ const JobDetailsScreen = () => {
     );
   };
 
-  if (loading) {
-    return (
-      <SafeAreaView edges={['top']} style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Loading task details...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const hasThisJob = !!currentJob && currentJob._id === jobId;
 
-  if (error || !currentJob) {
+  // Only blank the screen on first load / job switch — keep content visible during soft refresh
+  if (!hasThisJob) {
+    if (jobDetailsLoading || !error) {
+      return (
+        <SafeAreaView edges={['top']} style={styles.container}>
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+            <Text style={styles.loadingText}>Loading task details...</Text>
+          </View>
+        </SafeAreaView>
+      );
+    }
     return (
       <SafeAreaView edges={['top']} style={styles.container}>
         <View style={styles.errorContainer}>

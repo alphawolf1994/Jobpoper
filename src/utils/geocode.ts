@@ -1,5 +1,18 @@
 const GOOGLE_API_KEY = "AIzaSyDx-5zOU35lqenxx6TCR-OkQRj6cHpi5-U";
 
+const GEOCODE_TIMEOUT_MS = 8000;
+
+async function fetchJsonWithTimeout(url: string, timeoutMs = GEOCODE_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const resp = await fetch(url, { signal: controller.signal });
+    return await resp.json();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /**
  * Geocode an address string to latitude/longitude using Google Geocoding API.
  * Returns null if the address cannot be resolved.
@@ -9,10 +22,9 @@ export async function geocodeAddressToCoordinates(
 ): Promise<{ latitude: number; longitude: number } | null> {
   if (!address?.trim()) return null;
   try {
-    const resp = await fetch(
+    const data = await fetchJsonWithTimeout(
       `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address.trim())}&key=${GOOGLE_API_KEY}`
     );
-    const data = await resp.json();
     if (data.status === "OK" && data.results?.[0]?.geometry?.location) {
       const { lat, lng } = data.results[0].geometry.location;
       return { latitude: lat, longitude: lng };
@@ -47,10 +59,9 @@ export async function reverseGeocodeToAddress(
   if (typeof latitude !== "number" || typeof longitude !== "number") return null;
   if (Number.isNaN(latitude) || Number.isNaN(longitude)) return null;
   try {
-    const resp = await fetch(
+    const data = await fetchJsonWithTimeout(
       `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_API_KEY}`
     );
-    const data = await resp.json();
     const result = data?.results?.[0];
     if (data.status !== "OK" || !result) return null;
 

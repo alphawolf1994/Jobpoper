@@ -20,7 +20,7 @@ const MyJobsScreen = () => {
   const dispatch = useDispatch<AppDispatch>();
   const [activeTab, setActiveTab] = useState<'myJobs' | 'interested'>('myJobs');
   
-  const { userJobs, interestedJobs, loading, error } = useSelector((state: RootState) => state.job);
+  const { userJobs, interestedJobs, listLoading: loading, error } = useSelector((state: RootState) => state.job);
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
   const [verifySheetJob, setVerifySheetJob] = useState<Job | null>(null);
   const [completeSheetJob, setCompleteSheetJob] = useState<Job | null>(null);

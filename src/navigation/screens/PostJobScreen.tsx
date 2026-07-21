@@ -29,7 +29,7 @@ const PostJobScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const dispatch = useDispatch<AppDispatch>();
-  const { loading } = useSelector((state: RootState) => state.job);
+  const { createJobLoading } = useSelector((state: RootState) => state.job);
   const { items: savedLocations, loading: locationsLoading, lastAddedLocation } = useSelector((state: RootState) => state.locations);
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
 
@@ -1069,9 +1069,9 @@ const PostJobScreen = () => {
           {/* Submit Button */}
           <View style={styles.buttonContainer}>
             <Button
-              label={loading ? (isEditMode ? "Updating..." : "Posting...") : (isEditMode ? "Save Changes" : "Post Now")}
+              label={createJobLoading ? (isEditMode ? "Updating..." : "Posting...") : (isEditMode ? "Save Changes" : "Post Now")}
               onPress={handleSubmit}
-              disabled={loading}
+              disabled={createJobLoading}
               style={styles.submitButton}
             />
           </View>

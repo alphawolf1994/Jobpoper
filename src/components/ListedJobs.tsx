@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, getJobCategoryName } from '../utils';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
-import { getListedJobs, searchListedJobsPaginated } from '../redux/slices/jobSlice';
+import { searchListedJobsPaginated } from '../redux/slices/jobSlice';
 import { AppDispatch, RootState } from '../redux/store';
 import { Job } from '../interface/interfaces';
 import { IMAGE_BASE_URL } from '../api/baseURL';
@@ -25,7 +25,7 @@ const ListedJobs: React.FC<ListedJobsProps> = ({ searchQuery = '', scrollEnabled
   const navigation = useNavigation<any>();
   const dispatch = useDispatch<AppDispatch>();
   const jobState = useSelector((state: RootState) => state.job);
-  const { listedJobs = [], loading = false, currentLocation, allListedJobs = [] } = jobState || {};
+  const { listedJobs = [], listLoading: loading = false, currentLocation, allListedJobs = [] } = jobState || {};
   const { user } = useSelector((state: RootState) => state.auth);
   
   // Use allListedJobs if searching, otherwise use listedJobs
@@ -44,24 +44,16 @@ const ListedJobs: React.FC<ListedJobsProps> = ({ searchQuery = '', scrollEnabled
 
   useEffect(() => {
     const location = getLocation();
-    
+
+    // HomeScreen already loads default listed jobs — only fetch here for search
     if (searchQuery && searchQuery.trim()) {
-      // Use search API when search query exists
-      dispatch(searchListedJobsPaginated({ 
+      dispatch(searchListedJobsPaginated({
         location,
         search: searchQuery.trim(),
         page: 1,
         limit: 10,
         sortOrder: 'desc',
         append: false
-      }));
-    } else {
-      // Use default API when no search query
-      dispatch(getListedJobs({ 
-        location,
-        page: 1,
-        limit: 10,
-        sortOrder: 'desc'
       }));
     }
   }, [dispatch, currentLocation, user?.profile?.location, searchQuery]);

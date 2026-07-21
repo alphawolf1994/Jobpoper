@@ -48,7 +48,12 @@ interface JobState {
     hasPrevPage: boolean;
   } | null;
   currentJob: Job | null;
-  loading: boolean;
+  /** Home/list/search/my-jobs loading */
+  listLoading: boolean;
+  /** Full-screen job details first load */
+  jobDetailsLoading: boolean;
+  /** Create or update job submit */
+  createJobLoading: boolean;
   loadingMore: boolean;
   error: string | null;
   createJobSuccess: boolean;
@@ -105,7 +110,9 @@ const initialState: JobState = {
   allListedJobs: [],
   allListedJobsPagination: null,
   currentJob: null,
-  loading: false,
+  listLoading: false,
+  jobDetailsLoading: false,
+  createJobLoading: false,
   loadingMore: false,
   error: null,
   createJobSuccess: false,
@@ -462,7 +469,7 @@ const jobSlice = createSlice({
     builder
       // Create Job
       .addCase(createJob.pending, (state) => {
-        state.loading = true;
+        state.createJobLoading = true;
         state.error = null;
         state.createJobSuccess = false;
       })
@@ -473,17 +480,17 @@ const jobSlice = createSlice({
           state.userJobs.unshift(response.data.job);
           state.createJobSuccess = true;
         }
-        state.loading = false;
+        state.createJobLoading = false;
         state.error = null;
       })
       .addCase(createJob.rejected, (state, action) => {
         state.error = action.payload as string;
-        state.loading = false;
+        state.createJobLoading = false;
         state.createJobSuccess = false;
       })
       // Get All Jobs
       .addCase(getAllJobs.pending, (state) => {
-        state.loading = true;
+        state.listLoading = true;
         state.error = null;
       })
       .addCase(getAllJobs.fulfilled, (state, action) => {
@@ -491,16 +498,16 @@ const jobSlice = createSlice({
         if (response.status === 'success' && response.data?.jobs) {
           state.jobs = response.data.jobs;
         }
-        state.loading = false;
+        state.listLoading = false;
         state.error = null;
       })
       .addCase(getAllJobs.rejected, (state, action) => {
         state.error = action.payload as string;
-        state.loading = false;
+        state.listLoading = false;
       })
       // Get Job By ID
       .addCase(getJobById.pending, (state) => {
-        state.loading = true;
+        state.jobDetailsLoading = true;
         state.error = null;
       })
       .addCase(getJobById.fulfilled, (state, action) => {
@@ -508,16 +515,16 @@ const jobSlice = createSlice({
         if (response.status === 'success' && response.data?.job) {
           state.currentJob = response.data.job;
         }
-        state.loading = false;
+        state.jobDetailsLoading = false;
         state.error = null;
       })
       .addCase(getJobById.rejected, (state, action) => {
         state.error = action.payload as string;
-        state.loading = false;
+        state.jobDetailsLoading = false;
       })
       // Update Job
       .addCase(updateJob.pending, (state) => {
-        state.loading = true;
+        state.createJobLoading = true;
         state.error = null;
       })
       .addCase(updateJob.fulfilled, (state, action) => {
@@ -534,16 +541,16 @@ const jobSlice = createSlice({
             state.currentJob = updatedJob;
           }
         }
-        state.loading = false;
+        state.createJobLoading = false;
         state.error = null;
       })
       .addCase(updateJob.rejected, (state, action) => {
         state.error = action.payload as string;
-        state.loading = false;
+        state.createJobLoading = false;
       })
       // Delete Task
       .addCase(deleteJob.pending, (state) => {
-        state.loading = true;
+        state.listLoading = true;
         state.error = null;
       })
       .addCase(deleteJob.fulfilled, (state, action) => {
@@ -556,16 +563,16 @@ const jobSlice = createSlice({
             state.currentJob = null;
           }
         }
-        state.loading = false;
+        state.listLoading = false;
         state.error = null;
       })
       .addCase(deleteJob.rejected, (state, action) => {
         state.error = action.payload as string;
-        state.loading = false;
+        state.listLoading = false;
       })
       // Get User Jobs
       .addCase(getUserJobs.pending, (state) => {
-        state.loading = true;
+        state.listLoading = true;
         state.error = null;
       })
       .addCase(getUserJobs.fulfilled, (state, action) => {
@@ -573,16 +580,16 @@ const jobSlice = createSlice({
         if (response.status === 'success' && response.data?.jobs) {
           state.userJobs = response.data.jobs;
         }
-        state.loading = false;
+        state.listLoading = false;
         state.error = null;
       })
       .addCase(getUserJobs.rejected, (state, action) => {
         state.error = action.payload as string;
-        state.loading = false;
+        state.listLoading = false;
       })
       // Get Hot Tasks
       .addCase(getHotJobs.pending, (state) => {
-        state.loading = true;
+        state.listLoading = true;
         state.error = null;
       })
       .addCase(getHotJobs.fulfilled, (state, action) => {
@@ -590,16 +597,16 @@ const jobSlice = createSlice({
         if (response.status === 'success' && response.data?.jobs) {
           state.hotJobs = response.data.jobs;
         }
-        state.loading = false;
+        state.listLoading = false;
         state.error = null;
       })
       .addCase(getHotJobs.rejected, (state, action) => {
         state.error = action.payload as string;
-        state.loading = false;
+        state.listLoading = false;
       })
       // Get Listed Tasks
       .addCase(getListedJobs.pending, (state) => {
-        state.loading = true;
+        state.listLoading = true;
         state.error = null;
       })
       .addCase(getListedJobs.fulfilled, (state, action) => {
@@ -607,19 +614,19 @@ const jobSlice = createSlice({
         if (response.status === 'success' && response.data?.jobs) {
           state.listedJobs = response.data.jobs;
         }
-        state.loading = false;
+        state.listLoading = false;
         state.error = null;
       })
       .addCase(getListedJobs.rejected, (state, action) => {
         state.error = action.payload as string;
-        state.loading = false;
+        state.listLoading = false;
       })
       // Get All Hot Tasks Paginated
       .addCase(getAllHotJobsPaginated.pending, (state, action) => {
         if (action.meta.arg.append) {
           state.loadingMore = true;
         } else {
-          state.loading = true;
+          state.listLoading = true;
           state.allHotJobs = [];
         }
         state.error = null;
@@ -638,13 +645,13 @@ const jobSlice = createSlice({
             state.allHotJobsPagination = response.data.pagination;
           }
         }
-        state.loading = false;
+        state.listLoading = false;
         state.loadingMore = false;
         state.error = null;
       })
       .addCase(getAllHotJobsPaginated.rejected, (state, action) => {
         state.error = action.payload as string;
-        state.loading = false;
+        state.listLoading = false;
         state.loadingMore = false;
       })
       // Search Hot Tasks Paginated
@@ -652,7 +659,7 @@ const jobSlice = createSlice({
         if (action.meta.arg.append) {
           state.loadingMore = true;
         } else {
-          state.loading = true;
+          state.listLoading = true;
           state.allHotJobs = [];
         }
         state.error = null;
@@ -671,13 +678,13 @@ const jobSlice = createSlice({
             state.allHotJobsPagination = response.data.pagination;
           }
         }
-        state.loading = false;
+        state.listLoading = false;
         state.loadingMore = false;
         state.error = null;
       })
       .addCase(searchHotJobsPaginated.rejected, (state, action) => {
         state.error = action.payload as string;
-        state.loading = false;
+        state.listLoading = false;
         state.loadingMore = false;
       })
       // Get All Listed Tasks Paginated
@@ -685,7 +692,7 @@ const jobSlice = createSlice({
         if (action.meta.arg.append) {
           state.loadingMore = true;
         } else {
-          state.loading = true;
+          state.listLoading = true;
           state.allListedJobs = [];
         }
         state.error = null;
@@ -704,13 +711,13 @@ const jobSlice = createSlice({
             state.allListedJobsPagination = response.data.pagination;
           }
         }
-        state.loading = false;
+        state.listLoading = false;
         state.loadingMore = false;
         state.error = null;
       })
       .addCase(getAllListedJobsPaginated.rejected, (state, action) => {
         state.error = action.payload as string;
-        state.loading = false;
+        state.listLoading = false;
         state.loadingMore = false;
       })
       // Search Listed Tasks Paginated
@@ -718,7 +725,7 @@ const jobSlice = createSlice({
         if (action.meta.arg.append) {
           state.loadingMore = true;
         } else {
-          state.loading = true;
+          state.listLoading = true;
           state.allListedJobs = [];
         }
         state.error = null;
@@ -737,13 +744,13 @@ const jobSlice = createSlice({
             state.allListedJobsPagination = response.data.pagination;
           }
         }
-        state.loading = false;
+        state.listLoading = false;
         state.loadingMore = false;
         state.error = null;
       })
       .addCase(searchListedJobsPaginated.rejected, (state, action) => {
         state.error = action.payload as string;
-        state.loading = false;
+        state.listLoading = false;
         state.loadingMore = false;
       })
       // Get My Interested Tasks
@@ -751,7 +758,7 @@ const jobSlice = createSlice({
         if (action.meta.arg.append) {
           state.loadingMore = true;
         } else {
-          state.loading = true;
+          state.listLoading = true;
           state.interestedJobs = [];
         }
         state.error = null;
@@ -770,18 +777,18 @@ const jobSlice = createSlice({
             state.interestedJobsPagination = response.data.pagination;
           }
         }
-        state.loading = false;
+        state.listLoading = false;
         state.loadingMore = false;
         state.error = null;
       })
       .addCase(getMyInterestedJobs.rejected, (state, action) => {
         state.error = action.payload as string;
-        state.loading = false;
+        state.listLoading = false;
         state.loadingMore = false;
       })
       // Update Job Status
       .addCase(updateJobStatus.pending, (state) => {
-        state.loading = true;
+        state.listLoading = true;
         state.error = null;
       })
       .addCase(updateJobStatus.fulfilled, (state, action) => {
@@ -801,12 +808,12 @@ const jobSlice = createSlice({
             state.currentJob = { ...state.currentJob, ...updatedJob };
           }
         }
-        state.loading = false;
+        state.listLoading = false;
         state.error = null;
       })
       .addCase(updateJobStatus.rejected, (state, action) => {
         state.error = action.payload as string;
-        state.loading = false;
+        state.listLoading = false;
       })
       // Expire old jobs
       .addCase(expireOldJobs.pending, (state) => {

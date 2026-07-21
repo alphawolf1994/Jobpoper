@@ -22,7 +22,7 @@ import { useFocusEffect } from "@react-navigation/native";
 const HomeScreen = ({ navigation }: any) => {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
-  const { currentLocation, error: jobError, loading: jobLoading } = useSelector((state: RootState) => state.job);
+  const { currentLocation, error: jobError, listLoading: jobLoading } = useSelector((state: RootState) => state.job);
   const { status: verificationStatus, promptDismissed } = useSelector(
     (state: RootState) => state.verification
   );

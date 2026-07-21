@@ -11,7 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, getJobCategoryName } from '../utils';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
-import { getHotJobs, searchHotJobsPaginated } from '../redux/slices/jobSlice';
+import { searchHotJobsPaginated } from '../redux/slices/jobSlice';
 import { AppDispatch, RootState } from '../redux/store';
 import { Job } from '../interface/interfaces';
 import { IMAGE_BASE_URL } from '../api/baseURL';
@@ -24,7 +24,7 @@ const HotJobs: React.FC<HotJobsProps> = ({ searchQuery = '' }) => {
   const navigation = useNavigation<any>();
   const dispatch = useDispatch<AppDispatch>();
   const jobState = useSelector((state: RootState) => state.job);
-  const { hotJobs = [], loading = false, currentLocation, allHotJobs = [] } = jobState || {};
+  const { hotJobs = [], listLoading: loading = false, currentLocation, allHotJobs = [] } = jobState || {};
   const { user } = useSelector((state: RootState) => state.auth);
   
   // Use allHotJobs if searching, otherwise use hotJobs
@@ -44,24 +44,16 @@ const HotJobs: React.FC<HotJobsProps> = ({ searchQuery = '' }) => {
 
   useEffect(() => {
     const location = getLocation();
-    
+
+    // HomeScreen already loads default hot jobs — only fetch here for search
     if (searchQuery && searchQuery.trim()) {
-      // Use search API when search query exists
-      dispatch(searchHotJobsPaginated({ 
+      dispatch(searchHotJobsPaginated({
         location,
         search: searchQuery.trim(),
         page: 1,
         limit: 10,
         sortOrder: 'desc',
         append: false
-      }));
-    } else {
-      // Use default API when no search query
-      dispatch(getHotJobs({ 
-        location,
-        page: 1,
-        limit: 10,
-        sortOrder: 'desc'
       }));
     }
   }, [dispatch, currentLocation, user?.profile?.location, searchQuery]);
