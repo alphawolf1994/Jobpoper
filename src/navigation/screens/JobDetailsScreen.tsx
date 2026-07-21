@@ -209,8 +209,33 @@ const JobDetailsScreen = () => {
     return job.displayAddress || 'Location not specified';
   };
 
+  const ensureProfessionalOrPrompt = (): boolean => {
+    if (user?.isProfessional) return true;
+
+    showAlert({
+      title: "Professional Profile Required",
+      message:
+        "Please complete your Professional / Worker profile before contacting or showing interest on tasks.",
+      type: "info",
+      buttons: [
+        {
+          label: "Cancel",
+          variant: "secondary",
+        },
+        {
+          label: "Complete Profile",
+          onPress: () => {
+            navigation.navigate("UserDetailsScreen");
+          },
+        },
+      ],
+    });
+    return false;
+  };
+
   const handleContact = () => {
     if (!currentJob) return;
+    if (!ensureProfessionalOrPrompt()) return;
 
     const contactInfo =
       currentJob.contactInfo ||
@@ -256,6 +281,9 @@ const JobDetailsScreen = () => {
 
   const handleShowInterest = () => {
     if (!currentJob) return;
+
+    // Must be a Professional / Worker before applying to tasks
+    if (!ensureProfessionalOrPrompt()) return;
 
     // Block unverified users
     if (!user?.isVerified) {
