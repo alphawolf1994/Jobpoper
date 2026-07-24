@@ -7,6 +7,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useDispatch, useSelector } from "react-redux";
 import { clearAuth, getCurrentUser } from "../../redux/slices/authSlice";
 import { RootState, AppDispatch } from "../../redux/store";
+import { tryFlushPendingPushNavigation } from "../navigationRef";
 
 const SplashScreen = () => {
   const navigation = useNavigation();
@@ -30,9 +31,13 @@ const SplashScreen = () => {
             // Check role first — admins go to AdminTabs
             if (userData.role === 'admin') {
               (navigation as any).navigate('AdminTabs');
+              // Flush any cold-start push deep-link now that boot is done.
+              setTimeout(() => tryFlushPendingPushNavigation(), 0);
             } else if (userData.profile?.isProfileComplete) {
               // Profile is complete, navigate to HomeTabs
               (navigation as any).navigate('HomeTabs');
+              // Flush any cold-start push deep-link now that boot is done.
+              setTimeout(() => tryFlushPendingPushNavigation(), 0);
             } else {
               // Profile is incomplete, navigate to BasicProfileScreen
               (navigation as any).navigate('BasicProfileScreen');

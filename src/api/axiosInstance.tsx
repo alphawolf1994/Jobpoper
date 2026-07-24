@@ -49,6 +49,32 @@ axiosInstance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Force a logout when the backend reports the account has been blocked.
+// Uses lazy requires to avoid a circular import between the store, the auth
+// slice (which imports setAuthToken from here) and the navigation ref.
+let blockLogoutInFlight = false;
+const forceLogoutOnBlock = () => {
+  if (blockLogoutInFlight) return;
+  blockLogoutInFlight = true;
+  try {
+    const { store } = require("../redux/store");
+    const { clearAuth } = require("../redux/slices/authSlice");
+    store.dispatch(clearAuth());
+  } catch (e) {
+    console.log("forceLogoutOnBlock: failed to clear auth", e);
+  }
+  try {
+    const { resetToLoginBlocked } = require("../navigation/navigationRef");
+    resetToLoginBlocked();
+  } catch (e) {
+    console.log("forceLogoutOnBlock: failed to navigate", e);
+  }
+  // Allow future block-logouts once this one has settled.
+  setTimeout(() => {
+    blockLogoutInFlight = false;
+  }, 2000);
+};
+
 // Function to set auth token
 export const setAuthToken = (token: string | null) => {
   if (token) {
@@ -86,6 +112,17 @@ axiosInstance.interceptors.response.use(
       // You might want to dispatch a logout action here
       console.log("Token expired or invalid");
     }
+
+    // Hard-block: backend returns 403 + code ACCOUNT_BLOCKED when an admin has
+    // blocked the account. Force a logout and bounce the user to the login
+    // screen with a blocked flag so a "you are blocked" modal is shown.
+    if (
+      error.response?.status === 403 &&
+      error.response?.data?.code === "ACCOUNT_BLOCKED"
+    ) {
+      forceLogoutOnBlock();
+    }
+
     return Promise.reject(error);
   }
 );

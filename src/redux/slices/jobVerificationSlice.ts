@@ -42,9 +42,10 @@ interface JobVerificationState {
     fullName?: string;
     profileImage?: string;
     location?: string;
+    phoneNumber?: string | null;
     workerId?: string | null;
     rating?: { average: number; count: number };
-    verification?: { status: string };
+    verification?: { status: string; selfieImage?: string | null };
     professionalProfile?: ProfessionalProfile;
   } | null;
 }

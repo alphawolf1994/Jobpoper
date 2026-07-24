@@ -11,6 +11,7 @@ import serviceCategorySlice from './slices/serviceCategorySlice';
 import businessCategorySlice from './slices/businessCategorySlice';
 import orderSlice from './slices/orderSlice';
 import jobVerificationSlice from './slices/jobVerificationSlice';
+import reportSlice from './slices/reportSlice';
 import { authMiddleware } from './middleware/authMiddleware';
 
 // Configuration for redux-persist
@@ -32,6 +33,7 @@ const rootReducer = combineReducers({
   businessCategories: businessCategorySlice,
   order: orderSlice,
   jobVerification: jobVerificationSlice,
+  report: reportSlice,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

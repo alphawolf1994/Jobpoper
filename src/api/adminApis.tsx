@@ -42,6 +42,45 @@ export const deleteAdminWorkImageApi = async (userId: string, imagePath: string)
   }
 };
 
+// Block / unblock a user. Backend toggles `isActive` (blocked = !isActive).
+export const setUserBlockStatusApi = async (userId: string, blocked: boolean) => {
+  try {
+    const res = await axiosInstance.patch(`/admin/users/${userId}/block`, { blocked });
+    return res.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to update block status");
+  }
+};
+
+// ─── Reports ──────────────────────────────────────────────────────────────────
+
+export const getAdminReportsApi = async (
+  status: "open" | "resolved" | "all" = "open",
+  page: number = 1,
+  limit: number = 50
+) => {
+  try {
+    const params: Record<string, any> = { page, limit };
+    if (status && status !== "all") params.status = status;
+    const res = await axiosInstance.get("/admin/reports", { params });
+    return res.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to fetch reports");
+  }
+};
+
+export const updateReportStatusApi = async (
+  reportId: string,
+  data: { status: "open" | "resolved"; resolutionNote?: string }
+) => {
+  try {
+    const res = await axiosInstance.patch(`/admin/reports/${reportId}`, data);
+    return res.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to update report");
+  }
+};
+
 // ─── Jobs ─────────────────────────────────────────────────────────────────────
 
 export const getAdminJobsApi = async (limit: number = 100) => {

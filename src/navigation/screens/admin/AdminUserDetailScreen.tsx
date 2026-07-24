@@ -20,6 +20,7 @@ import {
   fetchAdminUserById,
   clearSelectedUser,
   deleteAdminWorkImage,
+  setUserBlockStatus,
 } from "../../../redux/slices/adminSlice";
 import { Colors } from "../../../utils";
 import { IMAGE_BASE_URL } from "../../../api/baseURL";
@@ -130,9 +131,36 @@ const AdminUserDetailScreen = () => {
   const [viewingImage, setViewingImage] = useState<{ uri: string; rawPath?: string } | null>(null);
   const [deletingPath, setDeletingPath] = useState<string | null>(null);
 
-  const { selectedUser, usersLoading, usersError } = useSelector(
+  const { selectedUser, usersLoading, usersError, blockLoading } = useSelector(
     (state: RootState) => state.admin
   );
+
+  const handleToggleBlock = () => {
+    if (!selectedUser) return;
+    const blocking = selectedUser.isActive; // active → block; inactive → unblock
+    Alert.alert(
+      blocking ? "Block User" : "Unblock User",
+      blocking
+        ? "This will block the user. They will be logged out and unable to sign in until unblocked. Continue?"
+        : "This will unblock the user and restore their access. Continue?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: blocking ? "Block" : "Unblock",
+          style: blocking ? "destructive" : "default",
+          onPress: async () => {
+            try {
+              await dispatch(
+                setUserBlockStatus({ userId: selectedUser.id, blocked: blocking })
+              ).unwrap();
+            } catch (e: any) {
+              Alert.alert("Error", e?.message || "Failed to update block status");
+            }
+          },
+        },
+      ]
+    );
+  };
 
   useEffect(() => {
     if (userId) dispatch(fetchAdminUserById(userId));
@@ -257,6 +285,42 @@ const AdminUserDetailScreen = () => {
             </View>
           </View>
         </View>
+
+        {/* Block / Unblock action (not available for admin accounts) */}
+        {u.role !== "admin" && (
+          <View style={styles.section}>
+            <TouchableOpacity
+              style={[
+                styles.blockBtn,
+                u.isActive ? styles.blockBtnDanger : styles.blockBtnSuccess,
+                blockLoading && { opacity: 0.6 },
+              ]}
+              onPress={handleToggleBlock}
+              disabled={blockLoading}
+              activeOpacity={0.85}
+            >
+              {blockLoading ? (
+                <ActivityIndicator size="small" color={Colors.white} />
+              ) : (
+                <>
+                  <Ionicons
+                    name={u.isActive ? "ban-outline" : "checkmark-circle-outline"}
+                    size={18}
+                    color={Colors.white}
+                  />
+                  <Text style={styles.blockBtnText}>
+                    {u.isActive ? "Block User" : "Unblock User"}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+            <Text style={styles.blockHint}>
+              {u.isActive
+                ? "Blocking logs the user out and prevents sign-in until unblocked."
+                : "This user is currently blocked and cannot sign in."}
+            </Text>
+          </View>
+        )}
 
         {/* Profile Info */}
         <View style={styles.section}>
@@ -580,6 +644,18 @@ const styles = StyleSheet.create({
     borderColor: Colors.lightGray,
   },
   statusLabel: { fontSize: 12, color: Colors.gray, fontWeight: "500", textAlign: "center" },
+  blockBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 14,
+    paddingVertical: 15,
+  },
+  blockBtnDanger: { backgroundColor: "#DC2626" },
+  blockBtnSuccess: { backgroundColor: "#059669" },
+  blockBtnText: { color: Colors.white, fontSize: 15, fontWeight: "700" },
+  blockHint: { fontSize: 12, color: Colors.gray, marginTop: 8, textAlign: "center" },
   imageViewerBg: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.92)",

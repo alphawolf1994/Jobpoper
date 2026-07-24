@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from "react";
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from "react-native";
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Linking } from "react-native";
 import { Colors, getJobCategoryName } from "../../utils";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../components/Header";
@@ -14,6 +14,7 @@ import { formatDateDDMMYYYY } from "../../utils";
 import VerifyWorkerSheet from "../../components/VerifyWorkerSheet";
 import CompleteJobSheet from "../../components/CompleteJobSheet";
 import ReviewModal from "../../components/ReviewModal";
+import ReportIssueSheet from "../../components/ReportIssueSheet";
 
 const MyJobsScreen = () => {
   const navigation = useNavigation<any>();
@@ -25,6 +26,7 @@ const MyJobsScreen = () => {
   const [verifySheetJob, setVerifySheetJob] = useState<Job | null>(null);
   const [completeSheetJob, setCompleteSheetJob] = useState<Job | null>(null);
   const [reviewJob, setReviewJob] = useState<Job | null>(null);
+  const [reportJob, setReportJob] = useState<Job | null>(null);
 
   // Always refresh when this screen is focused so owner sees Completed + Leave Review
   // after the worker finishes via Task PIN.
@@ -182,13 +184,8 @@ const MyJobsScreen = () => {
 
       </View>
 
-      {/* Job ID reference — always visible so the owner can note it down */}
-      {item.jobPin && (
-        <View style={styles.jobIdRow}>
-          <Ionicons name="key-outline" size={13} color={Colors.gray} />
-          <Text style={styles.jobIdText}>Job ID: {item.jobPin}</Text>
-        </View>
-      )}
+      {/* Point 4: plain Job ID row removed — the completion PIN banner below
+          is the only place the PIN is shown (and only while job_started). */}
 
       {/* Description */}
       <Text style={styles.description} numberOfLines={2}>
@@ -226,8 +223,11 @@ const MyJobsScreen = () => {
         <View style={styles.jobPinBanner}>
           <Ionicons name="key-outline" size={16} color="#92400E" />
           <View style={{ flex: 1 }}>
-            <Text style={styles.jobPinLabel}>Task PIN (worker enters this to complete)</Text>
+            <Text style={styles.jobPinLabel}>Job completion PIN</Text>
             <Text style={styles.jobPinValue}>{item.jobPin}</Text>
+            <Text style={styles.jobPinHelper}>
+              Share this PIN with the professional once the job is completed
+            </Text>
           </View>
         </View>
       )}
@@ -257,12 +257,13 @@ const MyJobsScreen = () => {
                 workerId: w._id,
                 workerName: w.profile?.fullName,
                 workerImage: w.profile?.profileImage,
+                fromTab: 'My Jobs',
               });
             }}
           >
             <Ionicons name="person-circle-outline" size={18} color={Colors.primary} />
             <Text style={styles.workerChipText} numberOfLines={1}>
-              {(item.assignedWorker as any)?.profile?.fullName || 'Assigned worker'}
+              Assigned professional: {(item.assignedWorker as any)?.profile?.fullName || 'Professional'}
             </Text>
             <Ionicons name="chevron-forward" size={14} color={Colors.gray} />
           </TouchableOpacity>
@@ -280,6 +281,41 @@ const MyJobsScreen = () => {
         </TouchableOpacity>
       )}
 
+      {/* Point 13: once a review is submitted, show it read-only instead of
+          offering the review button again. */}
+      {item.status === 'completed' && item.isReviewed && item.myReview && (
+        <View style={styles.myReviewCard}>
+          <View style={styles.myReviewHeader}>
+            <Text style={styles.myReviewTitle}>Your review</Text>
+            <View style={styles.myReviewStars}>
+              {[1, 2, 3, 4, 5].map((s) => (
+                <Ionicons
+                  key={s}
+                  name={s <= (item.myReview?.rating || 0) ? 'star' : 'star-outline'}
+                  size={14}
+                  color="#F59E0B"
+                />
+              ))}
+            </View>
+          </View>
+          {item.myReview?.comment ? (
+            <Text style={styles.myReviewComment}>{item.myReview.comment}</Text>
+          ) : null}
+        </View>
+      )}
+
+      {/* Point 2: Report an issue — available on in-progress / completed tasks */}
+      {(item.status === 'job_started' || item.status === 'completed') && (
+        <TouchableOpacity
+          style={styles.reportBtn}
+          activeOpacity={0.8}
+          onPress={() => setReportJob(item)}
+        >
+          <Ionicons name="flag-outline" size={16} color="#DC2626" />
+          <Text style={styles.reportBtnText}>Report an issue</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Action Buttons */}
       <View style={styles.actionRow}>
         {item.status === 'open' && (
@@ -292,13 +328,17 @@ const MyJobsScreen = () => {
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity
-          style={[styles.actionButton, styles.deleteButton]}
-          onPress={() => handleDeleteJob(item)}
-        >
-          <Ionicons name="trash-outline" size={18} color={Colors.red} />
-          <Text style={styles.deleteButtonText}>Delete</Text>
-        </TouchableOpacity>
+        {/* Delete is hidden while a job is in progress so the poster can't
+            remove a task a professional is actively working on. */}
+        {item.status !== 'job_started' && (
+          <TouchableOpacity
+            style={[styles.actionButton, styles.deleteButton]}
+            onPress={() => handleDeleteJob(item)}
+          >
+            <Ionicons name="trash-outline" size={18} color={Colors.red} />
+            <Text style={styles.deleteButtonText}>Delete</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Safety note — remind owners to verify the worker before starting */}
@@ -368,6 +408,53 @@ const MyJobsScreen = () => {
         </Text>
       </View>
 
+      {/* Point 7: Call customer once the poster has verified & started the job */}
+      {item.status === 'job_started' && (
+        <TouchableOpacity
+          style={styles.callCustomerBtn}
+          activeOpacity={0.8}
+          onPress={() => {
+            const phone =
+              item.contactInfo ||
+              (item.postedOnBehalf ? item.externalContact?.phoneNumber : null) ||
+              item.postedBy?.phoneNumber ||
+              null;
+            if (!phone) {
+              showAlert({
+                title: 'Call customer',
+                message: 'No phone number available for this customer yet.',
+                type: 'error',
+              });
+              return;
+            }
+            showAlert({
+              title: 'Call customer',
+              message: `Phone: ${phone}`,
+              type: 'info',
+              buttons: [
+                { label: 'Cancel', variant: 'secondary' },
+                {
+                  label: 'Call',
+                  onPress: () => {
+                    const phoneNumber = phone.replace(/[\s\-\(\)]/g, '');
+                    Linking.openURL(`tel:${phoneNumber}`).catch(() => {
+                      showAlert({
+                        title: 'Error',
+                        message: 'Could not open phone dialer. Please check if the phone number is valid.',
+                        type: 'error',
+                      });
+                    });
+                  },
+                },
+              ],
+            });
+          }}
+        >
+          <Ionicons name="call-outline" size={17} color={Colors.white} />
+          <Text style={styles.callCustomerBtnText}>Call customer</Text>
+        </TouchableOpacity>
+      )}
+
       {/* Enter Task PIN button — worker sees this when job is started */}
       {item.status === 'job_started' && (
         <TouchableOpacity
@@ -407,7 +494,37 @@ const MyJobsScreen = () => {
   // Normalize interested jobs in case API returns items like { job: {...} }
   const normalizedInterestedJobs: any[] = safeInterestedRaw.map((entry) => entry?.job ?? entry).filter(Boolean);
 
-  const currentJobs: any[] = activeTab === 'myJobs' ? safeUserJobs : normalizedInterestedJobs;
+  // Order the list so active work is on top and finished work sinks to the
+  // bottom: In-Progress → Open → Completed → Cancelled. Newest first inside
+  // each group. (Client feedback: completed jobs pile up and should not bury
+  // the jobs still in progress.)
+  const statusRank = (status?: string): number => {
+    switch (status) {
+      case 'job_started':
+      case 'in-progress':
+        return 0;
+      case 'open':
+        return 1;
+      case 'completed':
+        return 2;
+      case 'cancelled':
+        return 3;
+      default:
+        return 1;
+    }
+  };
+  const sortByStatusThenRecent = (list: any[]): any[] =>
+    [...list].sort((a, b) => {
+      const rankDiff = statusRank(a?.status) - statusRank(b?.status);
+      if (rankDiff !== 0) return rankDiff;
+      const aTime = new Date(a?.updatedAt || a?.createdAt || 0).getTime();
+      const bTime = new Date(b?.updatedAt || b?.createdAt || 0).getTime();
+      return bTime - aTime;
+    });
+
+  const currentJobs: any[] = sortByStatusThenRecent(
+    activeTab === 'myJobs' ? safeUserJobs : normalizedInterestedJobs
+  );
   const jobCount = currentJobs?.length ?? 0;
 
   return (
@@ -511,6 +628,19 @@ const MyJobsScreen = () => {
           dispatch(getUserJobs());
         }}
       />
+
+      <ReportIssueSheet
+        visible={!!reportJob}
+        job={reportJob}
+        onClose={() => setReportJob(null)}
+        onSubmitted={() => {
+          showAlert({
+            title: "Report submitted",
+            message: "Thanks. Our team will review your report shortly.",
+            type: "success",
+          });
+        }}
+      />
     </SafeAreaView>
   );
 };
@@ -602,7 +732,7 @@ const styles = StyleSheet.create({
   jobCard: {
     backgroundColor: Colors.white,
     borderRadius: 16,
-    padding: 20,
+    padding: 16,
     shadowColor: '#000',
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -615,7 +745,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   jobTitle: {
     fontSize: 18,
@@ -638,13 +768,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.gray,
     lineHeight: 20,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginBottom: 12,
+    marginBottom: 8,
   },
   metaRowText: {
     flex: 1,
@@ -655,7 +785,7 @@ const styles = StyleSheet.create({
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 8,
   },
   infoItem: {
     flexDirection: 'row',
@@ -789,13 +919,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    marginBottom: 10,
+    marginBottom: 6,
   },
   jobIdText: {
     fontSize: 12,
-    color: Colors.gray,
-    fontWeight: '600',
+    color: Colors.black,
+    fontWeight: 'bold',
     letterSpacing: 1,
+  },
+  jobPinHelper: {
+    fontSize: 11,
+    color: '#92400E',
+    marginTop: 4,
+    lineHeight: 15,
   },
   jobPinBanner: {
     flexDirection: 'row',
@@ -835,6 +971,21 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: Colors.white,
   },
+  callCustomerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: Colors.primary,
+    borderRadius: 12,
+    paddingVertical: 11,
+    marginTop: 10,
+  },
+  callCustomerBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.white,
+  },
   enterPinBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -866,6 +1017,51 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#92400E',
+  },
+  reportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1.5,
+    borderColor: '#FCA5A5',
+    borderRadius: 12,
+    paddingVertical: 10,
+    marginBottom: 10,
+    backgroundColor: '#FEF2F2',
+  },
+  reportBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  myReviewCard: {
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    backgroundColor: '#FFFBEB',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+  },
+  myReviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  myReviewTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#92400E',
+  },
+  myReviewStars: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  myReviewComment: {
+    fontSize: 13,
+    color: '#4B5563',
+    marginTop: 6,
+    lineHeight: 18,
   },
   workerChip: {
     flexDirection: 'row',

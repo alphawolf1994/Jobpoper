@@ -29,6 +29,7 @@ import { formatDateDDMMYYYY, getJobCategoryName } from "../../utils";
 import VerificationBottomSheet, { VerificationBottomSheetHandle } from "../../components/VerificationBottomSheet";
 import PickupPreferencesBottomSheet, { PickupPreferencesBottomSheetHandle } from "../../components/PickupPreferencesBottomSheet";
 import ShowInterestSheet from "../../components/ShowInterestSheet";
+import ReportIssueSheet from "../../components/ReportIssueSheet";
 import { fetchVerificationStatus } from "../../redux/slices/verificationSlice";
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -61,6 +62,7 @@ const JobDetailsScreen = () => {
     number | null | undefined
   >(undefined);
   const [showInterestSheetVisible, setShowInterestSheetVisible] = useState(false);
+  const [reportSheetVisible, setReportSheetVisible] = useState(false);
 
   // Voice note player state
   const voiceSoundRef = useRef<Audio.Sound | null>(null);
@@ -732,7 +734,7 @@ const JobDetailsScreen = () => {
 
     return (
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Selected Professional</Text>
+        <Text style={styles.sectionTitle}>Assigned professional</Text>
         <View style={styles.selectedWorkerCard}>
           <View style={styles.selectedWorkerTop}>
             <View style={styles.selectedWorkerAvatar}>
@@ -796,6 +798,7 @@ const JobDetailsScreen = () => {
                   workerImage:
                     (selfieApproved ? worker.verification?.selfieImage : null) ||
                     worker.profile?.profileImage,
+                  fromTab: "My Jobs",
                 });
               }}
             >
@@ -845,10 +848,53 @@ const JobDetailsScreen = () => {
 
   const renderSummaryTab = () => {
     if (!currentJob) return null;
+    const ownerId = currentJob.postedBy?._id;
+    const amOwner = !!user && !!ownerId && ownerId === user.id;
+    const review = currentJob.myReview;
+    const showInlineReview =
+      currentJob.status === 'completed' &&
+      currentJob.isReviewed &&
+      !!review;
 
     return (
       <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
         {renderSelectedWorkerCard()}
+
+        {/* Point 13: show this job's submitted review on the summary */}
+        {showInlineReview && review && (
+          <View style={styles.myReviewCard}>
+            <View style={styles.myReviewHeader}>
+              <Text style={styles.myReviewTitle}>Your review</Text>
+              <View style={styles.myReviewStars}>
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <Ionicons
+                    key={s}
+                    name={s <= (review.rating || 0) ? 'star' : 'star-outline'}
+                    size={14}
+                    color="#F59E0B"
+                  />
+                ))}
+              </View>
+            </View>
+            {review.comment ? (
+              <Text style={styles.myReviewComment}>{review.comment}</Text>
+            ) : null}
+          </View>
+        )}
+
+        {/* Point 2: Report an issue on in-progress / completed (owner) */}
+        {amOwner &&
+          (currentJob.status === 'job_started' || currentJob.status === 'completed') && (
+            <TouchableOpacity
+              style={styles.reportBtn}
+              activeOpacity={0.8}
+              onPress={() => setReportSheetVisible(true)}
+            >
+              <Ionicons name="flag-outline" size={16} color="#DC2626" />
+              <Text style={styles.reportBtnText}>Report an issue</Text>
+            </TouchableOpacity>
+          )}
+
         {!!currentJob.description?.trim() && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Task Description</Text>
@@ -1039,6 +1085,54 @@ const JobDetailsScreen = () => {
   const isJobCancelled =
     typeof currentJob.status === 'string' &&
     currentJob.status.toLowerCase() === 'cancelled';
+
+  // Point 7: the assigned worker may call the customer, but only after the
+  // poster has verified & started the job (status === 'job_started'). This
+  // gates when the customer's phone number becomes visible to the worker.
+  const isJobStarted =
+    typeof currentJob.status === 'string' &&
+    currentJob.status.toLowerCase() === 'job_started';
+  const assignedWorkerId =
+    (currentJob.assignedWorker as any)?._id ||
+    (currentJob.assignedWorker as any)?.workerId;
+  const isAssignedWorker = !!user && assignedWorkerId === user.id;
+  const customerPhone =
+    currentJob.contactInfo ||
+    (currentJob.postedOnBehalf ? currentJob.externalContact?.phoneNumber : null) ||
+    currentJob.postedBy?.phoneNumber ||
+    null;
+
+  const handleCallCustomer = () => {
+    if (!customerPhone) {
+      showAlert({
+        title: 'Call customer',
+        message: 'No phone number available for this customer yet.',
+        type: 'error',
+      });
+      return;
+    }
+    showAlert({
+      title: 'Call customer',
+      message: `Phone: ${customerPhone}`,
+      type: 'info',
+      buttons: [
+        { label: 'Cancel', variant: 'secondary' },
+        {
+          label: 'Call',
+          onPress: () => {
+            const phoneNumber = customerPhone.replace(/[\s\-\(\)]/g, '');
+            Linking.openURL(`tel:${phoneNumber}`).catch(() => {
+              showAlert({
+                title: 'Error',
+                message: 'Could not open phone dialer. Please check if the phone number is valid.',
+                type: 'error',
+              });
+            });
+          },
+        },
+      ],
+    });
+  };
 
   // Has the current user already shown interest in this job?
   // Hydrated from backend on every fetch, plus an optimistic flag for the
@@ -1370,8 +1464,8 @@ const JobDetailsScreen = () => {
 
                     {isExpanded && (
                       <View style={styles.interestExpandedBody}>
-                        {/* Pickup prefs — only when set */}
-                        {hasPrefs && (
+                        {/* Pickup prefs — only for pickup jobs when set */}
+                        {isPickupJob && hasPrefs && (
                           <View style={styles.prefsPanel}>
                             <View style={styles.prefsHeaderRow}>
                               <Ionicons name="car-outline" size={14} color={Colors.primary} />
@@ -1410,8 +1504,9 @@ const JobDetailsScreen = () => {
                           </View>
                         )}
 
-                        {/* Experience + work images only */}
-                        {entry.user.isProfessional &&
+                        {/* Experience + work images — only for normal (non-pickup) jobs */}
+                        {!isPickupJob &&
+                          entry.user.isProfessional &&
                           prof &&
                           (prof.yearsOfExperience != null || workImageUris.length > 0) && (
                           <View style={styles.professionalPanel}>
@@ -1484,8 +1579,28 @@ const JobDetailsScreen = () => {
         </ScrollView>
       )}
 
+      {/* Point 7: Call-customer CTA for the assigned worker, only once the
+          poster has started the job (phone number visibility gate). */}
+      {!isMyJob && isAssignedWorker && isJobStarted && (
+        <View style={styles.contactButtonContainer}>
+          <TouchableOpacity
+            style={[styles.contactButton, { flexDirection: 'row', justifyContent: 'center' }]}
+            onPress={handleCallCustomer}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="call"
+              size={16}
+              color={Colors.white}
+              style={{ marginRight: 8 }}
+            />
+            <Text style={styles.contactButtonText}>Call customer</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Action Button — hidden when the job has been cancelled */}
-      {!isMyJob && !isJobCancelled && (
+      {!isMyJob && !isJobCancelled && !(isAssignedWorker && isJobStarted) && (
         <View style={styles.contactButtonContainer}>
           {!isDirectContact && hasShownInterest && (
             <View
@@ -1542,6 +1657,18 @@ const JobDetailsScreen = () => {
         onClose={() => setShowInterestSheetVisible(false)}
         onSuccess={handleInterestSubmitted}
       />
+      <ReportIssueSheet
+        visible={reportSheetVisible}
+        job={currentJob}
+        onClose={() => setReportSheetVisible(false)}
+        onSubmitted={() => {
+          showAlert({
+            title: "Report submitted",
+            message: "Thanks. Our team will review your report shortly.",
+            type: "success",
+          });
+        }}
+      />
       {alertModal}
     </SafeAreaView>
   );
@@ -1553,6 +1680,53 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.white,
+  },
+  reportBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1.5,
+    borderColor: '#FCA5A5',
+    borderRadius: 12,
+    paddingVertical: 10,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: '#FEF2F2',
+  },
+  reportBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  myReviewCard: {
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    backgroundColor: '#FFFBEB',
+    borderRadius: 12,
+    padding: 12,
+    marginHorizontal: 16,
+    marginBottom: 12,
+  },
+  myReviewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  myReviewTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#92400E',
+  },
+  myReviewStars: {
+    flexDirection: 'row',
+    gap: 2,
+  },
+  myReviewComment: {
+    fontSize: 13,
+    color: '#4B5563',
+    marginTop: 6,
+    lineHeight: 18,
   },
   loadingContainer: {
     flex: 1,

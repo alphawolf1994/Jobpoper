@@ -53,6 +53,7 @@ import VerificationSelfieScreen from "./screens/VerificationSelfieScreen";
 import VerificationIdScreen from "./screens/VerificationIdScreen";
 import VerificationSubmittedScreen from "./screens/VerificationSubmittedScreen";
 import OrdersScreen from "./screens/OrdersScreen";
+import MyReportsScreen from "./screens/MyReportsScreen";
 
 // ─── Admin Screens ─────────────────────────────────────────────────────────────
 import AdminDashboardScreen from "./screens/admin/AdminDashboardScreen";
@@ -320,6 +321,12 @@ const RootStack = createNativeStackNavigator({
     // ── Notification ───────────────────────────────────────────────────────
     NotificationScreen: {
       screen: NotificationScreen,
+      options: { headerShown: false },
+    },
+
+    // ── My Reports ─────────────────────────────────────────────────────────
+    MyReportsScreen: {
+      screen: MyReportsScreen,
       options: { headerShown: false },
     },
 

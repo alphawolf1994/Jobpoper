@@ -207,6 +207,7 @@ const ProfileScreen = () => {
                     workerId: user.id,
                     workerName: user.profile?.fullName,
                     workerImage: user.profile?.profileImage,
+                    fromTab: "Profile",
                   })
                 }
               >
@@ -260,6 +261,13 @@ const ProfileScreen = () => {
             label="Verification details"
             onPress={() => (navigation as any).navigate('VerificationDetailsScreen')}
             iconColor="#2563EB"
+          />
+
+          <MenuItem
+            icon="flag-outline"
+            label="My Reports"
+            onPress={() => (navigation as any).navigate('MyReportsScreen')}
+            iconColor="#DC2626"
           />
 
           <MenuItem

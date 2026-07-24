@@ -27,6 +27,8 @@ import type { AppDispatch, RootState } from "@/src/redux/store";
 import {
   navigationRef,
   navigateFromPushPayload,
+  queuePushNavigation,
+  tryFlushPendingPushNavigation,
 } from "@/src/navigation/navigationRef";
 
 function maskToken(t: string | undefined | null): string {
@@ -168,11 +170,34 @@ export const FcmHandler: React.FC = () => {
     return offOpen;
   }, [dispatch]);
 
-  // Cold-start: app launched by a notification tap (state was "killed")
+  // Cold-start: app launched by a notification tap (state was "killed").
+  //
+  // SplashScreen later navigates to HomeTabs (~2s+). If we deep-link to
+  // JobDetails before that, Splash overwrites the stack and the user "bounces"
+  // back to Home. Fix: queue the payload and flush only after boot leaves
+  // Splash/Login (see queuePushNavigation / tryFlushPendingPushNavigation).
+  const coldStartQueuedRef = React.useRef(false);
+
   useEffect(() => {
     if (!isFirebaseAvailable()) return;
+    let cancelled = false;
+    let attempts = 0;
+    const MAX_ATTEMPTS = 60; // ~15s at 250ms (covers splash + getCurrentUser)
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const tryFlush = () => {
+      if (cancelled) return;
+      tryFlushPendingPushNavigation();
+      // Keep polling until the pending queue is cleared or we time out.
+      attempts += 1;
+      if (attempts < MAX_ATTEMPTS) {
+        timer = setTimeout(tryFlush, 250);
+      }
+    };
+
     getColdStartNotificationOnce().then((msg) => {
-      if (!msg) return;
+      if (cancelled || !msg || coldStartQueuedRef.current) return;
+      coldStartQueuedRef.current = true;
       logRemoteMessage("Cold-start notification consumed", msg);
       const d = msg.data as Record<string, string> | undefined;
       if (d?.notificationId) {
@@ -183,14 +208,15 @@ export const FcmHandler: React.FC = () => {
         );
         if (n) dispatch(addNotificationFromPush(n));
       }
-      setTimeout(() => {
-        if (navigationRef.isReady()) {
-          navigateFromPushPayload(d);
-        } else {
-          handleNotificationOpened(msg);
-        }
-      }, 500);
+      // Always queue — flush runs when Splash lands on HomeTabs / AdminTabs.
+      queuePushNavigation(d);
+      tryFlush();
     });
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }, [dispatch]);
 
   // Token refresh — runs regardless of auth state so a token that rotates

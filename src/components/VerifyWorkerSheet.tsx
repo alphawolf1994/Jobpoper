@@ -181,14 +181,18 @@ const VerifyWorkerSheet: React.FC<Props> = ({ visible, job, onClose, onStarted }
                     style={styles.viewProfileBtn}
                     activeOpacity={0.8}
                     onPress={() => {
-                      onClose();
+                      // Navigate first so My Tasks stays under the profile in
+                      // the stack; close the sheet after. Pass fromTab so Back
+                      // returns to My Jobs even if the stack was reset.
                       navigation.navigate('WorkerProfileScreen', {
                         workerId: worker._id,
                         workerName: worker.profile?.fullName,
                         workerImage:
                           worker.verification?.selfieImage ||
                           worker.profile?.profileImage,
+                        fromTab: 'My Jobs',
                       });
+                      onClose();
                     }}
                   >
                     <Ionicons name="person-circle-outline" size={15} color={Colors.primary} />

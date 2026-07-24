@@ -11,6 +11,9 @@ import {
   reviewBusinessProfileApi,
   getAdminVerificationsApi,
   reviewVerificationApi,
+  setUserBlockStatusApi,
+  getAdminReportsApi,
+  updateReportStatusApi,
 } from "../../api/adminApis";
 
 // ─── Types matching the ACTUAL API response from buildAdminUser ───────────────
@@ -171,6 +174,14 @@ interface AdminState {
   verificationsLoading: boolean;
   verificationsError: string | null;
   reviewLoading: boolean;
+
+  blockLoading: boolean;
+  blockError: string | null;
+
+  reports: any[];
+  reportsLoading: boolean;
+  reportsError: string | null;
+  reportUpdateLoading: boolean;
 }
 
 const initialState: AdminState = {
@@ -205,6 +216,14 @@ const initialState: AdminState = {
   verificationsLoading: false,
   verificationsError: null,
   reviewLoading: false,
+
+  blockLoading: false,
+  blockError: null,
+
+  reports: [],
+  reportsLoading: false,
+  reportsError: null,
+  reportUpdateLoading: false,
 };
 
 // ─── Async Thunks ─────────────────────────────────────────────────────────────
@@ -241,6 +260,39 @@ export const deleteAdminWorkImage = createAsyncThunk(
   ) => {
     try { return await deleteAdminWorkImageApi(userId, imagePath); }
     catch (e: any) { return rejectWithValue(e?.message || "Failed to delete work image"); }
+  }
+);
+
+export const setUserBlockStatus = createAsyncThunk(
+  "admin/setUserBlockStatus",
+  async (
+    { userId, blocked }: { userId: string; blocked: boolean },
+    { rejectWithValue }
+  ) => {
+    try { return await setUserBlockStatusApi(userId, blocked); }
+    catch (e: any) { return rejectWithValue(e?.message || "Failed to update block status"); }
+  }
+);
+
+export const fetchAdminReports = createAsyncThunk(
+  "admin/fetchReports",
+  async (
+    { status = "open", page = 1, limit = 50 }: { status?: "open" | "resolved" | "all"; page?: number; limit?: number } = {},
+    { rejectWithValue }
+  ) => {
+    try { return await getAdminReportsApi(status, page, limit); }
+    catch (e: any) { return rejectWithValue(e?.message || "Failed to fetch reports"); }
+  }
+);
+
+export const updateReportStatus = createAsyncThunk(
+  "admin/updateReportStatus",
+  async (
+    { reportId, status, resolutionNote }: { reportId: string; status: "open" | "resolved"; resolutionNote?: string },
+    { rejectWithValue }
+  ) => {
+    try { return await updateReportStatusApi(reportId, { status, resolutionNote }); }
+    catch (e: any) { return rejectWithValue(e?.message || "Failed to update report"); }
   }
 );
 
@@ -420,6 +472,62 @@ const adminSlice = createSlice({
       .addCase(deleteAdminWorkImage.rejected, (state, action) => {
         state.workImageDeleteLoading = false;
         state.workImageDeleteError = action.payload as string;
+      });
+
+    // ── Block / unblock user ──────────────────────────────────────────────────
+    builder
+      .addCase(setUserBlockStatus.pending, (state) => {
+        state.blockLoading = true;
+        state.blockError = null;
+      })
+      .addCase(setUserBlockStatus.fulfilled, (state, action) => {
+        state.blockLoading = false;
+        // Response: { data: { user: { id, isActive, ... } } }
+        const updated = action.payload?.data?.user;
+        const nextActive =
+          typeof updated?.isActive === "boolean" ? updated.isActive : undefined;
+        if (state.selectedUser && nextActive !== undefined) {
+          state.selectedUser.isActive = nextActive;
+        }
+        if (updated?.id) {
+          const idx = state.users.findIndex((usr) => usr.id === updated.id);
+          if (idx !== -1 && nextActive !== undefined) {
+            state.users[idx].isActive = nextActive;
+          }
+        }
+      })
+      .addCase(setUserBlockStatus.rejected, (state, action) => {
+        state.blockLoading = false;
+        state.blockError = action.payload as string;
+      });
+
+    // ── Reports ───────────────────────────────────────────────────────────────
+    builder
+      .addCase(fetchAdminReports.pending, (state) => {
+        state.reportsLoading = true;
+        state.reportsError = null;
+      })
+      .addCase(fetchAdminReports.fulfilled, (state, action) => {
+        state.reportsLoading = false;
+        state.reports = action.payload?.data?.reports || [];
+      })
+      .addCase(fetchAdminReports.rejected, (state, action) => {
+        state.reportsLoading = false;
+        state.reportsError = action.payload as string;
+      })
+      .addCase(updateReportStatus.pending, (state) => {
+        state.reportUpdateLoading = true;
+      })
+      .addCase(updateReportStatus.fulfilled, (state, action) => {
+        state.reportUpdateLoading = false;
+        const updated = action.payload?.data?.report;
+        if (updated?._id) {
+          const idx = state.reports.findIndex((r: any) => r._id === updated._id);
+          if (idx !== -1) state.reports[idx] = { ...state.reports[idx], ...updated };
+        }
+      })
+      .addCase(updateReportStatus.rejected, (state) => {
+        state.reportUpdateLoading = false;
       });
 
     // ── Jobs list ──────────────────────────────────────────────────────────────

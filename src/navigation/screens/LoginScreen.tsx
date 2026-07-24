@@ -17,7 +17,7 @@ import { Colors } from "../../utils";
 import Button from "../../components/Button";
 import Loader from "../../components/Loader";
 import PhoneNumberInput from "../../components/PhoneNumberInput";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { AntDesign, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -29,11 +29,13 @@ import {
   setPhoneNumber as setAuthPhoneNumber,
 } from "../../redux/slices/authSlice";
 import { RootState, AppDispatch } from "../../redux/store";
+import { tryFlushPendingPushNavigation } from "../navigationRef";
 import { useAlertModal } from "../../hooks/useAlertModal";
 import ImagePath from "../../assets/images/ImagePath";
 
 const LoginScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute<any>();
   const dispatch = useDispatch<AppDispatch>();
   const authState = useSelector((state: RootState) => state?.auth);
   const loading = authState?.loading || false;
@@ -52,6 +54,30 @@ const LoginScreen = () => {
   React.useEffect(() => {
     dispatch(clearError());
   }, [dispatch]);
+
+  // Shown when an admin has blocked the account — either surfaced here after a
+  // hard-logout (via the `blocked` route param) or directly on a login attempt.
+  const showBlockedModal = React.useCallback(() => {
+    setStep(1);
+    setPin(['', '', '', '']);
+    showAlert({
+      title: "Account Blocked",
+      message:
+        "Your account has been blocked by the administrator. Please contact support if you believe this is a mistake.",
+      type: "error",
+    });
+  }, [showAlert]);
+
+  // The axios interceptor force-logs-out a blocked user and resets navigation
+  // to this screen with { blocked: true }. Surface the blocked modal once, then
+  // clear the param so it doesn't re-trigger on re-render.
+  React.useEffect(() => {
+    if (route.params?.blocked) {
+      showBlockedModal();
+      (navigation as any).setParams?.({ blocked: undefined });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route.params?.blocked]);
 
   const handlePinChange = (value: string, index: number) => {
     if (value.length > 1) return; // Prevent multiple characters
@@ -191,9 +217,11 @@ const LoginScreen = () => {
             // Admin users always go to the admin panel
             if (userData.role === 'admin') {
               (navigation as any).navigate("AdminTabs");
+              setTimeout(() => tryFlushPendingPushNavigation(), 0);
             } else if (userData.profile?.isProfileComplete) {
               // Regular user with complete profile
               (navigation as any).navigate("HomeTabs");
+              setTimeout(() => tryFlushPendingPushNavigation(), 0);
             } else {
               // Regular user with incomplete profile
               (navigation as any).navigate("BasicProfileScreen");
@@ -201,16 +229,26 @@ const LoginScreen = () => {
           } else {
             // If no user data, navigate to HomeTabs
             (navigation as any).navigate("HomeTabs");
+            setTimeout(() => tryFlushPendingPushNavigation(), 0);
           }
         } catch {
           // If getCurrentUser fails, still navigate to HomeTabs
           (navigation as any).navigate("HomeTabs");
+          setTimeout(() => tryFlushPendingPushNavigation(), 0);
         }
       }
     } catch (error: any) {
+      const msg = typeof error === "string" ? error : error?.message || "";
+      if (
+        error?.code === "ACCOUNT_BLOCKED" ||
+        /blocked by the administrator/i.test(msg)
+      ) {
+        showBlockedModal();
+        return;
+      }
       showAlert({
         title: "Error",
-        message: error || "Login failed. Please try again.",
+        message: msg || "Login failed. Please try again.",
         type: "error",
       });
       setPin(['', '', '', '']);

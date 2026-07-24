@@ -845,6 +845,23 @@ export interface WorkerReview {
 }
 
 // JobPoper Job Interfaces
+export interface Report {
+  _id: string;
+  reporter?: string | { _id: string; profile?: { fullName?: string; profileImage?: string } };
+  reportedUser?:
+    | string
+    | { _id: string; workerId?: string | null; profile?: { fullName?: string; profileImage?: string } }
+    | null;
+  jobId?: string | { _id: string; title?: string; status?: string } | null;
+  reason?: string;
+  description?: string;
+  images?: string[];
+  status: 'open' | 'resolved';
+  resolutionNote?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface Job {
   _id: string;
   title: string;
@@ -884,6 +901,14 @@ export interface Job {
   startedAt?: string | null;
   completedAt?: string | null;
   isReviewed?: boolean;
+  /** The poster's own submitted review for this job (point 13). */
+  myReview?: {
+    _id?: string;
+    jobId?: string;
+    rating: number;
+    comment?: string;
+    createdAt?: string;
+  } | null;
   jobType?: 'OnSite' | 'Pickup';
   responsePreference?: 'direct_contact' | 'show_interest';
   postedBy: {

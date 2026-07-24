@@ -10,6 +10,7 @@ import {
   Image,
   Modal,
   Dimensions,
+  Linking,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -21,6 +22,7 @@ import { Colors, formatDateDDMMYYYY } from "../../utils";
 import { IMAGE_BASE_URL } from "../../api/baseURL";
 import Header from "../../components/Header";
 import { WorkerReview } from "../../interface/interfaces";
+import { useAlertModal } from "../../hooks/useAlertModal";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
 
@@ -73,7 +75,13 @@ const WorkerProfileScreen = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const dispatch = useDispatch<AppDispatch>();
-  const { workerId, workerName, workerImage } = route.params || {};
+  const { showAlert, AlertComponent: alertModal } = useAlertModal();
+  const {
+    workerId,
+    workerName,
+    workerImage,
+    fromTab,
+  } = route.params || {};
 
   const {
     workerReviews,
@@ -82,6 +90,62 @@ const WorkerProfileScreen = () => {
     workerReviewsPagination,
     workerReviewsWorkerInfo,
   } = useSelector((state: RootState) => state.jobVerification);
+
+  // Point 12: when a worker opens their OWN public profile, hide contact/call
+  // affordances (you don't call yourself).
+  const currentUserId = useSelector((state: RootState) => state.auth.user?.id);
+  const isOwnProfile =
+    !!currentUserId &&
+    (workerId === currentUserId ||
+      workerReviewsWorkerInfo?._id === currentUserId);
+
+  // Point 11: prefer a real stack pop. If opened from Verify Worker / a
+  // deep-link with no history, return to the originating tab (My Jobs) when
+  // provided, otherwise HomeTabs — never dump the user on a blank back.
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    if (fromTab) {
+      navigation.navigate("HomeTabs", { screen: fromTab });
+      return;
+    }
+    navigation.navigate("HomeTabs");
+  };
+
+  const handleCallWorker = () => {
+    const phone = workerReviewsWorkerInfo?.phoneNumber;
+    if (!phone) {
+      showAlert({
+        title: "Contact",
+        message: "No phone number available for this professional.",
+        type: "error",
+      });
+      return;
+    }
+    showAlert({
+      title: "Contact",
+      message: `Phone: ${phone}`,
+      type: "info",
+      buttons: [
+        { label: "Cancel", variant: "secondary" },
+        {
+          label: "Call",
+          onPress: () => {
+            const phoneNumber = phone.replace(/[\s\-\(\)]/g, "");
+            Linking.openURL(`tel:${phoneNumber}`).catch(() => {
+              showAlert({
+                title: "Error",
+                message: "Could not open phone dialer.",
+                type: "error",
+              });
+            });
+          },
+        },
+      ],
+    });
+  };
 
   const [page, setPage] = useState(1);
   const [viewingImage, setViewingImage] = useState<string | null>(null);
@@ -104,7 +168,15 @@ const WorkerProfileScreen = () => {
   };
 
   const displayName = workerReviewsWorkerInfo?.fullName || workerName || "Worker";
-  const displayImage = resolveImage(workerReviewsWorkerInfo?.profileImage || workerImage);
+  const verificationStatus = workerReviewsWorkerInfo?.verification?.status;
+  // Point 10: for a verified worker, show the approved verification selfie as
+  // the profile picture so viewers see the identity that was actually vetted.
+  const verifiedSelfie =
+    verificationStatus === "approved"
+      ? resolveImage(workerReviewsWorkerInfo?.verification?.selfieImage)
+      : null;
+  const displayImage =
+    verifiedSelfie || resolveImage(workerReviewsWorkerInfo?.profileImage || workerImage);
   const rating = workerReviewsWorkerInfo?.rating ?? { average: 0, count: 0 };
   const displayWorkerId = workerReviewsWorkerInfo?.workerId;
   const professionalProfile = workerReviewsWorkerInfo?.professionalProfile;
@@ -112,7 +184,7 @@ const WorkerProfileScreen = () => {
   const serviceCategoryNames = (professionalProfile?.serviceCategories || [])
     .map((c: any) => c?.name)
     .filter(Boolean);
-  const verificationStatus = workerReviewsWorkerInfo?.verification?.status;
+  const workerPhone = workerReviewsWorkerInfo?.phoneNumber;
 
   const renderReview = ({ item }: { item: WorkerReview }) => {
     const reviewerImage = resolveImage(item.reviewerId?.profile?.profileImage);
@@ -180,6 +252,24 @@ const WorkerProfileScreen = () => {
           </View>
         ) : null}
       </TouchableOpacity>
+
+      {/* Point 12: phone number + Call — only when viewing someone else's profile */}
+      {!isOwnProfile && workerPhone ? (
+        <View style={styles.contactSection}>
+          <View style={styles.phoneRow}>
+            <Ionicons name="call-outline" size={16} color={Colors.gray} />
+            <Text style={styles.phoneText}>{workerPhone}</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.callBtn}
+            activeOpacity={0.85}
+            onPress={handleCallWorker}
+          >
+            <Ionicons name="call" size={16} color={Colors.white} />
+            <Text style={styles.callBtnText}>Call</Text>
+          </TouchableOpacity>
+        </View>
+      ) : null}
 
       {(professionalProfile?.bio ||
         professionalProfile?.yearsOfExperience != null ||
@@ -265,7 +355,7 @@ const WorkerProfileScreen = () => {
       <Header />
 
       <View style={styles.topBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={12}>
+        <TouchableOpacity onPress={handleBack} hitSlop={12}>
           <Ionicons name="arrow-back" size={22} color={Colors.black} />
         </TouchableOpacity>
         <Text style={styles.topBarTitle}>Worker Profile</Text>
@@ -303,6 +393,7 @@ const WorkerProfileScreen = () => {
           </View>
         </Modal>
       )}
+      {alertModal}
     </SafeAreaView>
   );
 };
@@ -379,6 +470,42 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 20,
     backgroundColor: "#F3F4F6",
+  },
+  contactSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.lightGray,
+    gap: 12,
+  },
+  phoneRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flex: 1,
+  },
+  phoneText: {
+    fontSize: 14,
+    color: Colors.black,
+    fontWeight: "500",
+    flexShrink: 1,
+  },
+  callBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: Colors.primary,
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+  },
+  callBtnText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: Colors.white,
   },
   verifyBadgeText: {
     fontSize: 12,
