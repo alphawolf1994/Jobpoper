@@ -15,8 +15,12 @@ import { Ionicons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigation } from "@react-navigation/native";
 import { AppDispatch, RootState } from "../redux/store";
-import { submitReview, resetReviewSubmitted } from "../redux/slices/jobVerificationSlice";
-import { getUserJobs } from "../redux/slices/jobSlice";
+import {
+  submitReview,
+  updateReview,
+  resetReviewSubmitted,
+} from "../redux/slices/jobVerificationSlice";
+import { getUserJobs, getJobById } from "../redux/slices/jobSlice";
 import { Colors } from "../utils";
 import { IMAGE_BASE_URL } from "../api/baseURL";
 import { Job } from "../interface/interfaces";
@@ -28,6 +32,10 @@ interface Props {
   workerId?: string;
   workerName?: string;
   workerImage?: string;
+  /** When true, updates an existing review instead of creating one */
+  isEditing?: boolean;
+  initialRating?: number;
+  initialComment?: string;
   onClose: () => void;
   onSubmitted?: () => void;
 }
@@ -44,6 +52,9 @@ const ReviewModal: React.FC<Props> = ({
   workerId,
   workerName,
   workerImage,
+  isEditing = false,
+  initialRating = 0,
+  initialComment = "",
   onClose,
   onSubmitted,
 }) => {
@@ -59,22 +70,30 @@ const ReviewModal: React.FC<Props> = ({
 
   useEffect(() => {
     if (visible) {
-      setRating(0);
-      setComment("");
+      setRating(isEditing ? initialRating || 0 : 0);
+      setComment(isEditing ? initialComment || "" : "");
       setLocalError(null);
       dispatch(resetReviewSubmitted());
     }
-  }, [visible]);
+  }, [visible, isEditing, initialRating, initialComment, dispatch]);
 
+  // Only run success side-effects while THIS modal is open — otherwise a leftover
+  // reviewSubmitted flag in Redux would re-fire the alert on every Job Details mount.
   useEffect(() => {
-    if (reviewSubmitted) {
-      setTimeout(() => {
-        dispatch(getUserJobs());
-        onSubmitted?.();
-        onClose();
-      }, 1600);
-    }
-  }, [reviewSubmitted]);
+    if (!visible || !reviewSubmitted) return;
+
+    const timer = setTimeout(() => {
+      dispatch(resetReviewSubmitted());
+      dispatch(getUserJobs());
+      if (job?._id) dispatch(getJobById(job._id));
+      onSubmitted?.();
+      onClose();
+    }, 1400);
+
+    return () => clearTimeout(timer);
+    // Intentionally omit onSubmitted/onClose — parent passes inline lambdas.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, reviewSubmitted, dispatch, job?._id]);
 
   const handleSubmit = async () => {
     if (!job) return;
@@ -84,9 +103,17 @@ const ReviewModal: React.FC<Props> = ({
     }
     setLocalError(null);
     try {
-      await dispatch(submitReview({ jobId: job._id, rating, comment: comment.trim() })).unwrap();
+      if (isEditing) {
+        await dispatch(
+          updateReview({ jobId: job._id, rating, comment: comment.trim() })
+        ).unwrap();
+      } else {
+        await dispatch(
+          submitReview({ jobId: job._id, rating, comment: comment.trim() })
+        ).unwrap();
+      }
     } catch (err: any) {
-      setLocalError(err || "Failed to submit review.");
+      setLocalError(err || `Failed to ${isEditing ? "update" : "submit"} review.`);
     }
   };
 
@@ -94,13 +121,12 @@ const ReviewModal: React.FC<Props> = ({
   const avatarUri = resolveImage(workerImage);
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.overlay}
       >
         <View style={styles.card}>
-          {/* Close button */}
           {!reviewSubmitted && (
             <TouchableOpacity style={styles.closeBtn} onPress={onClose} hitSlop={12}>
               <Ionicons name="close" size={22} color={Colors.gray} />
@@ -108,15 +134,15 @@ const ReviewModal: React.FC<Props> = ({
           )}
 
           {reviewSubmitted ? (
-            /* ── Success state ── */
             <View style={styles.successState}>
               <Ionicons name="checkmark-circle" size={64} color="#10B981" />
-              <Text style={styles.successTitle}>Review Submitted!</Text>
+              <Text style={styles.successTitle}>
+                {isEditing ? "Review Updated!" : "Review Submitted!"}
+              </Text>
               <Text style={styles.successSub}>Thank you for your feedback.</Text>
             </View>
           ) : (
             <>
-              {/* Worker info */}
               <View style={styles.workerRow}>
                 {avatarUri ? (
                   <Image source={{ uri: avatarUri }} style={styles.avatar} />
@@ -132,11 +158,11 @@ const ReviewModal: React.FC<Props> = ({
                       {job.title}
                     </Text>
                   )}
-                  {workerId && (
+                  {workerId && !isEditing && (
                     <TouchableOpacity
                       onPress={() => {
                         onClose();
-                        navigation.navigate('WorkerProfileScreen', {
+                        navigation.navigate("WorkerProfileScreen", {
                           workerId,
                           workerName,
                           workerImage,
@@ -150,8 +176,9 @@ const ReviewModal: React.FC<Props> = ({
                 </View>
               </View>
 
-              {/* Star selector */}
-              <Text style={styles.rateLabel}>How was the work?</Text>
+              <Text style={styles.rateLabel}>
+                {isEditing ? "Update your rating" : "How was the work?"}
+              </Text>
               <View style={styles.starsRow}>
                 {[1, 2, 3, 4, 5].map((s) => (
                   <TouchableOpacity key={s} onPress={() => setRating(s)} activeOpacity={0.7}>
@@ -169,7 +196,6 @@ const ReviewModal: React.FC<Props> = ({
                   : ["", "Poor", "Fair", "Good", "Very Good", "Excellent"][rating]}
               </Text>
 
-              {/* Comment */}
               <TextInput
                 style={styles.commentInput}
                 placeholder="Leave a comment (optional)..."
@@ -182,7 +208,6 @@ const ReviewModal: React.FC<Props> = ({
               />
               <Text style={styles.charCount}>{comment.length}/500</Text>
 
-              {/* Error */}
               {displayError ? (
                 <View style={styles.errorBanner}>
                   <Ionicons name="warning-outline" size={15} color="#DC2626" />
@@ -190,7 +215,6 @@ const ReviewModal: React.FC<Props> = ({
                 </View>
               ) : null}
 
-              {/* Submit */}
               <TouchableOpacity
                 style={[styles.submitBtn, (submitReviewLoading || rating === 0) && { opacity: 0.5 }]}
                 onPress={handleSubmit}
@@ -200,13 +224,17 @@ const ReviewModal: React.FC<Props> = ({
                 {submitReviewLoading ? (
                   <ActivityIndicator size="small" color={Colors.white} />
                 ) : (
-                  <Text style={styles.submitBtnText}>Submit Review</Text>
+                  <Text style={styles.submitBtnText}>
+                    {isEditing ? "Save Changes" : "Submit Review"}
+                  </Text>
                 )}
               </TouchableOpacity>
 
-              <TouchableOpacity onPress={onClose} style={styles.skipBtn}>
-                <Text style={styles.skipBtnText}>Skip for now</Text>
-              </TouchableOpacity>
+              {!isEditing && (
+                <TouchableOpacity onPress={onClose} style={styles.skipBtn}>
+                  <Text style={styles.skipBtnText}>Skip for now</Text>
+                </TouchableOpacity>
+              )}
             </>
           )}
         </View>

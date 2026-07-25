@@ -640,6 +640,11 @@ const jobSlice = createSlice({
           } else {
             // Replace with new jobs (refresh)
             state.allHotJobs = response.data.jobs;
+            // Keep Home's Hot Tasks strip in sync when the Hot tab loads
+            // an unfiltered first page (same /jobs/hot API).
+            if (!action.meta.arg.category) {
+              state.hotJobs = response.data.jobs;
+            }
           }
           if (response.data.pagination) {
             state.allHotJobsPagination = response.data.pagination;

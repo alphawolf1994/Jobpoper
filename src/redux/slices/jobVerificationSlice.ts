@@ -4,6 +4,7 @@ import {
   startJobApi,
   completeJobApi,
   submitReviewApi,
+  updateReviewApi,
   getWorkerReviewsApi,
 } from "../../api/jobApis";
 import { WorkerProfile, WorkerReview, ProfessionalProfile } from "../../interface/interfaces";
@@ -123,6 +124,21 @@ export const submitReview = createAsyncThunk(
   }
 );
 
+// Customer updates an existing review
+export const updateReview = createAsyncThunk(
+  "jobVerification/updateReview",
+  async (
+    { jobId, rating, comment }: { jobId: string; rating: number; comment: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      return await updateReviewApi(jobId, rating, comment);
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "Failed to update review");
+    }
+  }
+);
+
 // Fetch a worker's public reviews
 export const getWorkerReviews = createAsyncThunk(
   "jobVerification/getWorkerReviews",
@@ -221,6 +237,19 @@ const jobVerificationSlice = createSlice({
         state.reviewSubmitted = true;
       })
       .addCase(submitReview.rejected, (state, action) => {
+        state.submitReviewLoading = false;
+        state.submitReviewError = action.payload as string;
+      })
+      .addCase(updateReview.pending, (state) => {
+        state.submitReviewLoading = true;
+        state.submitReviewError = null;
+        state.reviewSubmitted = false;
+      })
+      .addCase(updateReview.fulfilled, (state) => {
+        state.submitReviewLoading = false;
+        state.reviewSubmitted = true;
+      })
+      .addCase(updateReview.rejected, (state, action) => {
         state.submitReviewLoading = false;
         state.submitReviewError = action.payload as string;
       })

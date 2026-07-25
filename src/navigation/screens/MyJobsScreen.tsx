@@ -26,6 +26,7 @@ const MyJobsScreen = () => {
   const [verifySheetJob, setVerifySheetJob] = useState<Job | null>(null);
   const [completeSheetJob, setCompleteSheetJob] = useState<Job | null>(null);
   const [reviewJob, setReviewJob] = useState<Job | null>(null);
+  const [reviewEditing, setReviewEditing] = useState(false);
   const [reportJob, setReportJob] = useState<Job | null>(null);
 
   // Always refresh when this screen is focused so owner sees Completed + Leave Review
@@ -274,15 +275,17 @@ const MyJobsScreen = () => {
         <TouchableOpacity
           style={styles.reviewBtn}
           activeOpacity={0.8}
-          onPress={() => setReviewJob(item)}
+          onPress={() => {
+            setReviewEditing(false);
+            setReviewJob(item);
+          }}
         >
           <Ionicons name="star-outline" size={16} color="#F59E0B" />
           <Text style={styles.reviewBtnText}>Leave a Review</Text>
         </TouchableOpacity>
       )}
 
-      {/* Point 13: once a review is submitted, show it read-only instead of
-          offering the review button again. */}
+      {/* Once reviewed — show card with edit */}
       {item.status === 'completed' && item.isReviewed && item.myReview && (
         <View style={styles.myReviewCard}>
           <View style={styles.myReviewHeader}>
@@ -301,6 +304,17 @@ const MyJobsScreen = () => {
           {item.myReview?.comment ? (
             <Text style={styles.myReviewComment}>{item.myReview.comment}</Text>
           ) : null}
+          <TouchableOpacity
+            style={styles.editReviewBtn}
+            activeOpacity={0.8}
+            onPress={() => {
+              setReviewEditing(true);
+              setReviewJob(item);
+            }}
+          >
+            <Ionicons name="create-outline" size={14} color={Colors.primary} />
+            <Text style={styles.editReviewBtnText}>Edit review</Text>
+          </TouchableOpacity>
         </View>
       )}
 
@@ -328,9 +342,9 @@ const MyJobsScreen = () => {
           </TouchableOpacity>
         )}
 
-        {/* Delete is hidden while a job is in progress so the poster can't
-            remove a task a professional is actively working on. */}
-        {item.status !== 'job_started' && (
+        {/* Delete only while the task is still open — once started/completed
+            it must stay in history for both poster and professional. */}
+        {item.status === 'open' && (
           <TouchableOpacity
             style={[styles.actionButton, styles.deleteButton]}
             onPress={() => handleDeleteJob(item)}
@@ -623,7 +637,13 @@ const MyJobsScreen = () => {
         workerId={typeof reviewJob?.assignedWorker === 'object' ? (reviewJob?.assignedWorker as any)?._id : undefined}
         workerName={typeof reviewJob?.assignedWorker === 'object' ? (reviewJob?.assignedWorker as any)?.profile?.fullName : undefined}
         workerImage={typeof reviewJob?.assignedWorker === 'object' ? (reviewJob?.assignedWorker as any)?.profile?.profileImage : undefined}
-        onClose={() => setReviewJob(null)}
+        isEditing={reviewEditing}
+        initialRating={reviewJob?.myReview?.rating || 0}
+        initialComment={reviewJob?.myReview?.comment || ""}
+        onClose={() => {
+          setReviewJob(null);
+          setReviewEditing(false);
+        }}
         onSubmitted={() => {
           dispatch(getUserJobs());
         }}
@@ -1062,6 +1082,24 @@ const styles = StyleSheet.create({
     color: '#4B5563',
     marginTop: 6,
     lineHeight: 18,
+  },
+  editReviewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  editReviewBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.primary,
   },
   workerChip: {
     flexDirection: 'row',

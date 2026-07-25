@@ -1,6 +1,33 @@
 import { axiosInstance } from "./axiosInstance";
+import { isFreshLocalVerificationUri } from "../utils/verificationImageUri";
 
 type SendVerificationPurpose = "signup" | "reset-pin";
+
+const getApiErrorMessage = (error: any, fallback: string) => {
+    const fromBody = error?.response?.data?.message;
+    if (fromBody) return fromBody;
+    if (error?.code === "ECONNABORTED") {
+        return "The server took too long to respond. Please try again.";
+    }
+    if (error?.message === "Network Error") {
+        return "Network error. Please check your connection and try again.";
+    }
+    return error?.message || fallback;
+};
+
+const mimeFromUri = (uri: string, fallbackName: string) => {
+    const inferredName = uri.split("/").pop() || fallbackName;
+    const ext = inferredName.split(".").pop()?.toLowerCase();
+    const mime =
+        ext === "png"
+            ? "image/png"
+            : ext === "webp"
+            ? "image/webp"
+            : ext === "heic"
+            ? "image/heic"
+            : "image/jpeg";
+    return { inferredName, mime };
+};
 
 // Send Phone Verification Code
 export const sendPhoneVerificationApi = async (
@@ -98,30 +125,47 @@ export const completeProfileApi = async (profileData: {
     isProfessional?: boolean;
 }) => {
     try {
-        // Build multipart form data
+        const hasLocalImage =
+            !!profileData.profileImage &&
+            isFreshLocalVerificationUri(profileData.profileImage);
+
+        // Text-only updates: send JSON like the other working APIs.
+        // Multipart + `Content-Type: undefined` is unreliable against the
+        // production host and often surfaces as a generic "Profile completion failed".
+        if (!hasLocalImage) {
+            const res = await axiosInstance.put("/auth/complete-profile", {
+                fullName: profileData.fullName,
+                email: profileData.email,
+                location: profileData.location,
+                latitude: profileData.latitude,
+                longitude: profileData.longitude,
+                isProfessional: profileData.isProfessional,
+            });
+            return res.data;
+        }
+
         const formData = new FormData();
         formData.append("fullName", profileData.fullName);
         formData.append("email", profileData.email);
         if (profileData.location) formData.append("location", profileData.location);
         if (profileData.latitude != null) formData.append("latitude", String(profileData.latitude));
         if (profileData.longitude != null) formData.append("longitude", String(profileData.longitude));
-        if (profileData.isProfessional !== undefined) formData.append("isProfessional", String(profileData.isProfessional));
-        // Append image if provided (React Native file object)
-        if (profileData.profileImage) {
-            const uri = profileData.profileImage;
-            const inferredName = uri.split("/").pop() || "profile.jpg";
-            // Basic mime inference by extension; backend should also validate
-            const ext = inferredName.split(".").pop()?.toLowerCase();
-            const mime = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : ext === "heic" ? "image/heic" : "image/jpeg";
-            formData.append("profileImage", { uri, name: inferredName, type: mime } as unknown as Blob);
+        if (profileData.isProfessional !== undefined) {
+            formData.append("isProfessional", String(profileData.isProfessional));
         }
 
+        const uri = profileData.profileImage!;
+        const { inferredName, mime } = mimeFromUri(uri, "profile.jpg");
+        formData.append("profileImage", { uri, name: inferredName, type: mime } as unknown as Blob);
+
+        // Same multipart header pattern as job/business uploads (those work in prod).
         const res = await axiosInstance.put("/auth/complete-profile", formData, {
             headers: { "Content-Type": "multipart/form-data" },
+            timeout: 90000,
         });
         return res.data;
     } catch (error: any) {
-        throw new Error(error.response?.data?.message || "Profile completion failed");
+        throw new Error(getApiErrorMessage(error, "Profile completion failed"));
     }
 };
 
@@ -134,6 +178,22 @@ export const updateProfessionalProfileApi = async (data: {
     yearsOfExperience?: number | null;
 }) => {
     try {
+        const newWorkImages = (data.newWorkImages || []).filter((uri) =>
+            isFreshLocalVerificationUri(uri)
+        );
+        const hasNewImages = newWorkImages.length > 0;
+
+        // No new files → JSON (avoids fragile empty multipart requests).
+        if (!hasNewImages) {
+            const res = await axiosInstance.put("/auth/professional-profile", {
+                serviceCategories: data.serviceCategories,
+                existingWorkImages: data.existingWorkImages,
+                bio: data.bio,
+                yearsOfExperience: data.yearsOfExperience,
+            });
+            return res.data;
+        }
+
         const formData = new FormData();
         if (data.serviceCategories) {
             formData.append("serviceCategories", JSON.stringify(data.serviceCategories));
@@ -142,17 +202,14 @@ export const updateProfessionalProfileApi = async (data: {
             formData.append("existingWorkImages", JSON.stringify(data.existingWorkImages));
         }
         if (data.bio !== undefined) formData.append("bio", data.bio);
-        if (data.yearsOfExperience != null) formData.append("yearsOfExperience", String(data.yearsOfExperience));
-
-        // Append new local images
-        if (data.newWorkImages && data.newWorkImages.length > 0) {
-            data.newWorkImages.forEach((uri) => {
-                const inferredName = uri.split("/").pop() || "work.jpg";
-                const ext = inferredName.split(".").pop()?.toLowerCase();
-                const mime = ext === "png" ? "image/png" : ext === "webp" ? "image/webp" : ext === "heic" ? "image/heic" : "image/jpeg";
-                formData.append("workImages", { uri, name: inferredName, type: mime } as unknown as Blob);
-            });
+        if (data.yearsOfExperience != null) {
+            formData.append("yearsOfExperience", String(data.yearsOfExperience));
         }
+
+        newWorkImages.forEach((uri) => {
+            const { inferredName, mime } = mimeFromUri(uri, "work.jpg");
+            formData.append("workImages", { uri, name: inferredName, type: mime } as unknown as Blob);
+        });
 
         const res = await axiosInstance.put("/auth/professional-profile", formData, {
             headers: { "Content-Type": "multipart/form-data" },
@@ -160,7 +217,7 @@ export const updateProfessionalProfileApi = async (data: {
         });
         return res.data;
     } catch (error: any) {
-        throw new Error(error.response?.data?.message || "Failed to update professional profile");
+        throw new Error(getApiErrorMessage(error, "Failed to update professional profile"));
     }
 };
 
@@ -227,6 +284,7 @@ export const submitVerificationDocumentsApi = async (verificationData: {
             type: photoIdType,
         } as unknown as Blob);
 
+        // Same multipart header pattern as job uploads (works against production).
         const res = await axiosInstance.put("/auth/verification-documents", formData, {
             headers: { "Content-Type": "multipart/form-data" },
             timeout: 90000,
@@ -234,7 +292,7 @@ export const submitVerificationDocumentsApi = async (verificationData: {
 
         return res.data;
     } catch (error: any) {
-        throw new Error(error.response?.data?.message || "Failed to submit verification documents");
+        throw new Error(getApiErrorMessage(error, "Failed to submit verification documents"));
     }
 };
 

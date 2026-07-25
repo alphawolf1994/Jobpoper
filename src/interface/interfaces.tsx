@@ -809,6 +809,8 @@ export interface InterestedUserEntry {
   _id: string;
   /** Worker's proposed price; null/undefined means they accepted the client's offered price */
   proposedPrice?: number | null;
+  /** How they chose the price on Express Interest */
+  priceOption?: "accept_offered" | "custom" | "use_rate";
 }
 
 // Worker lookup / verification interfaces
@@ -901,13 +903,20 @@ export interface Job {
   startedAt?: string | null;
   completedAt?: string | null;
   isReviewed?: boolean;
-  /** The poster's own submitted review for this job (point 13). */
+  /** The poster's review for this job (visible to poster + assigned worker). */
   myReview?: {
     _id?: string;
     jobId?: string;
     rating: number;
     comment?: string;
     createdAt?: string;
+    updatedAt?: string;
+    reviewerId?:
+      | string
+      | {
+          _id: string;
+          profile?: { fullName?: string; profileImage?: string };
+        };
   } | null;
   jobType?: 'OnSite' | 'Pickup';
   responsePreference?: 'direct_contact' | 'show_interest';

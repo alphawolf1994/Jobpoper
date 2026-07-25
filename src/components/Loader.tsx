@@ -9,18 +9,25 @@ interface LoaderProps {
   overlay?: boolean;
 }
 
+/**
+ * IMPORTANT: always keep the Modal mounted and toggle via `visible`.
+ * Returning `null` while the Modal was open unmounts it without a proper
+ * dismiss, which on iOS Simulator can leave a permanent transparent overlay
+ * (looks like a stuck loader). This is especially visible on flows that
+ * flip loading true→false→true quickly (e.g. profile + professional save).
+ */
 const Loader: React.FC<LoaderProps> = ({ visible = true, overlay = true }) => {
-  if (!visible) return null;
-
   if (overlay) {
     return (
-      <Modal transparent visible={visible} animationType="fade">
-        <View style={styles.overlay}>
+      <Modal transparent visible={!!visible} animationType="fade" statusBarTranslucent>
+        <View style={styles.overlay} pointerEvents={visible ? 'auto' : 'none'}>
           <ActivityIndicator size="large" color={Colors.primary} />
         </View>
       </Modal>
     );
   }
+
+  if (!visible) return null;
 
   return (
     <View style={styles.inlineContainer}>

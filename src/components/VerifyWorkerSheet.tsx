@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -15,7 +15,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigation } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { AppDispatch, RootState } from "../redux/store";
 import { lookupWorker, startJob, clearLookedUpWorker } from "../redux/slices/jobVerificationSlice";
 import { getUserJobs } from "../redux/slices/jobSlice";
@@ -58,20 +58,53 @@ const VerifyWorkerSheet: React.FC<Props> = ({ visible, job, onClose, onStarted }
 
   const [workerIdInput, setWorkerIdInput] = useState("");
   const [confirmed, setConfirmed] = useState(false);
+  // RN Modals sit above the nav stack, so we must hide the sheet to show the
+  // profile — but we keep local + Redux lookup state and restore on back.
+  const [hideForProfile, setHideForProfile] = useState(false);
+  const pendingRestoreRef = useRef(false);
 
-  // Reset on open/close
+  // Reset only when the parent fully dismisses the sheet (X / cancel), not when
+  // we temporarily hide it to open Worker Profile.
   useEffect(() => {
-    if (visible) {
+    if (!visible) {
       setWorkerIdInput("");
       setConfirmed(false);
+      setHideForProfile(false);
+      pendingRestoreRef.current = false;
       dispatch(clearLookedUpWorker());
     }
-  }, [visible]);
+  }, [visible, dispatch]);
+
+  // Coming back from Worker Profile → show the sheet again with lookup intact.
+  // Use a ref so this only runs on real focus (not when hideForProfile flips).
+  useFocusEffect(
+    useCallback(() => {
+      if (pendingRestoreRef.current) {
+        pendingRestoreRef.current = false;
+        setHideForProfile(false);
+      }
+    }, [])
+  );
 
   const handleLookup = () => {
     const trimmed = workerIdInput.trim().toUpperCase();
     if (!trimmed || trimmed.length !== 5) return;
     dispatch(lookupWorker(trimmed));
+  };
+
+  const handleViewProfile = (worker: WorkerProfile) => {
+    pendingRestoreRef.current = true;
+    setHideForProfile(true);
+    // Let the modal hide before pushing so the profile isn't covered.
+    setTimeout(() => {
+      navigation.navigate("WorkerProfileScreen", {
+        workerId: worker._id,
+        workerName: worker.profile?.fullName,
+        workerImage:
+          worker.verification?.selfieImage || worker.profile?.profileImage,
+        fromTab: "My Jobs",
+      });
+    }, 150);
   };
 
   const handleConfirmStart = async () => {
@@ -96,11 +129,12 @@ const VerifyWorkerSheet: React.FC<Props> = ({ visible, job, onClose, onStarted }
     worker?.verification?.selfieImage || worker?.profile?.profileImage
   );
   const isVerified = worker?.verification?.status === "approved";
+  const sheetVisible = visible && !hideForProfile;
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={sheetVisible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         style={styles.overlay}
       >
         <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, Platform.OS === "ios" ? 32 : 16) }]}>
@@ -180,20 +214,7 @@ const VerifyWorkerSheet: React.FC<Props> = ({ visible, job, onClose, onStarted }
                   <TouchableOpacity
                     style={styles.viewProfileBtn}
                     activeOpacity={0.8}
-                    onPress={() => {
-                      // Navigate first so My Tasks stays under the profile in
-                      // the stack; close the sheet after. Pass fromTab so Back
-                      // returns to My Jobs even if the stack was reset.
-                      navigation.navigate('WorkerProfileScreen', {
-                        workerId: worker._id,
-                        workerName: worker.profile?.fullName,
-                        workerImage:
-                          worker.verification?.selfieImage ||
-                          worker.profile?.profileImage,
-                        fromTab: 'My Jobs',
-                      });
-                      onClose();
-                    }}
+                    onPress={() => handleViewProfile(worker)}
                   >
                     <Ionicons name="person-circle-outline" size={15} color={Colors.primary} />
                     <Text style={styles.viewProfileBtnText}>View Profile</Text>

@@ -30,12 +30,16 @@ import { useNavigation } from "@react-navigation/native";
 import { useAlertModal } from "../../hooks/useAlertModal";
 import CategoryPickerSheet, { getCategoryVisual } from "../../components/CategoryPickerSheet";
 import { ServiceCategory } from "../../interface/interfaces";
+import { isFreshLocalVerificationUri } from "../../utils/verificationImageUri";
 
 const UserDetailsScreen = () => {
     const navigation = useNavigation();
     const dispatch = useDispatch<AppDispatch>();
-    const { user, loading, error } = useSelector((state: RootState) => state.auth);
+    const { user, loading } = useSelector((state: RootState) => state.auth);
     const { showAlert, AlertComponent: alertModal } = useAlertModal();
+    // Local saving flag so the overlay always clears even if a Redux thunk
+    // leaves `auth.loading` true (or the Modal gets stuck across two saves).
+    const [isSaving, setIsSaving] = useState(false);
 
     // Profile data state
     const [fullName, setFullName] = useState("");
@@ -179,6 +183,7 @@ const UserDetailsScreen = () => {
             return;
         }
 
+        setIsSaving(true);
         try {
             const profileData = {
                 fullName: fullName.trim(),
@@ -186,7 +191,8 @@ const UserDetailsScreen = () => {
                 location: location.fullAddress || `${location.city}, ${location.state}, ${location.country}`.trim(),
                 latitude: location.latitude,
                 longitude: location.longitude,
-                profileImage: profileImage || undefined,
+                // Only send a newly picked local photo; keep existing server path out of FormData
+                profileImage: isFreshLocalVerificationUri(profileImage) ? profileImage! : undefined,
                 isProfessional,
             };
 
@@ -203,8 +209,17 @@ const UserDetailsScreen = () => {
 
                 // Save professional profile too if applicable
                 if (isProfessional) {
-                    const existingWorkImages = workImages.filter(uri => !uri.startsWith('file:') && !uri.startsWith('/var') && !uri.startsWith('/data') && uri.includes('/'));
-                    const newWorkImages = workImages.filter(uri => uri.startsWith('file:') || uri.startsWith('/var') || uri.startsWith('/data'));
+                    const newWorkImages = workImages.filter((uri) => isFreshLocalVerificationUri(uri));
+                    const existingWorkImages = workImages
+                        .filter((uri) => !isFreshLocalVerificationUri(uri))
+                        .map((uri) => {
+                            // Normalize absolute upload URLs back to server-relative paths
+                            const marker = "/uploads/";
+                            const idx = uri.indexOf(marker);
+                            if (idx >= 0) return uri.slice(idx + marker.length);
+                            return uri.replace(/^\//, "");
+                        })
+                        .filter((uri) => !!uri && uri.includes("/"));
 
                     await dispatch(updateProfessionalProfile({
                         serviceCategories: selectedCategories.map(c => c._id),
@@ -222,11 +237,18 @@ const UserDetailsScreen = () => {
                 });
             }
         } catch (error: any) {
+            // unwrap() with rejectWithValue throws the payload string directly
+            const message =
+                typeof error === "string"
+                    ? error
+                    : error?.message || "Profile update failed. Please try again.";
             showAlert({
                 title: "Error",
-                message: error.message || "Profile update failed. Please try again.",
+                message,
                 type: "error",
             });
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -491,11 +513,11 @@ const UserDetailsScreen = () => {
 
                     {/* Single save button for everything */}
                     <Button
-                        label={loading ? "Saving..." : "Update Profile"}
+                        label={isSaving || loading ? "Saving..." : "Update Profile"}
                         onPress={handleUpdateProfile}
-                        disabled={loading}
+                        disabled={isSaving || loading}
                         style={{
-                            backgroundColor: loading ? Colors.gray : Colors.primary,
+                            backgroundColor: isSaving || loading ? Colors.gray : Colors.primary,
                             borderRadius: 12,
                             marginTop: 24,
                             marginBottom: 32,
@@ -523,7 +545,7 @@ const UserDetailsScreen = () => {
                         subtitle="Select up to 5 categories you offer"
                     />
                 )}
-                <Loader visible={loading} message="Updating your profile..." />
+                <Loader visible={isSaving} message="Updating your profile..." />
                 {alertModal}
             </SafeAreaView>
         </KeyboardAvoidingView>

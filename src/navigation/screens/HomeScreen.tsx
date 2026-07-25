@@ -49,28 +49,15 @@ const HomeScreen = ({ navigation }: any) => {
     return "New York, NY, USA";
   };
 
-  // Refresh hot jobs and listed jobs when location changes (initial load)
+  // Expire stale jobs when location context changes; job lists refresh on focus below.
   useEffect(() => {
     dispatch(expireOldJobs());
-    dispatch(getHotJobs({
-      location: getLocation(),
-      page: 1,
-      limit: 10,
-      sortOrder: 'desc'
-    }));
-
-    dispatch(getListedJobs({
-      location: getLocation(),
-      page: 1,
-      limit: 10,
-      sortOrder: 'desc'
-    }));
     isInitialMountRef.current = false;
   }, [dispatch, currentLocation, user?.profile?.location]);
 
   // Debounced search effect - triggers when searchQuery changes
   useEffect(() => {
-    // Skip on initial mount (we already loaded default jobs)
+    // Skip on initial mount (focus effect already loads default jobs)
     if (isInitialMountRef.current) {
       return;
     }
@@ -115,6 +102,28 @@ const HomeScreen = ({ navigation }: any) => {
       sortOrder: 'desc'
     }));
   }, [dispatch, currentLocation, user?.profile?.location]);
+
+  // Refresh Hot Tasks whenever Home is focused so the strip matches the Hot tab
+  useFocusEffect(
+    useCallback(() => {
+      dispatch(
+        getHotJobs({
+          location: getLocation(),
+          page: 1,
+          limit: 10,
+          sortOrder: "desc",
+        })
+      );
+      dispatch(
+        getListedJobs({
+          location: getLocation(),
+          page: 1,
+          limit: 10,
+          sortOrder: "desc",
+        })
+      );
+    }, [dispatch, currentLocation, user?.profile?.location])
+  );
 
   // Handle Android back button
   useFocusEffect(

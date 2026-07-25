@@ -161,7 +161,7 @@ const HotJobs: React.FC<HotJobsProps> = ({ searchQuery = '' }) => {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
           decelerationRate="fast"
-          snapToInterval={300} // Width of card + margin
+          snapToInterval={274} // card width (260) + margin (14)
           snapToAlignment="start"
         >
           {displayJobs.map(renderJobCard)}
@@ -203,12 +203,12 @@ const styles = StyleSheet.create({
     paddingRight: 16,
   },
   jobCard: {
-    width: 280,
+    width: 260,
     height: 185,
     backgroundColor: Colors.primary,
     borderRadius: 25,
     padding: 15,
-    marginRight: 20,
+    marginRight: 14,
     position: 'relative',
     shadowColor: '#000',
     shadowOpacity: 0.12,

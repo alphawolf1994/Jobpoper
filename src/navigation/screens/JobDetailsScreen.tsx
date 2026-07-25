@@ -28,8 +28,9 @@ import { useAlertModal } from "../../hooks/useAlertModal";
 import { formatDateDDMMYYYY, getJobCategoryName } from "../../utils";
 import VerificationBottomSheet, { VerificationBottomSheetHandle } from "../../components/VerificationBottomSheet";
 import PickupPreferencesBottomSheet, { PickupPreferencesBottomSheetHandle } from "../../components/PickupPreferencesBottomSheet";
-import ShowInterestSheet from "../../components/ShowInterestSheet";
+import ShowInterestSheet, { ShowInterestSheetHandle } from "../../components/ShowInterestSheet";
 import ReportIssueSheet from "../../components/ReportIssueSheet";
+import ReviewModal from "../../components/ReviewModal";
 import { fetchVerificationStatus } from "../../redux/slices/verificationSlice";
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -44,6 +45,7 @@ const JobDetailsScreen = () => {
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
   const verificationSheetRef = useRef<VerificationBottomSheetHandle>(null);
   const pickupPrefSheetRef = useRef<PickupPreferencesBottomSheetHandle>(null);
+  const showInterestSheetRef = useRef<ShowInterestSheetHandle>(null);
 
   // Get jobId from route params
   const jobId = (route.params as any)?.jobId;
@@ -61,8 +63,9 @@ const JobDetailsScreen = () => {
   const [optimisticProposedPrice, setOptimisticProposedPrice] = useState<
     number | null | undefined
   >(undefined);
-  const [showInterestSheetVisible, setShowInterestSheetVisible] = useState(false);
   const [reportSheetVisible, setReportSheetVisible] = useState(false);
+  const [reviewModalVisible, setReviewModalVisible] = useState(false);
+  const [reviewModalEditing, setReviewModalEditing] = useState(false);
 
   // Voice note player state
   const voiceSoundRef = useRef<Audio.Sound | null>(null);
@@ -309,7 +312,7 @@ const JobDetailsScreen = () => {
       return;
     }
 
-    setShowInterestSheetVisible(true);
+    showInterestSheetRef.current?.open();
   };
 
   const handleInterestSubmitted = (message?: string, proposedPrice?: number | null) => {
@@ -496,6 +499,13 @@ const JobDetailsScreen = () => {
         !!user?.vehiclePreference?.isSet &&
         user?.vehiclePreference?.pricePerKm !== null &&
         user?.vehiclePreference?.pricePerKm !== undefined;
+      // Price prefs / estimated earnings are for professionals viewing the task —
+      // the poster already set their own budget and shouldn't see this CTA.
+      const isOwner =
+        !!user?.id &&
+        !!currentJob.postedBy?._id &&
+        String(currentJob.postedBy._id) === String(user.id);
+      const showWorkerPriceRow = !isOwner;
 
       return (
         <View style={styles.locationSection}>
@@ -533,8 +543,8 @@ const JobDetailsScreen = () => {
               </View>
             </View>
 
-            {/* Distance + Estimated price (pickup-only) */}
-            {(hasDistance || hasPickupPrefs || estimated) && (
+            {/* Distance always; estimated price / set-prefs only for non-owners */}
+            {(hasDistance || (showWorkerPriceRow && (hasPickupPrefs || estimated))) && (
               <View style={styles.pickupMetaContainer}>
                 {hasDistance && (
                   <View style={styles.pickupMetaRow}>
@@ -550,42 +560,43 @@ const JobDetailsScreen = () => {
                   </View>
                 )}
 
-                {estimated ? (
-                  <View style={styles.pickupMetaRow}>
-                    <Ionicons
-                      name="cash-outline"
-                      size={16}
-                      color={Colors.primary}
-                    />
-                    <Text style={styles.pickupMetaLabel}>
-                      Your estimated price
-                    </Text>
-                    <Text style={styles.pickupMetaValueStrong}>
-                      {estimated.symbol}
-                      {estimated.value}
-                    </Text>
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.setPrefsRow}
-                    activeOpacity={0.7}
-                    onPress={() => pickupPrefSheetRef.current?.open()}
-                  >
-                    <Ionicons
-                      name="information-circle-outline"
-                      size={16}
-                      color={Colors.primary}
-                    />
-                    <Text style={styles.setPrefsText}>
-                      Set preferences to see price
-                    </Text>
-                    <Ionicons
-                      name="chevron-forward"
-                      size={16}
-                      color={Colors.primary}
-                    />
-                  </TouchableOpacity>
-                )}
+                {showWorkerPriceRow &&
+                  (estimated ? (
+                    <View style={styles.pickupMetaRow}>
+                      <Ionicons
+                        name="cash-outline"
+                        size={16}
+                        color={Colors.primary}
+                      />
+                      <Text style={styles.pickupMetaLabel}>
+                        Your estimated price
+                      </Text>
+                      <Text style={styles.pickupMetaValueStrong}>
+                        {estimated.symbol}
+                        {estimated.value}
+                      </Text>
+                    </View>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.setPrefsRow}
+                      activeOpacity={0.7}
+                      onPress={() => pickupPrefSheetRef.current?.open()}
+                    >
+                      <Ionicons
+                        name="information-circle-outline"
+                        size={16}
+                        color={Colors.primary}
+                      />
+                      <Text style={styles.setPrefsText}>
+                        Set preferences to see price
+                      </Text>
+                      <Ionicons
+                        name="chevron-forward"
+                        size={16}
+                        color={Colors.primary}
+                      />
+                    </TouchableOpacity>
+                  ))}
               </View>
             )}
 
@@ -732,6 +743,33 @@ const JobDetailsScreen = () => {
     const proposedPrice = interestEntry?.proposedPrice;
     const symbol = getCurrencySymbol(currentJob.cost);
 
+    // Never show View Profile / Contact when this card is the logged-in user
+    // (the assigned worker viewing their own assignment).
+    const viewerId = String(
+      (user as any)?.id ?? (user as any)?._id ?? ""
+    ).trim();
+    const ownerId = String(currentJob.postedBy?._id ?? "").trim();
+    const assignedId = String(
+      (worker as any)?._id ?? (worker as any)?.id ?? ""
+    ).trim();
+
+    const sameUserId = !!viewerId && !!assignedId && viewerId === assignedId;
+    const sameWorkerCode =
+      !!user?.workerId &&
+      !!worker.workerId &&
+      String(user.workerId).trim().toUpperCase() ===
+        String(worker.workerId).trim().toUpperCase();
+    const sameDisplayName =
+      !!user?.profile?.fullName &&
+      !!worker.profile?.fullName &&
+      user.profile.fullName.trim().toLowerCase() ===
+        worker.profile.fullName.trim().toLowerCase();
+
+    const isAssignedSelf = sameUserId || sameWorkerCode || sameDisplayName;
+    const isOwner = !!viewerId && !!ownerId && viewerId === ownerId;
+    // Client-only: must be the poster, and must not be the person on this card
+    const showOwnerActions = isOwner && !isAssignedSelf;
+
     return (
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>Assigned professional</Text>
@@ -787,60 +825,62 @@ const JobDetailsScreen = () => {
             </View>
           </View>
 
-          <View style={styles.selectedWorkerActions}>
-            <TouchableOpacity
-              style={styles.interestViewProfileBtn}
-              activeOpacity={0.85}
-              onPress={() => {
-                navigation.navigate("WorkerProfileScreen", {
-                  workerId: worker._id,
-                  workerName: fullName,
-                  workerImage:
-                    (selfieApproved ? worker.verification?.selfieImage : null) ||
-                    worker.profile?.profileImage,
-                  fromTab: "My Jobs",
-                });
-              }}
-            >
-              <Ionicons name="person-outline" size={16} color={Colors.primary} />
-              <Text style={styles.interestViewProfileBtnText}>View Profile</Text>
-            </TouchableOpacity>
-            {worker.phoneNumber ? (
+          {showOwnerActions ? (
+            <View style={styles.selectedWorkerActions}>
               <TouchableOpacity
-                style={styles.interestContactBtn}
+                style={styles.interestViewProfileBtn}
                 activeOpacity={0.85}
                 onPress={() => {
-                  showAlert({
-                    title: "Contact",
-                    message: `Phone: ${worker.phoneNumber}`,
-                    type: "info",
-                    buttons: [
-                      { label: "Cancel", variant: "secondary" },
-                      {
-                        label: "Call",
-                        onPress: () => {
-                          const phoneNumber = (worker.phoneNumber || "").replace(
-                            /[\s\-\(\)]/g,
-                            ""
-                          );
-                          Linking.openURL(`tel:${phoneNumber}`).catch(() => {
-                            showAlert({
-                              title: "Error",
-                              message: "Could not open phone dialer.",
-                              type: "error",
-                            });
-                          });
-                        },
-                      },
-                    ],
+                  navigation.navigate("WorkerProfileScreen", {
+                    workerId: worker._id,
+                    workerName: fullName,
+                    workerImage:
+                      (selfieApproved ? worker.verification?.selfieImage : null) ||
+                      worker.profile?.profileImage,
+                    fromTab: "My Jobs",
                   });
                 }}
               >
-                <Ionicons name="call-outline" size={16} color={Colors.white} />
-                <Text style={styles.interestContactBtnText}>Contact</Text>
+                <Ionicons name="person-outline" size={16} color={Colors.primary} />
+                <Text style={styles.interestViewProfileBtnText}>View Profile</Text>
               </TouchableOpacity>
-            ) : null}
-          </View>
+              {worker.phoneNumber ? (
+                <TouchableOpacity
+                  style={styles.interestContactBtn}
+                  activeOpacity={0.85}
+                  onPress={() => {
+                    showAlert({
+                      title: "Contact",
+                      message: `Phone: ${worker.phoneNumber}`,
+                      type: "info",
+                      buttons: [
+                        { label: "Cancel", variant: "secondary" },
+                        {
+                          label: "Call",
+                          onPress: () => {
+                            const phoneNumber = (worker.phoneNumber || "").replace(
+                              /[\s\-\(\)]/g,
+                              ""
+                            );
+                            Linking.openURL(`tel:${phoneNumber}`).catch(() => {
+                              showAlert({
+                                title: "Error",
+                                message: "Could not open phone dialer.",
+                                type: "error",
+                              });
+                            });
+                          },
+                        },
+                      ],
+                    });
+                  }}
+                >
+                  <Ionicons name="call-outline" size={16} color={Colors.white} />
+                  <Text style={styles.interestContactBtnText}>Contact</Text>
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ) : null}
         </View>
       </View>
     );
@@ -848,37 +888,128 @@ const JobDetailsScreen = () => {
 
   const renderSummaryTab = () => {
     if (!currentJob) return null;
-    const ownerId = currentJob.postedBy?._id;
-    const amOwner = !!user && !!ownerId && ownerId === user.id;
+    const ownerId = currentJob.postedBy?._id
+      ? String(currentJob.postedBy._id)
+      : "";
+    const amOwner =
+      !!user?.id && !!ownerId && ownerId === String(user.id);
     const review = currentJob.myReview;
     const showInlineReview =
-      currentJob.status === 'completed' &&
+      currentJob.status === "completed" &&
       currentJob.isReviewed &&
       !!review;
+    const showLeaveReview =
+      amOwner &&
+      currentJob.status === "completed" &&
+      !currentJob.isReviewed &&
+      !!currentJob.assignedWorker;
+
+    const assignedWorkerObj =
+      typeof currentJob.assignedWorker === "object" && currentJob.assignedWorker
+        ? currentJob.assignedWorker
+        : null;
+    const reviewWorkerName =
+      assignedWorkerObj?.profile?.fullName || "Professional";
+    const reviewWorkerImage =
+      (assignedWorkerObj?.verification?.status === "approved"
+        ? assignedWorkerObj?.verification?.selfieImage
+        : null) || assignedWorkerObj?.profile?.profileImage;
+    const reviewerName =
+      typeof review?.reviewerId === "object"
+        ? review.reviewerId?.profile?.fullName
+        : null;
+    const ratingWords = ["", "Poor", "Fair", "Good", "Very Good", "Excellent"];
+    const openReviewModal = (editing: boolean) => {
+      setReviewModalEditing(editing);
+      setReviewModalVisible(true);
+    };
 
     return (
       <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
         {renderSelectedWorkerCard()}
 
-        {/* Point 13: show this job's submitted review on the summary */}
+        {/* Leave a review — client only, after completion */}
+        {showLeaveReview && (
+          <TouchableOpacity
+            style={styles.leaveReviewBanner}
+            activeOpacity={0.85}
+            onPress={() => openReviewModal(false)}
+          >
+            <View style={styles.leaveReviewIconWrap}>
+              <Ionicons name="star" size={22} color="#F59E0B" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.leaveReviewTitle}>Rate this professional</Text>
+              <Text style={styles.leaveReviewSub}>
+                Share how {reviewWorkerName} did on this task
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={Colors.primary} />
+          </TouchableOpacity>
+        )}
+
+        {/* Review card — visible to both client and assigned worker */}
         {showInlineReview && review && (
-          <View style={styles.myReviewCard}>
-            <View style={styles.myReviewHeader}>
-              <Text style={styles.myReviewTitle}>Your review</Text>
-              <View style={styles.myReviewStars}>
+          <View style={styles.jobReviewCard}>
+            <View style={styles.jobReviewAccent} />
+            <View style={styles.jobReviewBody}>
+              <View style={styles.jobReviewTopRow}>
+                <View style={styles.jobReviewBadge}>
+                  <Ionicons name="star" size={14} color="#F59E0B" />
+                  <Text style={styles.jobReviewBadgeText}>
+                    {amOwner ? "Your review" : "Client review"}
+                  </Text>
+                </View>
+                {amOwner ? (
+                  <TouchableOpacity
+                    style={styles.jobReviewEditBtn}
+                    activeOpacity={0.8}
+                    onPress={() => openReviewModal(true)}
+                    hitSlop={8}
+                  >
+                    <Ionicons name="create-outline" size={15} color={Colors.primary} />
+                    <Text style={styles.jobReviewEditText}>Edit</Text>
+                  </TouchableOpacity>
+                ) : null}
+              </View>
+
+              <View style={styles.jobReviewStarsRow}>
                 {[1, 2, 3, 4, 5].map((s) => (
                   <Ionicons
                     key={s}
-                    name={s <= (review.rating || 0) ? 'star' : 'star-outline'}
-                    size={14}
+                    name={s <= (review.rating || 0) ? "star" : "star-outline"}
+                    size={22}
                     color="#F59E0B"
                   />
                 ))}
+                <Text style={styles.jobReviewRatingWord}>
+                  {ratingWords[review.rating || 0] || ""}
+                </Text>
+              </View>
+
+              {review.comment ? (
+                <Text style={styles.jobReviewComment}>"{review.comment}"</Text>
+              ) : (
+                <Text style={styles.jobReviewNoComment}>No written comment</Text>
+              )}
+
+              <View style={styles.jobReviewMetaRow}>
+                {!amOwner && reviewerName ? (
+                  <Text style={styles.jobReviewMeta}>By {reviewerName}</Text>
+                ) : (
+                  <Text style={styles.jobReviewMeta}>
+                    For {reviewWorkerName}
+                  </Text>
+                )}
+                {review.updatedAt || review.createdAt ? (
+                  <Text style={styles.jobReviewMeta}>
+                    {formatDateDDMMYYYY(
+                      (review.updatedAt || review.createdAt) as string
+                    )}
+                  </Text>
+                ) : null}
               </View>
             </View>
-            {review.comment ? (
-              <Text style={styles.myReviewComment}>{review.comment}</Text>
-            ) : null}
           </View>
         )}
 
@@ -1078,7 +1209,10 @@ const JobDetailsScreen = () => {
   const seekerDisplayName = getJobSeekerDisplayName(currentJob);
   const externalSeeker = isExternalJobSeeker(currentJob);
   const isDirectContact = currentJob.responsePreference === 'direct_contact' || !currentJob.responsePreference;
-  const isMyJob = !!user && currentJob.postedBy?._id === user.id;
+  const isMyJob =
+    !!user?.id &&
+    !!currentJob.postedBy?._id &&
+    String(currentJob.postedBy._id) === String(user.id);
   const interestedUsers: InterestedUserEntry[] = currentJob.interestedUsers || [];
   // When a job has been cancelled there is nothing actionable left for a
   // non-owner viewer — hide the contact / show-interest CTA entirely.
@@ -1092,10 +1226,15 @@ const JobDetailsScreen = () => {
   const isJobStarted =
     typeof currentJob.status === 'string' &&
     currentJob.status.toLowerCase() === 'job_started';
-  const assignedWorkerId =
-    (currentJob.assignedWorker as any)?._id ||
-    (currentJob.assignedWorker as any)?.workerId;
-  const isAssignedWorker = !!user && assignedWorkerId === user.id;
+  const assignedWorkerId = String(
+    (currentJob.assignedWorker as any)?._id ??
+      (currentJob.assignedWorker as any)?.id ??
+      ""
+  );
+  const isAssignedWorker =
+    !!user?.id &&
+    !!assignedWorkerId &&
+    assignedWorkerId === String(user.id);
   const customerPhone =
     currentJob.contactInfo ||
     (currentJob.postedOnBehalf ? currentJob.externalContact?.phoneNumber : null) ||
@@ -1484,21 +1623,26 @@ const JobDetailsScreen = () => {
                                   {pref?.vehicleNumber || '—'}
                                 </Text>
                               </View>
-                              <View style={styles.prefRow}>
-                                <Text style={styles.prefLabel}>Rate / km</Text>
-                                <Text style={styles.prefValue}>
-                                  {symbol}{pref?.pricePerKm}
-                                </Text>
-                              </View>
-                              {isPickupJob && (
-                                <View style={[styles.prefRow, styles.prefRowHighlight]}>
-                                  <Text style={styles.prefLabelHighlight}>Estimated price</Text>
-                                  <Text style={styles.prefValueHighlight}>
-                                    {estimatedForEntry !== null
-                                      ? `${symbol}${estimatedForEntry}`
-                                      : '—'}
-                                  </Text>
-                                </View>
+                              {/* Rate / estimated price only when worker chose "Use my pickup rate" */}
+                              {entry.priceOption === 'use_rate' && (
+                                <>
+                                  <View style={styles.prefRow}>
+                                    <Text style={styles.prefLabel}>Rate / km</Text>
+                                    <Text style={styles.prefValue}>
+                                      {symbol}{pref?.pricePerKm}
+                                    </Text>
+                                  </View>
+                                  <View style={[styles.prefRow, styles.prefRowHighlight]}>
+                                    <Text style={styles.prefLabelHighlight}>Estimated price</Text>
+                                    <Text style={styles.prefValueHighlight}>
+                                      {estimatedForEntry !== null
+                                        ? `${symbol}${estimatedForEntry}`
+                                        : entry.proposedPrice != null
+                                          ? `${symbol}${entry.proposedPrice}`
+                                          : '—'}
+                                    </Text>
+                                  </View>
+                                </>
                               )}
                             </View>
                           </View>
@@ -1652,9 +1796,8 @@ const JobDetailsScreen = () => {
         // The user must explicitly tap Show Interest again.
       />
       <ShowInterestSheet
-        visible={showInterestSheetVisible}
+        ref={showInterestSheetRef}
         job={currentJob}
-        onClose={() => setShowInterestSheetVisible(false)}
         onSuccess={handleInterestSubmitted}
       />
       <ReportIssueSheet
@@ -1665,6 +1808,40 @@ const JobDetailsScreen = () => {
           showAlert({
             title: "Report submitted",
             message: "Thanks. Our team will review your report shortly.",
+            type: "success",
+          });
+        }}
+      />
+      <ReviewModal
+        visible={reviewModalVisible}
+        job={currentJob}
+        workerId={
+          typeof currentJob.assignedWorker === "object"
+            ? currentJob.assignedWorker?._id
+            : undefined
+        }
+        workerName={
+          typeof currentJob.assignedWorker === "object"
+            ? currentJob.assignedWorker?.profile?.fullName
+            : undefined
+        }
+        workerImage={
+          typeof currentJob.assignedWorker === "object"
+            ? (currentJob.assignedWorker?.verification?.status === "approved"
+                ? currentJob.assignedWorker?.verification?.selfieImage
+                : null) || currentJob.assignedWorker?.profile?.profileImage
+            : undefined
+        }
+        isEditing={reviewModalEditing}
+        initialRating={currentJob.myReview?.rating || 0}
+        initialComment={currentJob.myReview?.comment || ""}
+        onClose={() => setReviewModalVisible(false)}
+        onSubmitted={() => {
+          showAlert({
+            title: reviewModalEditing ? "Review updated" : "Review submitted",
+            message: reviewModalEditing
+              ? "Your review has been updated."
+              : "Thanks for rating this professional.",
             type: "success",
           });
         }}
@@ -1727,6 +1904,127 @@ const styles = StyleSheet.create({
     color: '#4B5563',
     marginTop: 6,
     lineHeight: 18,
+  },
+  leaveReviewBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginHorizontal: 16,
+    marginBottom: 14,
+    padding: 14,
+    borderRadius: 16,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1.5,
+    borderColor: '#FDE68A',
+  },
+  leaveReviewIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  leaveReviewTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#92400E',
+    marginBottom: 2,
+  },
+  leaveReviewSub: {
+    fontSize: 12,
+    color: '#A16207',
+    lineHeight: 17,
+  },
+  jobReviewCard: {
+    flexDirection: 'row',
+    marginHorizontal: 16,
+    marginBottom: 14,
+    borderRadius: 16,
+    backgroundColor: '#FFFDF7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    overflow: 'hidden',
+  },
+  jobReviewAccent: {
+    width: 5,
+    backgroundColor: '#F59E0B',
+  },
+  jobReviewBody: {
+    flex: 1,
+    padding: 14,
+  },
+  jobReviewTopRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  jobReviewBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FEF3C7',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+  },
+  jobReviewBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#92400E',
+  },
+  jobReviewEditBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 16,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  jobReviewEditText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: Colors.primary,
+  },
+  jobReviewStarsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginBottom: 10,
+  },
+  jobReviewRatingWord: {
+    marginLeft: 8,
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#92400E',
+  },
+  jobReviewComment: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: '#374151',
+    fontStyle: 'italic',
+    marginBottom: 10,
+  },
+  jobReviewNoComment: {
+    fontSize: 13,
+    color: '#9CA3AF',
+    marginBottom: 10,
+  },
+  jobReviewMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  jobReviewMeta: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontWeight: '500',
   },
   loadingContainer: {
     flex: 1,

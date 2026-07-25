@@ -6,6 +6,10 @@ export function isFreshLocalVerificationUri(uri?: string | null): boolean {
   return (
     uri.startsWith("file:") ||
     uri.startsWith("content:") ||
-    uri.startsWith("ph:")
+    uri.startsWith("ph:") ||
+    // Absolute device/simulator paths from ImagePicker
+    uri.startsWith("/var/") ||
+    uri.startsWith("/data/") ||
+    uri.startsWith("/private/")
   );
 }

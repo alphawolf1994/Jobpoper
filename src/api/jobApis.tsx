@@ -223,13 +223,19 @@ export const deleteJobApi = async (jobId: string) => {
 // Show interest in a job API
 export const showInterestOnJobApi = async (
     jobId: string,
-    proposedPrice?: number | null
+    proposedPrice?: number | null,
+    priceOption?: "accept_offered" | "custom" | "use_rate"
 ) => {
     try {
-        const body =
-            proposedPrice !== undefined && proposedPrice !== null
-                ? { proposedPrice }
-                : {};
+        const body: {
+            proposedPrice?: number;
+            priceOption?: "accept_offered" | "custom" | "use_rate";
+        } = {
+            priceOption: priceOption || (proposedPrice != null ? "custom" : "accept_offered"),
+        };
+        if (proposedPrice !== undefined && proposedPrice !== null) {
+            body.proposedPrice = proposedPrice;
+        }
         const res = await axiosInstance.post(`/jobs/${jobId}/interest`, body);
         return res.data;
     } catch (error: any) {
@@ -453,6 +459,16 @@ export const submitReviewApi = async (jobId: string, rating: number, comment: st
         return res.data;
     } catch (error: any) {
         throw new Error(error.response?.data?.message || "Failed to submit review");
+    }
+};
+
+// Customer updates an existing review anytime after completion
+export const updateReviewApi = async (jobId: string, rating: number, comment: string) => {
+    try {
+        const res = await axiosInstance.put(`/jobs/${jobId}/review`, { rating, comment });
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Failed to update review");
     }
 };
 

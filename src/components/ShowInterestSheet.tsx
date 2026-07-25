@@ -1,30 +1,46 @@
-import React, { useEffect, useState } from "react";
+import React, {
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  forwardRef,
+  useMemo,
+} from "react";
 import {
   View,
   Text,
   StyleSheet,
-  Modal,
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Dimensions,
 } from "react-native";
+import RBSheet from "react-native-raw-bottom-sheet";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSelector } from "react-redux";
 import { Colors } from "../utils";
 import { Job } from "../interface/interfaces";
 import { showInterestOnJobApi } from "../api/jobApis";
+import { RootState } from "../redux/store";
 
-type PriceOption = "accept_offered" | "custom";
+type PriceOption = "accept_offered" | "custom" | "use_rate";
+
+export interface ShowInterestSheetHandle {
+  open: () => void;
+  close: () => void;
+}
 
 interface Props {
-  visible: boolean;
   job: Job | null;
-  onClose: () => void;
   onSuccess: (message?: string, proposedPrice?: number | null) => void;
 }
+
+const windowHeight = Dimensions.get("window").height;
+const SHEET_HEIGHT = Math.min(Math.max(windowHeight * 0.82, 540), windowHeight * 0.94);
 
 const getCurrencySymbol = (cost?: string): string => {
   if (!cost) return "";
@@ -33,77 +49,139 @@ const getCurrencySymbol = (cost?: string): string => {
   return match ? match[0] : "";
 };
 
-const ShowInterestSheet: React.FC<Props> = ({ visible, job, onClose, onSuccess }) => {
-  const insets = useSafeAreaInsets();
-  const [priceOption, setPriceOption] = useState<PriceOption>("accept_offered");
-  const [customPrice, setCustomPrice] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+const ShowInterestSheet = forwardRef<ShowInterestSheetHandle, Props>(
+  ({ job, onSuccess }, ref) => {
+    const sheetRef = useRef<any>(null);
+    const insets = useSafeAreaInsets();
+    const { user } = useSelector((state: RootState) => state.auth);
+    const [priceOption, setPriceOption] = useState<PriceOption>("accept_offered");
+    const [customPrice, setCustomPrice] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (visible) {
+    useImperativeHandle(ref, () => ({
+      open: () => sheetRef.current?.open(),
+      close: () => sheetRef.current?.close(),
+    }));
+
+    const resetForm = () => {
       setPriceOption("accept_offered");
       setCustomPrice("");
       setSubmitting(false);
       setError(null);
-    }
-  }, [visible]);
+    };
 
-  const symbol = getCurrencySymbol(job?.cost);
-  const offeredPrice = job?.cost?.trim() || "—";
+    useEffect(() => {
+      resetForm();
+    }, [job?._id]);
 
-  const handleSubmit = async () => {
-    if (!job) return;
+    const symbol = getCurrencySymbol(job?.cost);
+    const offeredPrice = job?.cost?.trim() || "—";
 
-    let proposedPrice: number | null = null;
-    if (priceOption === "custom") {
-      const parsed = Number(String(customPrice).replace(/,/g, "").trim());
-      if (!Number.isFinite(parsed) || parsed <= 0) {
-        setError("Enter a valid amount greater than zero.");
-        return;
+    const isPickup = job?.jobType === "Pickup";
+    const distanceKm =
+      typeof job?.distanceKm === "number" && Number.isFinite(job.distanceKm)
+        ? job.distanceKm
+        : null;
+    const pricePerKm = user?.vehiclePreference?.pricePerKm;
+    const hasPickupRate =
+      !!user?.vehiclePreference?.isSet &&
+      typeof pricePerKm === "number" &&
+      Number.isFinite(pricePerKm) &&
+      pricePerKm >= 0;
+
+    const rateEstimate = useMemo(() => {
+      if (!isPickup || !hasPickupRate || distanceKm === null) return null;
+      return Math.round(pricePerKm! * distanceKm * 100) / 100;
+    }, [isPickup, hasPickupRate, pricePerKm, distanceKm]);
+
+    const showUseRateOption = isPickup && rateEstimate !== null && rateEstimate > 0;
+
+    const handleSubmit = async () => {
+      if (!job) return;
+
+      let proposedPrice: number | null = null;
+      if (priceOption === "custom") {
+        const parsed = Number(String(customPrice).replace(/,/g, "").trim());
+        if (!Number.isFinite(parsed) || parsed <= 0) {
+          setError("Enter a valid amount greater than zero.");
+          return;
+        }
+        proposedPrice = Math.round(parsed * 100) / 100;
+      } else if (priceOption === "use_rate") {
+        if (rateEstimate === null || rateEstimate <= 0) {
+          setError("Could not calculate your rate for this pickup. Check your preferences.");
+          return;
+        }
+        proposedPrice = rateEstimate;
       }
-      proposedPrice = Math.round(parsed * 100) / 100;
-    }
+      // accept_offered → proposedPrice stays null (accepted client's budget)
 
-    setError(null);
-    setSubmitting(true);
-    try {
-      const res = await showInterestOnJobApi(job._id, proposedPrice);
-      onSuccess(res?.message || "Interest submitted successfully", proposedPrice);
-      onClose();
-    } catch (e: any) {
-      setError(e?.message || "Failed to submit interest. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
-  };
+      setError(null);
+      setSubmitting(true);
+      try {
+        const res = await showInterestOnJobApi(job._id, proposedPrice, priceOption);
+        onSuccess(res?.message || "Interest submitted successfully", proposedPrice);
+        sheetRef.current?.close();
+      } catch (e: any) {
+        setError(e?.message || "Failed to submit interest. Please try again.");
+      } finally {
+        setSubmitting(false);
+      }
+    };
 
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.overlay}
+    const formatAmount = (amount: number) =>
+      symbol ? `${symbol}${amount}` : String(amount);
+
+    return (
+      <RBSheet
+        ref={sheetRef}
+        height={SHEET_HEIGHT}
+        openDuration={280}
+        closeOnPressMask={true}
+        closeOnPressBack={true}
+        draggable={true}
+        onOpen={resetForm}
+        customModalProps={{
+          animationType: "slide",
+          statusBarTranslucent: true,
+        }}
+        customStyles={{
+          wrapper: {
+            backgroundColor: "rgba(8, 20, 52, 0.34)",
+          },
+          container: {
+            borderTopLeftRadius: 28,
+            borderTopRightRadius: 28,
+            backgroundColor: Colors.white,
+          },
+          draggableIcon: {
+            backgroundColor: "#C7D4F6",
+            width: 62,
+          },
+        }}
       >
-        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
-        <View
-          style={[
-            styles.sheet,
-            { paddingBottom: Math.max(insets.bottom, Platform.OS === "ios" ? 28 : 16) },
-          ]}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.flex}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 12 : 0}
         >
-          <View style={styles.handleBar} />
-
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Express Interest</Text>
-            <TouchableOpacity onPress={onClose} hitSlop={12}>
+            <TouchableOpacity onPress={() => sheetRef.current?.close()} hitSlop={12}>
               <Ionicons name="close" size={24} color={Colors.black} />
             </TouchableOpacity>
           </View>
 
           <ScrollView
-            contentContainerStyle={styles.body}
+            style={styles.flex}
+            contentContainerStyle={[
+              styles.body,
+              { paddingBottom: Math.max(insets.bottom, Platform.OS === "ios" ? 28 : 16) },
+            ]}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
+            bounces={false}
           >
             <View style={styles.thanksBox}>
               <View style={styles.thanksIcon}>
@@ -205,6 +283,41 @@ const ShowInterestSheet: React.FC<Props> = ({ visible, job, onClose, onSuccess }
               </View>
             )}
 
+            {showUseRateOption && (
+              <TouchableOpacity
+                style={[
+                  styles.optionCard,
+                  priceOption === "use_rate" && styles.optionCardSelected,
+                ]}
+                onPress={() => {
+                  setPriceOption("use_rate");
+                  setError(null);
+                }}
+                activeOpacity={0.85}
+              >
+                <View
+                  style={[
+                    styles.radioOuter,
+                    priceOption === "use_rate" && styles.radioOuterSelected,
+                  ]}
+                >
+                  {priceOption === "use_rate" && <View style={styles.radioInner} />}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.optionTitle}>Use my pickup rate</Text>
+                  <Text style={styles.optionSubtitle}>
+                    Based on your preferences:{" "}
+                    <Text style={styles.optionHighlight}>
+                      {formatAmount(rateEstimate!)}
+                    </Text>
+                    {"\n"}
+                    ({distanceKm} km × {symbol || ""}
+                    {pricePerKm}/km)
+                  </Text>
+                </View>
+              </TouchableOpacity>
+            )}
+
             {error ? (
               <View style={styles.errorBanner}>
                 <Ionicons name="warning-outline" size={16} color="#DC2626" />
@@ -228,37 +341,17 @@ const ShowInterestSheet: React.FC<Props> = ({ visible, job, onClose, onSuccess }
               )}
             </TouchableOpacity>
           </ScrollView>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-};
+        </KeyboardAvoidingView>
+      </RBSheet>
+    );
+  }
+);
 
 export default ShowInterestSheet;
 
 const styles = StyleSheet.create({
-  overlay: {
+  flex: {
     flex: 1,
-    justifyContent: "flex-end",
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.45)",
-  },
-  sheet: {
-    backgroundColor: Colors.white,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: "90%",
-  },
-  handleBar: {
-    width: 40,
-    height: 4,
-    backgroundColor: "#D1D5DB",
-    borderRadius: 2,
-    alignSelf: "center",
-    marginTop: 12,
-    marginBottom: 4,
   },
   header: {
     flexDirection: "row",
@@ -277,7 +370,6 @@ const styles = StyleSheet.create({
   body: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 8,
   },
   thanksBox: {
     flexDirection: "row",
