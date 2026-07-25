@@ -918,6 +918,8 @@ export interface Job {
           profile?: { fullName?: string; profileImage?: string };
         };
   } | null;
+  /** Poster's own report for this job (client-only; never sent to the worker). */
+  myReport?: Report | null;
   jobType?: 'OnSite' | 'Pickup';
   responsePreference?: 'direct_contact' | 'show_interest';
   postedBy: {

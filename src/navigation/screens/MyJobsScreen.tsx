@@ -320,14 +320,21 @@ const MyJobsScreen = () => {
 
       {/* Point 2: Report an issue — available on in-progress / completed tasks */}
       {(item.status === 'job_started' || item.status === 'completed') && (
-        <TouchableOpacity
-          style={styles.reportBtn}
-          activeOpacity={0.8}
-          onPress={() => setReportJob(item)}
-        >
-          <Ionicons name="flag-outline" size={16} color="#DC2626" />
-          <Text style={styles.reportBtnText}>Report an issue</Text>
-        </TouchableOpacity>
+        item.myReport ? (
+          <View style={styles.reportedBtnDisabled}>
+            <Ionicons name="checkmark-circle" size={16} color="#065F46" />
+            <Text style={styles.reportedBtnText}>Reported</Text>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={styles.reportBtn}
+            activeOpacity={0.8}
+            onPress={() => setReportJob(item)}
+          >
+            <Ionicons name="flag-outline" size={16} color="#DC2626" />
+            <Text style={styles.reportBtnText}>Report an issue</Text>
+          </TouchableOpacity>
+        )
       )}
 
       {/* Action Buttons */}
@@ -654,6 +661,7 @@ const MyJobsScreen = () => {
         job={reportJob}
         onClose={() => setReportJob(null)}
         onSubmitted={() => {
+          dispatch(getUserJobs());
           showAlert({
             title: "Report submitted",
             message: "Thanks. Our team will review your report shortly.",
@@ -1054,6 +1062,23 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#DC2626',
+  },
+  reportedBtnDisabled: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1.5,
+    borderColor: '#A7F3D0',
+    borderRadius: 12,
+    paddingVertical: 10,
+    marginBottom: 10,
+    backgroundColor: '#ECFDF5',
+  },
+  reportedBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#065F46',
   },
   myReviewCard: {
     borderWidth: 1,

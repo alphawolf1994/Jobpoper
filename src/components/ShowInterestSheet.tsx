@@ -1,7 +1,6 @@
 import React, {
   useEffect,
   useImperativeHandle,
-  useRef,
   useState,
   forwardRef,
   useMemo,
@@ -10,15 +9,15 @@ import {
   View,
   Text,
   StyleSheet,
+  Modal,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   TextInput,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Dimensions,
+  Keyboard,
 } from "react-native";
-import RBSheet from "react-native-raw-bottom-sheet";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useSelector } from "react-redux";
@@ -37,32 +36,26 @@ export interface ShowInterestSheetHandle {
 interface Props {
   job: Job | null;
   onSuccess: (message?: string, proposedPrice?: number | null) => void;
+  /** Fired when sheet opens/closes — use to hide sticky CTAs underneath */
+  onVisibilityChange?: (visible: boolean) => void;
 }
-
-const windowHeight = Dimensions.get("window").height;
-const SHEET_HEIGHT = Math.min(Math.max(windowHeight * 0.82, 540), windowHeight * 0.94);
 
 const getCurrencySymbol = (cost?: string): string => {
   if (!cost) return "";
-  // Only show a symbol if the client's budget already includes one (e.g. "₹500", "$50")
   const match = cost.trim().match(/^[^\d.,\s]+/);
   return match ? match[0] : "";
 };
 
 const ShowInterestSheet = forwardRef<ShowInterestSheetHandle, Props>(
-  ({ job, onSuccess }, ref) => {
-    const sheetRef = useRef<any>(null);
+  ({ job, onSuccess, onVisibilityChange }, ref) => {
     const insets = useSafeAreaInsets();
     const { user } = useSelector((state: RootState) => state.auth);
+    const [visible, setVisible] = useState(false);
+    const [keyboardHeight, setKeyboardHeight] = useState(0);
     const [priceOption, setPriceOption] = useState<PriceOption>("accept_offered");
     const [customPrice, setCustomPrice] = useState("");
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
-
-    useImperativeHandle(ref, () => ({
-      open: () => sheetRef.current?.open(),
-      close: () => sheetRef.current?.close(),
-    }));
 
     const resetForm = () => {
       setPriceOption("accept_offered");
@@ -71,9 +64,41 @@ const ShowInterestSheet = forwardRef<ShowInterestSheetHandle, Props>(
       setError(null);
     };
 
+    const open = () => {
+      resetForm();
+      setVisible(true);
+      onVisibilityChange?.(true);
+    };
+
+    const close = () => {
+      Keyboard.dismiss();
+      setVisible(false);
+      setKeyboardHeight(0);
+      onVisibilityChange?.(false);
+    };
+
+    useImperativeHandle(ref, () => ({ open, close }));
+
     useEffect(() => {
       resetForm();
     }, [job?._id]);
+
+    // Lift sheet above keyboard without shrinking the modal (avoids footer peek-through).
+    useEffect(() => {
+      if (!visible) return;
+      const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+      const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+      const onShow = Keyboard.addListener(showEvent, (e) => {
+        setKeyboardHeight(e.endCoordinates.height);
+      });
+      const onHide = Keyboard.addListener(hideEvent, () => {
+        setKeyboardHeight(0);
+      });
+      return () => {
+        onShow.remove();
+        onHide.remove();
+      };
+    }, [visible]);
 
     const symbol = getCurrencySymbol(job?.cost);
     const offeredPrice = job?.cost?.trim() || "—";
@@ -115,14 +140,13 @@ const ShowInterestSheet = forwardRef<ShowInterestSheetHandle, Props>(
         }
         proposedPrice = rateEstimate;
       }
-      // accept_offered → proposedPrice stays null (accepted client's budget)
 
       setError(null);
       setSubmitting(true);
       try {
         const res = await showInterestOnJobApi(job._id, proposedPrice, priceOption);
         onSuccess(res?.message || "Interest submitted successfully", proposedPrice);
-        sheetRef.current?.close();
+        close();
       } catch (e: any) {
         setError(e?.message || "Failed to submit interest. Please try again.");
       } finally {
@@ -133,164 +157,78 @@ const ShowInterestSheet = forwardRef<ShowInterestSheetHandle, Props>(
     const formatAmount = (amount: number) =>
       symbol ? `${symbol}${amount}` : String(amount);
 
-    return (
-      <RBSheet
-        ref={sheetRef}
-        height={SHEET_HEIGHT}
-        openDuration={280}
-        closeOnPressMask={true}
-        closeOnPressBack={true}
-        draggable={true}
-        onOpen={resetForm}
-        customModalProps={{
-          animationType: "slide",
-          statusBarTranslucent: true,
-        }}
-        customStyles={{
-          wrapper: {
-            backgroundColor: "rgba(8, 20, 52, 0.34)",
-          },
-          container: {
-            borderTopLeftRadius: 28,
-            borderTopRightRadius: 28,
-            backgroundColor: Colors.white,
-          },
-          draggableIcon: {
-            backgroundColor: "#C7D4F6",
-            width: 62,
-          },
-        }}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
-          style={styles.flex}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 12 : 0}
-        >
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>Express Interest</Text>
-            <TouchableOpacity onPress={() => sheetRef.current?.close()} hitSlop={12}>
-              <Ionicons name="close" size={24} color={Colors.black} />
-            </TouchableOpacity>
-          </View>
+    const sheetBottomPad = Math.max(insets.bottom, Platform.OS === "ios" ? 28 : 16);
 
-          <ScrollView
-            style={styles.flex}
-            contentContainerStyle={[
-              styles.body,
-              { paddingBottom: Math.max(insets.bottom, Platform.OS === "ios" ? 28 : 16) },
+    return (
+      <Modal
+        visible={visible}
+        transparent
+        animationType="slide"
+        onRequestClose={close}
+        statusBarTranslucent
+      >
+        {/* Full-screen dim stays put; only the sheet moves with the keyboard */}
+        <View style={styles.overlay}>
+          <TouchableWithoutFeedback onPress={close}>
+            <View style={styles.backdrop} />
+          </TouchableWithoutFeedback>
+
+          <View
+            style={[
+              styles.sheet,
+              {
+                paddingBottom: sheetBottomPad,
+                marginBottom: keyboardHeight,
+              },
             ]}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-            bounces={false}
           >
-            <View style={styles.thanksBox}>
-              <View style={styles.thanksIcon}>
-                <Ionicons name="hand-left-outline" size={22} color={Colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.thanksTitle}>Thanks for your interest</Text>
-                <Text style={styles.thanksText}>
-                  Confirm how you'd like to price this task, then submit your interest so the
-                  task owner can review your profile.
-                </Text>
-              </View>
+            <View style={styles.handleBar} />
+
+            <View style={styles.header}>
+              <Text style={styles.headerTitle}>Express Interest</Text>
+              <TouchableOpacity onPress={close} hitSlop={12}>
+                <Ionicons name="close" size={24} color={Colors.black} />
+              </TouchableOpacity>
             </View>
 
-            {job && (
-              <View style={styles.jobRef}>
-                <Ionicons name="briefcase-outline" size={15} color={Colors.primary} />
-                <Text style={styles.jobRefText} numberOfLines={1}>
-                  {job.title}
-                </Text>
-              </View>
-            )}
-
-            <Text style={styles.sectionLabel}>Your price offer</Text>
-
-            <TouchableOpacity
-              style={[
-                styles.optionCard,
-                priceOption === "accept_offered" && styles.optionCardSelected,
-              ]}
-              onPress={() => {
-                setPriceOption("accept_offered");
-                setError(null);
-              }}
-              activeOpacity={0.85}
+            <ScrollView
+              contentContainerStyle={styles.body}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              showsVerticalScrollIndicator={false}
+              bounces={false}
             >
-              <View
-                style={[
-                  styles.radioOuter,
-                  priceOption === "accept_offered" && styles.radioOuterSelected,
-                ]}
-              >
-                {priceOption === "accept_offered" && <View style={styles.radioInner} />}
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.optionTitle}>Accept offered price</Text>
-                <Text style={styles.optionSubtitle}>
-                  Proceed with the client's budget of{" "}
-                  <Text style={styles.optionHighlight}>{offeredPrice}</Text>
-                </Text>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.optionCard,
-                priceOption === "custom" && styles.optionCardSelected,
-              ]}
-              onPress={() => {
-                setPriceOption("custom");
-                setError(null);
-              }}
-              activeOpacity={0.85}
-            >
-              <View
-                style={[
-                  styles.radioOuter,
-                  priceOption === "custom" && styles.radioOuterSelected,
-                ]}
-              >
-                {priceOption === "custom" && <View style={styles.radioInner} />}
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.optionTitle}>Propose your own price</Text>
-                <Text style={styles.optionSubtitle}>
-                  Suggest a fair amount based on the scope of work
-                </Text>
-              </View>
-            </TouchableOpacity>
-
-            {priceOption === "custom" && (
-              <View style={styles.customPriceWrap}>
-                <Text style={styles.customPriceLabel}>Your proposed amount</Text>
-                <View style={styles.priceInputRow}>
-                  {symbol ? <Text style={styles.currencyPrefix}>{symbol}</Text> : null}
-                  <TextInput
-                    style={styles.priceInput}
-                    value={customPrice}
-                    onChangeText={(t) => {
-                      setCustomPrice(t.replace(/[^0-9.]/g, ""));
-                      setError(null);
-                    }}
-                    placeholder="0"
-                    placeholderTextColor="#9CA3AF"
-                    keyboardType="decimal-pad"
-                    returnKeyType="done"
-                  />
+              <View style={styles.thanksBox}>
+                <View style={styles.thanksIcon}>
+                  <Ionicons name="hand-left-outline" size={22} color={Colors.primary} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.thanksTitle}>Thanks for your interest</Text>
+                  <Text style={styles.thanksText}>
+                    Confirm how you'd like to price this task, then submit your interest so the
+                    task owner can review your profile.
+                  </Text>
                 </View>
               </View>
-            )}
 
-            {showUseRateOption && (
+              {job && (
+                <View style={styles.jobRef}>
+                  <Ionicons name="briefcase-outline" size={15} color={Colors.primary} />
+                  <Text style={styles.jobRefText} numberOfLines={1}>
+                    {job.title}
+                  </Text>
+                </View>
+              )}
+
+              <Text style={styles.sectionLabel}>Your price offer</Text>
+
               <TouchableOpacity
                 style={[
                   styles.optionCard,
-                  priceOption === "use_rate" && styles.optionCardSelected,
+                  priceOption === "accept_offered" && styles.optionCardSelected,
                 ]}
                 onPress={() => {
-                  setPriceOption("use_rate");
+                  setPriceOption("accept_offered");
                   setError(null);
                 }}
                 activeOpacity={0.85}
@@ -298,51 +236,129 @@ const ShowInterestSheet = forwardRef<ShowInterestSheetHandle, Props>(
                 <View
                   style={[
                     styles.radioOuter,
-                    priceOption === "use_rate" && styles.radioOuterSelected,
+                    priceOption === "accept_offered" && styles.radioOuterSelected,
                   ]}
                 >
-                  {priceOption === "use_rate" && <View style={styles.radioInner} />}
+                  {priceOption === "accept_offered" && <View style={styles.radioInner} />}
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.optionTitle}>Use my pickup rate</Text>
+                  <Text style={styles.optionTitle}>Accept offered price</Text>
                   <Text style={styles.optionSubtitle}>
-                    Based on your preferences:{" "}
-                    <Text style={styles.optionHighlight}>
-                      {formatAmount(rateEstimate!)}
-                    </Text>
-                    {"\n"}
-                    ({distanceKm} km × {symbol || ""}
-                    {pricePerKm}/km)
+                    Proceed with the client's budget of{" "}
+                    <Text style={styles.optionHighlight}>{offeredPrice}</Text>
                   </Text>
                 </View>
               </TouchableOpacity>
-            )}
 
-            {error ? (
-              <View style={styles.errorBanner}>
-                <Ionicons name="warning-outline" size={16} color="#DC2626" />
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            ) : null}
+              <TouchableOpacity
+                style={[
+                  styles.optionCard,
+                  priceOption === "custom" && styles.optionCardSelected,
+                ]}
+                onPress={() => {
+                  setPriceOption("custom");
+                  setError(null);
+                }}
+                activeOpacity={0.85}
+              >
+                <View
+                  style={[
+                    styles.radioOuter,
+                    priceOption === "custom" && styles.radioOuterSelected,
+                  ]}
+                >
+                  {priceOption === "custom" && <View style={styles.radioInner} />}
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.optionTitle}>Propose your own price</Text>
+                  <Text style={styles.optionSubtitle}>
+                    Suggest a fair amount based on the scope of work
+                  </Text>
+                </View>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.submitBtn, submitting && { opacity: 0.65 }]}
-              onPress={handleSubmit}
-              disabled={submitting}
-              activeOpacity={0.85}
-            >
-              {submitting ? (
-                <ActivityIndicator size="small" color={Colors.white} />
-              ) : (
-                <>
-                  <Ionicons name="checkmark-circle-outline" size={18} color={Colors.white} />
-                  <Text style={styles.submitBtnText}>Submit Interest</Text>
-                </>
+              {priceOption === "custom" && (
+                <View style={styles.customPriceWrap}>
+                  <Text style={styles.customPriceLabel}>Your proposed amount</Text>
+                  <View style={styles.priceInputRow}>
+                    {symbol ? <Text style={styles.currencyPrefix}>{symbol}</Text> : null}
+                    <TextInput
+                      style={styles.priceInput}
+                      value={customPrice}
+                      onChangeText={(t) => {
+                        setCustomPrice(t.replace(/[^0-9.]/g, ""));
+                        setError(null);
+                      }}
+                      placeholder="0"
+                      placeholderTextColor="#9CA3AF"
+                      keyboardType="decimal-pad"
+                      returnKeyType="done"
+                    />
+                  </View>
+                </View>
               )}
-            </TouchableOpacity>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </RBSheet>
+
+              {showUseRateOption && (
+                <TouchableOpacity
+                  style={[
+                    styles.optionCard,
+                    priceOption === "use_rate" && styles.optionCardSelected,
+                  ]}
+                  onPress={() => {
+                    setPriceOption("use_rate");
+                    setError(null);
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <View
+                    style={[
+                      styles.radioOuter,
+                      priceOption === "use_rate" && styles.radioOuterSelected,
+                    ]}
+                  >
+                    {priceOption === "use_rate" && <View style={styles.radioInner} />}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.optionTitle}>Use my pickup rate</Text>
+                    <Text style={styles.optionSubtitle}>
+                      Based on your preferences:{" "}
+                      <Text style={styles.optionHighlight}>
+                        {formatAmount(rateEstimate!)}
+                      </Text>
+                      {"\n"}
+                      ({distanceKm} km × {symbol || ""}
+                      {pricePerKm}/km)
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+
+              {error ? (
+                <View style={styles.errorBanner}>
+                  <Ionicons name="warning-outline" size={16} color="#DC2626" />
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              ) : null}
+
+              <TouchableOpacity
+                style={[styles.submitBtn, submitting && { opacity: 0.65 }]}
+                onPress={handleSubmit}
+                disabled={submitting}
+                activeOpacity={0.85}
+              >
+                {submitting ? (
+                  <ActivityIndicator size="small" color={Colors.white} />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark-circle-outline" size={18} color={Colors.white} />
+                    <Text style={styles.submitBtnText}>Submit Interest</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     );
   }
 );
@@ -350,8 +366,28 @@ const ShowInterestSheet = forwardRef<ShowInterestSheetHandle, Props>(
 export default ShowInterestSheet;
 
 const styles = StyleSheet.create({
-  flex: {
+  overlay: {
     flex: 1,
+    backgroundColor: "rgba(8, 20, 52, 0.45)",
+    justifyContent: "flex-end",
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  sheet: {
+    backgroundColor: Colors.white,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    maxHeight: "92%",
+  },
+  handleBar: {
+    width: 62,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#C7D4F6",
+    alignSelf: "center",
+    marginTop: 10,
+    marginBottom: 4,
   },
   header: {
     flexDirection: "row",
@@ -370,6 +406,7 @@ const styles = StyleSheet.create({
   body: {
     paddingHorizontal: 20,
     paddingTop: 16,
+    paddingBottom: 8,
   },
   thanksBox: {
     flexDirection: "row",

@@ -63,6 +63,9 @@ const JobDetailsScreen = () => {
   const [optimisticProposedPrice, setOptimisticProposedPrice] = useState<
     number | null | undefined
   >(undefined);
+  // Hide sticky CTA while Express Interest sheet is open (small Android devices
+  // can otherwise show the button through a gap under the sheet).
+  const [interestSheetOpen, setInterestSheetOpen] = useState(false);
   const [reportSheetVisible, setReportSheetVisible] = useState(false);
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
   const [reviewModalEditing, setReviewModalEditing] = useState(false);
@@ -1013,17 +1016,72 @@ const JobDetailsScreen = () => {
           </View>
         )}
 
-        {/* Point 2: Report an issue on in-progress / completed (owner) */}
+        {/* Report — client only; after submit show Reported + submitted details */}
         {amOwner &&
           (currentJob.status === 'job_started' || currentJob.status === 'completed') && (
-            <TouchableOpacity
-              style={styles.reportBtn}
-              activeOpacity={0.8}
-              onPress={() => setReportSheetVisible(true)}
-            >
-              <Ionicons name="flag-outline" size={16} color="#DC2626" />
-              <Text style={styles.reportBtnText}>Report an issue</Text>
-            </TouchableOpacity>
+            <>
+              {currentJob.myReport ? (
+                <View style={styles.myReportCard}>
+                  <View style={styles.myReportHeader}>
+                    <View style={styles.myReportBadge}>
+                      <Ionicons name="flag" size={14} color="#DC2626" />
+                      <Text style={styles.myReportBadgeText}>Reported</Text>
+                    </View>
+                    {currentJob.myReport.createdAt ? (
+                      <Text style={styles.myReportDate}>
+                        {formatDateDDMMYYYY(currentJob.myReport.createdAt)}
+                      </Text>
+                    ) : null}
+                  </View>
+                  {!!currentJob.myReport.description?.trim() && (
+                    <Text style={styles.myReportDescription}>
+                      {currentJob.myReport.description}
+                    </Text>
+                  )}
+                  {!!currentJob.myReport.images?.length && (
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={styles.myReportImagesRow}
+                    >
+                      {currentJob.myReport.images.map((imgPath, idx) => {
+                        const uris = (currentJob.myReport?.images || []).map(
+                          (p) =>
+                            `${IMAGE_BASE_URL}${p.startsWith("/") ? p : `/${p}`}`
+                        );
+                        const uri = uris[idx];
+                        return (
+                          <TouchableOpacity
+                            key={`${imgPath}-${idx}`}
+                            activeOpacity={0.85}
+                            onPress={() => openImageGallery(uris, idx)}
+                          >
+                            <Image
+                              source={{ uri }}
+                              style={styles.myReportThumb}
+                              contentFit="cover"
+                            />
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  )}
+                  <View style={styles.reportedBtnDisabled}>
+                    <Ionicons name="checkmark-circle" size={16} color="#065F46" />
+                    <Text style={styles.reportedBtnText}>Reported</Text>
+                  </View>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.reportBtn}
+                  activeOpacity={0.8}
+                  onPress={() => setReportSheetVisible(true)}
+                >
+                  <Ionicons name="flag-outline" size={16} color="#DC2626" />
+                  <Text style={styles.reportBtnText}>Report an issue</Text>
+                </TouchableOpacity>
+              )}
+            </>
           )}
 
         {!!currentJob.description?.trim() && (
@@ -1725,7 +1783,7 @@ const JobDetailsScreen = () => {
 
       {/* Point 7: Call-customer CTA for the assigned worker, only once the
           poster has started the job (phone number visibility gate). */}
-      {!isMyJob && isAssignedWorker && isJobStarted && (
+      {!interestSheetOpen && !isMyJob && isAssignedWorker && isJobStarted && (
         <View style={styles.contactButtonContainer}>
           <TouchableOpacity
             style={[styles.contactButton, { flexDirection: 'row', justifyContent: 'center' }]}
@@ -1743,8 +1801,8 @@ const JobDetailsScreen = () => {
         </View>
       )}
 
-      {/* Action Button — hidden when the job has been cancelled */}
-      {!isMyJob && !isJobCancelled && !(isAssignedWorker && isJobStarted) && (
+      {/* Action Button — hidden when the job has been cancelled or interest sheet is open */}
+      {!interestSheetOpen && !isMyJob && !isJobCancelled && !(isAssignedWorker && isJobStarted) && (
         <View style={styles.contactButtonContainer}>
           {!isDirectContact && hasShownInterest && (
             <View
@@ -1799,12 +1857,16 @@ const JobDetailsScreen = () => {
         ref={showInterestSheetRef}
         job={currentJob}
         onSuccess={handleInterestSubmitted}
+        onVisibilityChange={setInterestSheetOpen}
       />
       <ReportIssueSheet
         visible={reportSheetVisible}
         job={currentJob}
         onClose={() => setReportSheetVisible(false)}
         onSubmitted={() => {
+          if (currentJob?._id) {
+            dispatch(getJobById(currentJob._id));
+          }
           showAlert({
             title: "Report submitted",
             message: "Thanks. Our team will review your report shortly.",
@@ -1875,6 +1937,74 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#DC2626',
+  },
+  myReportCard: {
+    marginHorizontal: 16,
+    marginBottom: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    backgroundColor: '#FEF2F2',
+    padding: 14,
+  },
+  myReportHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  myReportBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#FEE2E2',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 16,
+  },
+  myReportBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  myReportDate: {
+    fontSize: 11,
+    color: '#9CA3AF',
+    fontWeight: '500',
+  },
+  myReportDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    color: '#374151',
+    marginBottom: 10,
+  },
+  myReportImagesRow: {
+    gap: 8,
+    paddingBottom: 10,
+  },
+  myReportThumb: {
+    width: 72,
+    height: 72,
+    borderRadius: 10,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  reportedBtnDisabled: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1.5,
+    borderColor: '#A7F3D0',
+    borderRadius: 12,
+    paddingVertical: 10,
+    backgroundColor: '#ECFDF5',
+  },
+  reportedBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#065F46',
   },
   myReviewCard: {
     borderWidth: 1,

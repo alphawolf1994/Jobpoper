@@ -46,17 +46,23 @@ const ReportIssueSheet: React.FC<Props> = ({ visible, job, onClose, onSubmitted 
       setLocalError(null);
       dispatch(resetReportSubmitted());
     }
-  }, [visible]);
+  }, [visible, dispatch]);
 
+  // Only fire success callbacks while THIS sheet is open — leftover Redux
+  // `submitted` would otherwise re-trigger the alert on every Job Details mount.
   useEffect(() => {
-    if (submitted) {
-      const t = setTimeout(() => {
-        onSubmitted?.();
-        onClose();
-      }, 1500);
-      return () => clearTimeout(t);
-    }
-  }, [submitted]);
+    if (!visible || !submitted) return;
+
+    const t = setTimeout(() => {
+      dispatch(resetReportSubmitted());
+      onSubmitted?.();
+      onClose();
+    }, 1500);
+
+    return () => clearTimeout(t);
+    // Intentionally omit onSubmitted/onClose — parent passes inline lambdas.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, submitted, dispatch]);
 
   const pickImages = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();

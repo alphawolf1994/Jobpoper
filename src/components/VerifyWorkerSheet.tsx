@@ -5,11 +5,12 @@ import {
   StyleSheet,
   Modal,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   TextInput,
   ActivityIndicator,
   Image,
   ScrollView,
-  KeyboardAvoidingView,
+  Keyboard,
   Platform,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -58,10 +59,27 @@ const VerifyWorkerSheet: React.FC<Props> = ({ visible, job, onClose, onStarted }
 
   const [workerIdInput, setWorkerIdInput] = useState("");
   const [confirmed, setConfirmed] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   // RN Modals sit above the nav stack, so we must hide the sheet to show the
   // profile — but we keep local + Redux lookup state and restore on back.
   const [hideForProfile, setHideForProfile] = useState(false);
   const pendingRestoreRef = useRef(false);
+
+  // Lift the sheet above the keyboard (KAV + Modal is unreliable on Android).
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const onShow = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const onHide = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      onShow.remove();
+      onHide.remove();
+    };
+  }, []);
 
   // Reset only when the parent fully dismisses the sheet (X / cancel), not when
   // we temporarily hide it to open Worker Profile.
@@ -70,6 +88,7 @@ const VerifyWorkerSheet: React.FC<Props> = ({ visible, job, onClose, onStarted }
       setWorkerIdInput("");
       setConfirmed(false);
       setHideForProfile(false);
+      setKeyboardHeight(0);
       pendingRestoreRef.current = false;
       dispatch(clearLookedUpWorker());
     }
@@ -131,13 +150,29 @@ const VerifyWorkerSheet: React.FC<Props> = ({ visible, job, onClose, onStarted }
   const isVerified = worker?.verification?.status === "approved";
   const sheetVisible = visible && !hideForProfile;
 
+  const sheetBottomPad = Math.max(insets.bottom, Platform.OS === "ios" ? 32 : 16);
+
   return (
     <Modal visible={sheetVisible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-        style={styles.overlay}
-      >
-        <View style={[styles.sheet, { paddingBottom: Math.max(insets.bottom, Platform.OS === "ios" ? 32 : 16) }]}>
+      <View style={styles.overlay}>
+        <TouchableWithoutFeedback
+          onPress={() => {
+            Keyboard.dismiss();
+            onClose();
+          }}
+        >
+          <View style={styles.backdrop} />
+        </TouchableWithoutFeedback>
+
+        <View
+          style={[
+            styles.sheet,
+            {
+              paddingBottom: sheetBottomPad,
+              marginBottom: keyboardHeight,
+            },
+          ]}
+        >
           {/* Handle bar */}
           <View style={styles.handleBar} />
 
@@ -152,6 +187,7 @@ const VerifyWorkerSheet: React.FC<Props> = ({ visible, job, onClose, onStarted }
           <ScrollView
             contentContainerStyle={styles.body}
             keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             showsVerticalScrollIndicator={false}
           >
             {/* Job reference */}
@@ -317,7 +353,7 @@ const VerifyWorkerSheet: React.FC<Props> = ({ visible, job, onClose, onStarted }
             )}
           </ScrollView>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 };
@@ -329,6 +365,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",
     justifyContent: "flex-end",
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
   },
   sheet: {
     backgroundColor: Colors.white,
