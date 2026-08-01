@@ -25,7 +25,8 @@ export interface ReferredUser {
   email?: string | null;
   phoneNumber?: string | null;
   registeredAt?: string | null;
-  accountStatus: "active" | "pending_profile" | "inactive";
+  accountStatus: "verified" | "not_verified";
+  isVerified?: boolean;
   isProfessional?: boolean;
 }
 

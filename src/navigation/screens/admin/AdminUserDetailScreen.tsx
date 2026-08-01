@@ -520,15 +520,14 @@ const AdminUserDetailScreen = () => {
                   <Text
                     style={[
                       styles.referralStatus,
-                      r.accountStatus === "inactive" && { color: "#6B7280" },
-                      r.accountStatus === "pending_profile" && { color: "#B45309" },
+                      (r.isVerified === true || r.accountStatus === "verified")
+                        ? { color: "#059669" }
+                        : { color: "#B45309" },
                     ]}
                   >
-                    {r.accountStatus === "inactive"
-                      ? "Inactive"
-                      : r.accountStatus === "pending_profile"
-                      ? "Profile incomplete"
-                      : "Active"}
+                    {r.isVerified === true || r.accountStatus === "verified"
+                      ? "Verified"
+                      : "Not Verified"}
                   </Text>
                 </View>
               ))}

@@ -29,9 +29,8 @@ import { formatDateDDMMYYYY } from "../../utils/dateUtils";
 const PAGE_SIZE = 20;
 
 const STATUS_META: Record<string, { label: string; color: string; bg: string }> = {
-  active: { label: "Active", color: "#059669", bg: "#ECFDF5" },
-  pending_profile: { label: "Profile incomplete", color: "#B45309", bg: "#FFFBEB" },
-  inactive: { label: "Inactive", color: "#6B7280", bg: "#F3F4F6" },
+  verified: { label: "Verified", color: "#059669", bg: "#ECFDF5" },
+  not_verified: { label: "Not Verified", color: "#B45309", bg: "#FFFBEB" },
 };
 
 const resolveImageUri = (uri?: string | null) => {
@@ -121,7 +120,11 @@ const ReferralScreen = () => {
 
   const renderRow = ({ item }: { item: ReferredUser }) => {
     const img = resolveImageUri(item.profileImage);
-    const status = STATUS_META[item.accountStatus] || STATUS_META.active;
+    const statusKey =
+      item.isVerified === true || item.accountStatus === "verified"
+        ? "verified"
+        : "not_verified";
+    const status = STATUS_META[statusKey];
     return (
       <View style={styles.row}>
         <Image
