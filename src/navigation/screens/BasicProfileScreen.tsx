@@ -34,6 +34,8 @@ const BasicProfileScreen = () => {
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
+  const [referralCode, setReferralCode] = useState("");
+  const [referralError, setReferralError] = useState<string | null>(null);
   const [isProfessional, setIsProfessional] = useState(false);
   const [agreeToTerms, setAgreeToTerms] = useState(true);
   const [location, setLocation] = useState<{
@@ -100,20 +102,29 @@ const BasicProfileScreen = () => {
       });
       return;
     }
+
+    // Referral code is optional. If provided, it must be exactly 5 characters.
+    const referral = referralCode.trim().toUpperCase();
+    if (referral && referral.length !== 5) {
+      setReferralError("Referral code must be 5 characters.");
+      return;
+    }
+    setReferralError(null);
     console.log("location", location);
 
-    try {
-      const profileData = {
-        fullName: fullName.trim(),
-        email: email.trim(),
-        location:
-          location.fullAddress ||
-          `${location.city}, ${location.state}, ${location.country}`.trim(),
-        latitude: location.latitude,
-        longitude: location.longitude,
-        isProfessional,
-      };
+    const profileData = {
+      fullName: fullName.trim(),
+      email: email.trim(),
+      location:
+        location.fullAddress ||
+        `${location.city}, ${location.state}, ${location.country}`.trim(),
+      latitude: location.latitude,
+      longitude: location.longitude,
+      isProfessional,
+      ...(referral ? { referralCode: referral } : {}),
+    };
 
+    try {
       const result = await dispatch(completeProfile(profileData)).unwrap();
 
       if (result.status === "success") {
@@ -142,6 +153,36 @@ const BasicProfileScreen = () => {
         });
       }
     } catch (error: any) {
+      const code = error?.code;
+
+      // A referral code already applied to this account is treated as success —
+      // the profile itself saved; proceed to the app.
+      if (code === "REFERRAL_ALREADY_SET") {
+        dispatch(setCurrentLocation(profileData.location));
+        if (location.latitude != null && location.longitude != null) {
+          dispatch(setCurrentLocationCoordinates({
+            latitude: location.latitude,
+            longitude: location.longitude,
+          }));
+        }
+        try {
+          await dispatch(getCurrentUser()).unwrap();
+        } catch {}
+        navigateHome();
+        return;
+      }
+
+      // Referral-specific validation errors render inline against the field,
+      // keeping the typed value so the user can correct a single character.
+      if (
+        code === "REFERRAL_CODE_INVALID" ||
+        code === "REFERRAL_CODE_MALFORMED" ||
+        code === "REFERRAL_SELF_REFERENCE"
+      ) {
+        setReferralError(error?.message || "This referral code is not valid.");
+        return;
+      }
+
       showAlert({
         title: "Error",
         message:
@@ -220,6 +261,25 @@ const BasicProfileScreen = () => {
               placeholder="Search for your city"
               onLocationSelect={(locationData) => setLocation(locationData)}
             />
+
+            <MyTextInput
+              label="Referral Code (Optional)"
+              placeholder="Enter code if you have one"
+              value={referralCode}
+              onChange={(text) => {
+                setReferralCode(
+                  text.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 5)
+                );
+                if (referralError) setReferralError(null);
+              }}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              maxLength={5}
+              error={referralError}
+            />
+            <Text style={styles.referralHint}>
+              If someone invited you to MakeMy Task, enter their code here.
+            </Text>
 
             {/* Professional / Worker selection */}
             <View style={styles.professionalSection}>
@@ -363,6 +423,12 @@ const styles = StyleSheet.create({
   disabledActionButton: {
     backgroundColor: "#A9B6D6",
     opacity: 0.7,
+  },
+  referralHint: {
+    fontSize: 13,
+    color: Colors.gray,
+    marginTop: 6,
+    lineHeight: 18,
   },
   professionalSection: {
     marginTop: 20,

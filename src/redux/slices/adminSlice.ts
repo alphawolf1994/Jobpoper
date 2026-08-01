@@ -3,6 +3,7 @@ import {
   getAdminDashboardApi,
   getAdminUsersApi,
   getAdminUserByIdApi,
+  getAdminUserReferralsApi,
   deleteAdminWorkImageApi,
   getAdminJobsApi,
   getAdminJobByIdApi,
@@ -33,10 +34,20 @@ export interface AdminUser {
   // Professional / worker fields (flat, always present via buildAdminUser)
   isProfessional: boolean;
   workerId?: string | null;
+  referralCode?: string | null;
+  referredBy?: string | null;
+  referredAt?: string | null;
   rating?: { average: number; count: number };
   workImageCount?: number;
   createdAt: string;
   lastLogin?: string;
+  // Present only in the detail view (getAdminUserById)
+  referral?: {
+    referralCode: string | null;
+    totalReferrals: number;
+    referredBy: { id: string; fullName: string; referralCode: string | null } | null;
+    referredAt: string | null;
+  };
   // Present only in detail view (getAdminUserById) and verifications list
   profile?: {
     fullName: string;
@@ -149,7 +160,12 @@ interface AdminState {
   users: AdminUser[];
   selectedUser: AdminUser | null;
   usersLoading: boolean;
+  usersLoadingMore: boolean;
   usersError: string | null;
+  usersPage: number;
+  usersHasMore: boolean;
+  usersTotal: number;
+  usersCounts: { users: number; professionals: number; all: number };
   workImageDeleteLoading: boolean;
   workImageDeleteError: string | null;
 
@@ -182,6 +198,15 @@ interface AdminState {
   reportsLoading: boolean;
   reportsError: string | null;
   reportUpdateLoading: boolean;
+
+  // Referral list for the currently viewed user (admin user-detail screen)
+  userReferrals: any[];
+  userReferralsLoading: boolean;
+  userReferralsLoadingMore: boolean;
+  userReferralsError: string | null;
+  userReferralsPage: number;
+  userReferralsHasMore: boolean;
+  userReferralsTotal: number;
 }
 
 const initialState: AdminState = {
@@ -194,7 +219,12 @@ const initialState: AdminState = {
   users: [],
   selectedUser: null,
   usersLoading: false,
+  usersLoadingMore: false,
   usersError: null,
+  usersPage: 1,
+  usersHasMore: false,
+  usersTotal: 0,
+  usersCounts: { users: 0, professionals: 0, all: 0 },
   workImageDeleteLoading: false,
   workImageDeleteError: null,
 
@@ -224,6 +254,14 @@ const initialState: AdminState = {
   reportsLoading: false,
   reportsError: null,
   reportUpdateLoading: false,
+
+  userReferrals: [],
+  userReferralsLoading: false,
+  userReferralsLoadingMore: false,
+  userReferralsError: null,
+  userReferralsPage: 1,
+  userReferralsHasMore: false,
+  userReferralsTotal: 0,
 };
 
 // ─── Async Thunks ─────────────────────────────────────────────────────────────
@@ -238,9 +276,21 @@ export const fetchAdminDashboard = createAsyncThunk(
 
 export const fetchAdminUsers = createAsyncThunk(
   "admin/fetchUsers",
-  async (limit: number = 100, { rejectWithValue }) => {
-    try { return await getAdminUsersApi(limit); }
-    catch (e: any) { return rejectWithValue(e?.message || "Failed to fetch users"); }
+  async (
+    params: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      type?: "all" | "users" | "professionals";
+    } = {},
+    { rejectWithValue }
+  ) => {
+    try {
+      const res = await getAdminUsersApi(params);
+      return { ...res, requestedPage: params.page ?? 1 };
+    } catch (e: any) {
+      return rejectWithValue(e?.message || "Failed to fetch users");
+    }
   }
 );
 
@@ -249,6 +299,21 @@ export const fetchAdminUserById = createAsyncThunk(
   async (userId: string, { rejectWithValue }) => {
     try { return await getAdminUserByIdApi(userId); }
     catch (e: any) { return rejectWithValue(e?.message || "Failed to fetch user"); }
+  }
+);
+
+export const fetchAdminUserReferrals = createAsyncThunk(
+  "admin/fetchUserReferrals",
+  async (
+    params: { userId: string; page?: number; limit?: number; search?: string; sort?: string; status?: string },
+    { rejectWithValue }
+  ) => {
+    try {
+      const res = await getAdminUserReferralsApi(params.userId, params);
+      return { ...res, requestedPage: params.page ?? 1 };
+    } catch (e: any) {
+      return rejectWithValue(e?.message || "Failed to fetch referrals");
+    }
   }
 );
 
@@ -391,6 +456,13 @@ const adminSlice = createSlice({
     },
     clearSelectedUser: (state) => { state.selectedUser = null; },
     clearSelectedJob:  (state) => { state.selectedJob = null; },
+    clearUserReferrals: (state) => {
+      state.userReferrals = [];
+      state.userReferralsPage = 1;
+      state.userReferralsHasMore = false;
+      state.userReferralsTotal = 0;
+      state.userReferralsError = null;
+    },
   },
   extraReducers: (builder) => {
     // ── Dashboard ──────────────────────────────────────────────────────────────
@@ -424,17 +496,35 @@ const adminSlice = createSlice({
 
     // ── Users list ─────────────────────────────────────────────────────────────
     builder
-      .addCase(fetchAdminUsers.pending, (state) => {
-        state.usersLoading = true;
+      .addCase(fetchAdminUsers.pending, (state, action) => {
+        const page = action.meta.arg?.page ?? 1;
+        if (page === 1) state.usersLoading = true;
+        else state.usersLoadingMore = true;
         state.usersError = null;
       })
       .addCase(fetchAdminUsers.fulfilled, (state, action) => {
+        const data = action.payload?.data;
+        const requestedPage = action.payload?.requestedPage ?? 1;
+        if (data) {
+          state.users =
+            requestedPage === 1
+              ? data.users ?? []
+              : [...state.users, ...(data.users ?? [])];
+          state.usersPage = data.page ?? requestedPage;
+          state.usersHasMore = !!data.hasMore;
+          state.usersTotal = data.total ?? 0;
+          state.usersCounts = {
+            users: data.counts?.users ?? 0,
+            professionals: data.counts?.professionals ?? 0,
+            all: data.counts?.all ?? 0,
+          };
+        }
         state.usersLoading = false;
-        // Response: { data: { users: [...buildAdminUser()] } }
-        state.users = action.payload?.data?.users ?? [];
+        state.usersLoadingMore = false;
       })
       .addCase(fetchAdminUsers.rejected, (state, action) => {
         state.usersLoading = false;
+        state.usersLoadingMore = false;
         state.usersError = action.payload as string;
       });
 
@@ -448,6 +538,32 @@ const adminSlice = createSlice({
         state.usersLoading = false;
         // Response: { data: { user: { ...buildAdminUser(), profile, verification } } }
         state.selectedUser = action.payload?.data?.user ?? null;
+      })
+      .addCase(fetchAdminUserReferrals.pending, (state, action) => {
+        const page = (action.meta.arg as any).page ?? 1;
+        if (page === 1) state.userReferralsLoading = true;
+        else state.userReferralsLoadingMore = true;
+        state.userReferralsError = null;
+      })
+      .addCase(fetchAdminUserReferrals.fulfilled, (state, action) => {
+        const data = action.payload?.data;
+        const requestedPage = action.payload?.requestedPage ?? 1;
+        if (data) {
+          state.userReferrals =
+            requestedPage === 1
+              ? data.referrals
+              : [...state.userReferrals, ...data.referrals];
+          state.userReferralsPage = data.page ?? requestedPage;
+          state.userReferralsHasMore = !!data.hasMore;
+          state.userReferralsTotal = data.total ?? 0;
+        }
+        state.userReferralsLoading = false;
+        state.userReferralsLoadingMore = false;
+      })
+      .addCase(fetchAdminUserReferrals.rejected, (state, action) => {
+        state.userReferralsLoading = false;
+        state.userReferralsLoadingMore = false;
+        state.userReferralsError = (action.payload as string) || "Failed to load referrals";
       })
       .addCase(fetchAdminUserById.rejected, (state, action) => {
         state.usersLoading = false;
@@ -676,5 +792,5 @@ const adminSlice = createSlice({
   },
 });
 
-export const { clearAdminErrors, clearSelectedUser, clearSelectedJob } = adminSlice.actions;
+export const { clearAdminErrors, clearSelectedUser, clearSelectedJob, clearUserReferrals } = adminSlice.actions;
 export default adminSlice.reducer;

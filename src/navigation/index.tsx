@@ -11,6 +11,7 @@ import MyJobsScreen from "./screens/MyJobsScreen";
 import BusinessTabScreen from "./screens/BusinessTabScreen";
 import BusinessDetailScreen from "./screens/BusinessDetailScreen";
 import ProfileScreen from "./screens/ProfileScreen";
+import ReferralScreen from "./screens/ReferralScreen";
 import UserDetailsScreen from "./screens/UserDetailsScreen";
 import VehiclePreferenceScreen from "./screens/VehiclePreferenceScreen";
 import ChangePinScreen from "./screens/ChangePinScreen";
@@ -279,6 +280,10 @@ const RootStack = createNativeStackNavigator({
     // ── Profile Management ─────────────────────────────────────────────────
     UserDetailsScreen: {
       screen: UserDetailsScreen,
+      options: { headerShown: false },
+    },
+    ReferralScreen: {
+      screen: ReferralScreen,
       options: { headerShown: false },
     },
     VehiclePreferenceScreen: {

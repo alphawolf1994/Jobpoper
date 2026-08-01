@@ -77,6 +77,11 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "playStoreUrl": "https://play.google.com/store/apps/details?id=com.anonymous.Jobpoper",
+      "appStoreUrl": "https://apps.apple.com/app/6756342047",
+      "fallbackStoreUrl": "http://138.68.254.13:3001/download"
     }
   }
 }

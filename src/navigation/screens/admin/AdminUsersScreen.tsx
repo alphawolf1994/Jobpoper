@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useState } from "react";
+import React, { useEffect, useCallback, useState, useRef } from "react";
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   TextInput,
   RefreshControl,
+  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -18,6 +19,8 @@ import { Colors } from "../../../utils";
 
 const ADMIN_ACCENT = "#1E40AF";
 const ADMIN_LIGHT = "#EFF6FF";
+const PAGE_SIZE = 50;
+const SEARCH_DEBOUNCE_MS = 350;
 
 const getVerificationColor = (status: string) => {
   switch (status) {
@@ -29,27 +32,23 @@ const getVerificationColor = (status: string) => {
 };
 
 // ─── User Row ─────────────────────────────────────────────────────────────────
-// API returns FLAT fields via buildAdminUser(): id, fullName, verificationStatus
 interface UserRowProps {
   user: AdminUser;
   onPress: () => void;
 }
 
 const UserRow: React.FC<UserRowProps> = ({ user, onPress }) => {
-  // verificationStatus is a top-level flat field from the API
   const verStatus = user.verificationStatus || "not_submitted";
   const verColor  = getVerificationColor(verStatus);
 
   return (
     <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
-      {/* Avatar */}
       <View style={styles.avatar}>
         <Text style={styles.avatarText}>
           {(user.fullName?.[0] || user.phoneNumber?.[0] || "U").toUpperCase()}
         </Text>
       </View>
 
-      {/* Info */}
       <View style={styles.rowInfo}>
         <Text style={styles.rowName} numberOfLines={1}>
           {user.fullName || user.phoneNumber}
@@ -57,7 +56,6 @@ const UserRow: React.FC<UserRowProps> = ({ user, onPress }) => {
         <Text style={styles.rowPhone}>{user.phoneNumber}</Text>
       </View>
 
-      {/* Badges */}
       <View style={styles.rowBadges}>
         <View style={[styles.badge, { backgroundColor: verColor + "20" }]}>
           <Text style={[styles.badgeText, { color: verColor }]}>
@@ -87,34 +85,70 @@ const UserRow: React.FC<UserRowProps> = ({ user, onPress }) => {
 const AdminUsersScreen = () => {
   const navigation = useNavigation();
   const dispatch   = useDispatch<AppDispatch>();
-  const { users, usersLoading, usersError } = useSelector((state: RootState) => state.admin);
+  const {
+    users = [],
+    usersLoading = false,
+    usersLoadingMore = false,
+    usersError,
+    usersHasMore = false,
+    usersPage = 1,
+    usersTotal = 0,
+    usersCounts,
+  } = useSelector((state: RootState) => state.admin);
+  // Persisted admin state from older builds may not include these new fields yet.
+  const counts = usersCounts ?? { users: 0, professionals: 0, all: 0 };
+
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"users" | "professionals">("users");
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const load = useCallback(() => { dispatch(fetchAdminUsers(100)); }, [dispatch]);
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, SEARCH_DEBOUNCE_MS);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [search]);
 
-  const normalUsers = users.filter((u) => !u.isProfessional);
-  const professionalUsers = users.filter((u) => u.isProfessional);
-  const tabUsers = activeTab === "professionals" ? professionalUsers : normalUsers;
+  const loadPage = useCallback(
+    (page: number) => {
+      dispatch(
+        fetchAdminUsers({
+          page,
+          limit: PAGE_SIZE,
+          type: activeTab,
+          ...(debouncedSearch ? { search: debouncedSearch } : {}),
+        })
+      );
+    },
+    [dispatch, activeTab, debouncedSearch]
+  );
 
-  const filtered = search.trim()
-    ? tabUsers.filter(
-        (u) =>
-          u.fullName?.toLowerCase().includes(search.toLowerCase()) ||
-          u.phoneNumber?.includes(search)
-      )
-    : tabUsers;
+  useEffect(() => {
+    loadPage(1);
+  }, [loadPage]);
+
+  const onRefresh = () => loadPage(1);
+
+  const onEndReached = () => {
+    if (usersHasMore && !usersLoading && !usersLoadingMore) {
+      loadPage(usersPage + 1);
+    }
+  };
+
+  const tabCountUsers = counts.users;
+  const tabCountPros = counts.professionals;
 
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Users</Text>
-        <Text style={styles.headerCount}>{users.length} total</Text>
+        <Text style={styles.headerCount}>{usersTotal} shown</Text>
       </View>
 
-      {/* Tabs */}
       <View style={styles.tabRow}>
         <TouchableOpacity
           style={[styles.tabBtn, activeTab === "users" && styles.tabBtnActive]}
@@ -126,7 +160,7 @@ const AdminUsersScreen = () => {
           </Text>
           <View style={[styles.tabCountPill, activeTab === "users" && styles.tabCountPillActive]}>
             <Text style={[styles.tabCountText, activeTab === "users" && styles.tabCountTextActive]}>
-              {normalUsers.length}
+              {tabCountUsers}
             </Text>
           </View>
         </TouchableOpacity>
@@ -140,13 +174,12 @@ const AdminUsersScreen = () => {
           </Text>
           <View style={[styles.tabCountPill, activeTab === "professionals" && styles.tabCountPillActive]}>
             <Text style={[styles.tabCountText, activeTab === "professionals" && styles.tabCountTextActive]}>
-              {professionalUsers.length}
+              {tabCountPros}
             </Text>
           </View>
         </TouchableOpacity>
       </View>
 
-      {/* Search */}
       <View style={styles.searchWrap}>
         <Ionicons name="search-outline" size={18} color={Colors.gray} style={styles.searchIcon} />
         <TextInput
@@ -155,6 +188,10 @@ const AdminUsersScreen = () => {
           placeholderTextColor={Colors.gray}
           value={search}
           onChangeText={setSearch}
+          autoCorrect={false}
+          autoCapitalize="none"
+          keyboardType="default"
+          returnKeyType="search"
         />
         {search.length > 0 && (
           <TouchableOpacity onPress={() => setSearch("")}>
@@ -171,7 +208,7 @@ const AdminUsersScreen = () => {
       ) : null}
 
       <FlatList
-        data={filtered}
+        data={users}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
           <UserRow
@@ -180,15 +217,22 @@ const AdminUsersScreen = () => {
           />
         )}
         refreshControl={
-          <RefreshControl refreshing={usersLoading} onRefresh={load} colors={[ADMIN_ACCENT]} />
+          <RefreshControl refreshing={usersLoading} onRefresh={onRefresh} colors={[ADMIN_ACCENT]} />
         }
+        onEndReached={onEndReached}
+        onEndReachedThreshold={0.4}
         contentContainerStyle={styles.list}
+        ListFooterComponent={
+          usersLoadingMore ? (
+            <ActivityIndicator style={{ marginVertical: 16 }} color={ADMIN_ACCENT} />
+          ) : null
+        }
         ListEmptyComponent={
           !usersLoading ? (
             <View style={styles.emptyBox}>
               <Ionicons name="people-outline" size={48} color={Colors.lightGray} />
               <Text style={styles.emptyText}>
-                {search
+                {debouncedSearch
                   ? "No results match your search"
                   : activeTab === "professionals"
                   ? "No professionals found"

@@ -16,14 +16,18 @@ import { Ionicons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { RootState, AppDispatch } from "../../../redux/store";
+import * as WebBrowser from "expo-web-browser";
 import {
   fetchAdminUserById,
+  fetchAdminUserReferrals,
   clearSelectedUser,
+  clearUserReferrals,
   deleteAdminWorkImage,
   setUserBlockStatus,
 } from "../../../redux/slices/adminSlice";
+import { getReferralExportTokenApi } from "../../../api/adminApis";
 import { Colors } from "../../../utils";
-import { IMAGE_BASE_URL } from "../../../api/baseURL";
+import { IMAGE_BASE_URL, API_BASE_URL } from "../../../api/baseURL";
 
 const ADMIN_ACCENT = "#1E40AF";
 const ADMIN_LIGHT  = "#EFF6FF";
@@ -131,9 +135,20 @@ const AdminUserDetailScreen = () => {
   const [viewingImage, setViewingImage] = useState<{ uri: string; rawPath?: string } | null>(null);
   const [deletingPath, setDeletingPath] = useState<string | null>(null);
 
-  const { selectedUser, usersLoading, usersError, blockLoading } = useSelector(
-    (state: RootState) => state.admin
-  );
+  const {
+    selectedUser,
+    usersLoading,
+    usersError,
+    blockLoading,
+    userReferrals,
+    userReferralsLoading,
+    userReferralsLoadingMore,
+    userReferralsHasMore,
+    userReferralsTotal,
+    userReferralsPage,
+  } = useSelector((state: RootState) => state.admin);
+
+  const [exporting, setExporting] = useState(false);
 
   const handleToggleBlock = () => {
     if (!selectedUser) return;
@@ -163,9 +178,37 @@ const AdminUserDetailScreen = () => {
   };
 
   useEffect(() => {
-    if (userId) dispatch(fetchAdminUserById(userId));
-    return () => { dispatch(clearSelectedUser()); };
+    if (userId) {
+      dispatch(fetchAdminUserById(userId));
+      dispatch(fetchAdminUserReferrals({ userId, page: 1, limit: 25 }));
+    }
+    return () => {
+      dispatch(clearSelectedUser());
+      dispatch(clearUserReferrals());
+    };
   }, [userId, dispatch]);
+
+  const handleLoadMoreReferrals = () => {
+    if (userId && userReferralsHasMore && !userReferralsLoadingMore) {
+      dispatch(fetchAdminUserReferrals({ userId, page: userReferralsPage + 1, limit: 25 }));
+    }
+  };
+
+  const handleExportReferrals = async () => {
+    if (!userId || userReferralsTotal === 0) return;
+    try {
+      setExporting(true);
+      const resp = await getReferralExportTokenApi(userId);
+      const token = resp?.data?.token;
+      if (!token) throw new Error("Could not prepare the export.");
+      const url = `${API_BASE_URL}/admin/users/${userId}/referrals/export?t=${encodeURIComponent(token)}`;
+      await WebBrowser.openBrowserAsync(url);
+    } catch (e: any) {
+      Alert.alert("Export failed", e?.message || "Could not export the referral list.");
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const handleDeleteWorkImage = (imagePath: string) => {
     Alert.alert(
@@ -421,6 +464,108 @@ const AdminUserDetailScreen = () => {
             )}
           </>
         )}
+
+        {/* Referral Information */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Referral Information</Text>
+          <View style={styles.card}>
+            <InfoRow label="Referral Code" value={u.referral?.referralCode || u.referralCode || ""} />
+            <InfoRow label="Total Referrals" value={String(u.referral?.totalReferrals ?? userReferralsTotal ?? 0)} />
+            {u.referral?.referredBy ? (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() =>
+                  (navigation as any).push("AdminUserDetailScreen", {
+                    userId: u.referral?.referredBy?.id,
+                  })
+                }
+              >
+                <InfoRow
+                  label="Referred By"
+                  value={`${u.referral.referredBy.fullName || "User"}${
+                    u.referral.referredBy.referralCode ? ` (${u.referral.referredBy.referralCode})` : ""
+                  }`}
+                />
+              </TouchableOpacity>
+            ) : (
+              <InfoRow label="Referred By" value="" />
+            )}
+            {u.referral?.referredAt ? (
+              <InfoRow label="Referred On" value={new Date(u.referral.referredAt).toLocaleDateString()} />
+            ) : null}
+          </View>
+
+          {/* Referred users list */}
+          {userReferralsLoading ? (
+            <ActivityIndicator style={{ marginVertical: 16 }} color={ADMIN_ACCENT} />
+          ) : userReferralsTotal === 0 ? (
+            <Text style={styles.referralEmpty}>This user has not referred anyone yet.</Text>
+          ) : (
+            <View style={styles.referralList}>
+              {userReferrals.map((r: any) => (
+                <View key={r.id} style={styles.referralRow}>
+                  <Image
+                    source={resolveImage(r.profileImage) ? { uri: resolveImage(r.profileImage)! } : undefined}
+                    style={styles.referralAvatar}
+                  />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.referralName} numberOfLines={1}>{r.fullName || "—"}</Text>
+                    <Text style={styles.referralMeta} numberOfLines={1}>
+                      {[r.email, r.phoneNumber].filter(Boolean).join("  ·  ")}
+                    </Text>
+                    <Text style={styles.referralDate}>
+                      {r.registeredAt ? new Date(r.registeredAt).toLocaleDateString() : ""}
+                    </Text>
+                  </View>
+                  <Text
+                    style={[
+                      styles.referralStatus,
+                      r.accountStatus === "inactive" && { color: "#6B7280" },
+                      r.accountStatus === "pending_profile" && { color: "#B45309" },
+                    ]}
+                  >
+                    {r.accountStatus === "inactive"
+                      ? "Inactive"
+                      : r.accountStatus === "pending_profile"
+                      ? "Profile incomplete"
+                      : "Active"}
+                  </Text>
+                </View>
+              ))}
+
+              {userReferralsHasMore && (
+                <TouchableOpacity
+                  style={styles.loadMoreBtn}
+                  onPress={handleLoadMoreReferrals}
+                  disabled={userReferralsLoadingMore}
+                  activeOpacity={0.7}
+                >
+                  {userReferralsLoadingMore ? (
+                    <ActivityIndicator size="small" color={ADMIN_ACCENT} />
+                  ) : (
+                    <Text style={styles.loadMoreText}>Load more</Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          <TouchableOpacity
+            style={[styles.exportBtn, userReferralsTotal === 0 && styles.exportBtnDisabled]}
+            onPress={handleExportReferrals}
+            disabled={userReferralsTotal === 0 || exporting}
+            activeOpacity={0.8}
+          >
+            {exporting ? (
+              <ActivityIndicator size="small" color={ADMIN_ACCENT} />
+            ) : (
+              <>
+                <Ionicons name="download-outline" size={18} color={ADMIN_ACCENT} />
+                <Text style={styles.exportText}>Export Referral List (PDF)</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
 
         {/* Verification Info */}
         {u.verification && verStatus !== "not_submitted" && (
@@ -689,4 +834,56 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "600",
   },
+
+  // ── Referral Information ──
+  referralEmpty: {
+    fontSize: 13,
+    color: Colors.gray,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  referralList: { marginTop: 10 },
+  referralRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: Colors.white,
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: "#EEF2F7",
+  },
+  referralAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#E5E7EB",
+    marginRight: 10,
+  },
+  referralName: { fontSize: 14, fontWeight: "600", color: Colors.black },
+  referralMeta: { fontSize: 12, color: Colors.gray, marginTop: 1 },
+  referralDate: { fontSize: 11, color: "#9CA3AF", marginTop: 2 },
+  referralStatus: { fontSize: 11, fontWeight: "700", color: "#059669", marginLeft: 6 },
+  loadMoreBtn: {
+    alignItems: "center",
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: "#EFF6FF",
+    marginTop: 2,
+  },
+  loadMoreText: { color: ADMIN_ACCENT, fontWeight: "700", fontSize: 13 },
+  exportBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginTop: 14,
+    paddingVertical: 13,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: ADMIN_ACCENT,
+    backgroundColor: "#EFF6FF",
+  },
+  exportBtnDisabled: { opacity: 0.5 },
+  exportText: { color: ADMIN_ACCENT, fontWeight: "700", fontSize: 14 },
 });

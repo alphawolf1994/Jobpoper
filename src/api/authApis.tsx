@@ -123,6 +123,7 @@ export const completeProfileApi = async (profileData: {
     longitude?: number;
     profileImage?: string;
     isProfessional?: boolean;
+    referralCode?: string;
 }) => {
     try {
         const hasLocalImage =
@@ -140,6 +141,9 @@ export const completeProfileApi = async (profileData: {
                 latitude: profileData.latitude,
                 longitude: profileData.longitude,
                 isProfessional: profileData.isProfessional,
+                ...(profileData.referralCode
+                    ? { referralCode: profileData.referralCode }
+                    : {}),
             });
             return res.data;
         }
@@ -153,6 +157,9 @@ export const completeProfileApi = async (profileData: {
         if (profileData.isProfessional !== undefined) {
             formData.append("isProfessional", String(profileData.isProfessional));
         }
+        if (profileData.referralCode) {
+            formData.append("referralCode", profileData.referralCode);
+        }
 
         const uri = profileData.profileImage!;
         const { inferredName, mime } = mimeFromUri(uri, "profile.jpg");
@@ -165,7 +172,13 @@ export const completeProfileApi = async (profileData: {
         });
         return res.data;
     } catch (error: any) {
-        throw new Error(getApiErrorMessage(error, "Profile completion failed"));
+        const err = new Error(
+            getApiErrorMessage(error, "Profile completion failed")
+        ) as Error & { code?: string };
+        // Surface the machine-readable code (e.g. REFERRAL_CODE_INVALID) so the
+        // Complete Profile screen can render an inline field error.
+        err.code = error?.response?.data?.code;
+        throw err;
     }
 };
 

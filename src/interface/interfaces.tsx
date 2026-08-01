@@ -13,7 +13,25 @@ export interface JobPoperUser {
   professionalProfile?: ProfessionalProfile;
   lastLogin?: string;
   workerId?: string | null;
+  referralCode?: string | null;
   rating?: { average: number; count: number };
+}
+
+// A user who signed up using the current user's referral code.
+export interface ReferredUser {
+  id: string;
+  fullName: string;
+  profileImage?: string | null;
+  email?: string | null;
+  phoneNumber?: string | null;
+  registeredAt?: string | null;
+  accountStatus: "active" | "pending_profile" | "inactive";
+  isProfessional?: boolean;
+}
+
+export interface ReferralSummary {
+  referralCode: string | null;
+  totalReferrals: number;
 }
 
 export interface ProfessionalProfile {

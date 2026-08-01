@@ -12,6 +12,7 @@ import businessCategorySlice from './slices/businessCategorySlice';
 import orderSlice from './slices/orderSlice';
 import jobVerificationSlice from './slices/jobVerificationSlice';
 import reportSlice from './slices/reportSlice';
+import referralSlice from './slices/referralSlice';
 import { authMiddleware } from './middleware/authMiddleware';
 
 // Configuration for redux-persist
@@ -19,6 +20,9 @@ const persistConfig = {
   key: 'root', // Root key for storage
   storage: AsyncStorage, // Use AsyncStorage as storage
   // whitelist: ['auth'], // Only persist the auth state
+  // Referral list/count must be fresh on every visit (the code itself lives
+  // in auth.user), so exclude the referral slice from persistence.
+  blacklist: ['referral'],
 };
 
 // Combine reducers
@@ -34,6 +38,7 @@ const rootReducer = combineReducers({
   order: orderSlice,
   jobVerification: jobVerificationSlice,
   report: reportSlice,
+  referral: referralSlice,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

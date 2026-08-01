@@ -133,12 +133,16 @@ export const completeProfile = createAsyncThunk(
     longitude?: number;
     profileImage?: string;
     isProfessional?: boolean;
+    referralCode?: string;
   }, { rejectWithValue }) => {
     try {
       const response = await completeProfileApi(profileData);
       return response;
     } catch (error: any) {
-      return rejectWithValue(error?.message || "Profile completion failed");
+      return rejectWithValue({
+        message: error?.message || "Profile completion failed",
+        code: error?.code,
+      });
     }
   }
 );
@@ -389,7 +393,9 @@ const authSlice = createSlice({
         state.error = null;
       })
       .addCase(completeProfile.rejected, (state, action) => {
-        state.error = action.payload as string;
+        const payload = action.payload as any;
+        state.error =
+          typeof payload === "string" ? payload : payload?.message || "Profile completion failed";
         state.loading = false;
       })
       .addCase(completeProfile.fulfilled, (state, action) => {

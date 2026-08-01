@@ -29,6 +29,9 @@ interface MyTextInputProps {
   onSearchPress?: () => void;
   editable?: boolean; // New Prop
   keyboardType?: KeyboardTypeOptions; // New Prop
+  autoCapitalize?: "none" | "sentences" | "words" | "characters";
+  autoCorrect?: boolean;
+  maxLength?: number;
   containerStyle?: ViewStyle; // New Prop
   firstContainerStyle?: ViewStyle;
 }
@@ -45,6 +48,9 @@ const MyTextInput = ({
   onSearchPress,
   editable = true, // Default is editable
   keyboardType = "default", // Default keyboard type
+  autoCapitalize,
+  autoCorrect,
+  maxLength,
   containerStyle, // Custom styles for container
   firstContainerStyle,
 }: MyTextInputProps) => {
@@ -65,6 +71,9 @@ const MyTextInput = ({
             value={value}
             editable={editable}
             keyboardType={keyboardType}
+            autoCapitalize={autoCapitalize}
+            autoCorrect={autoCorrect}
+            maxLength={maxLength}
             scrollEnabled={true}
             showsHorizontalScrollIndicator={false}
             {...(Platform.OS === 'ios' && {

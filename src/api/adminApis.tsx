@@ -13,9 +13,21 @@ export const getAdminDashboardApi = async () => {
 
 // ─── Users ────────────────────────────────────────────────────────────────────
 
-export const getAdminUsersApi = async (limit: number = 100) => {
+export const getAdminUsersApi = async (params: {
+  page?: number;
+  limit?: number;
+  search?: string;
+  type?: "all" | "users" | "professionals";
+} = {}) => {
   try {
-    const res = await axiosInstance.get("/admin/users", { params: { limit } });
+    const res = await axiosInstance.get("/admin/users", {
+      params: {
+        page: params.page ?? 1,
+        limit: params.limit ?? 50,
+        ...(params.search ? { search: params.search } : {}),
+        ...(params.type && params.type !== "all" ? { type: params.type } : {}),
+      },
+    });
     return res.data;
   } catch (error: any) {
     throw new Error(error.response?.data?.message || "Failed to fetch users");
@@ -28,6 +40,39 @@ export const getAdminUserByIdApi = async (userId: string) => {
     return res.data;
   } catch (error: any) {
     throw new Error(error.response?.data?.message || "Failed to fetch user details");
+  }
+};
+
+// Paginated referral list for a user (admin view, unmasked).
+export const getAdminUserReferralsApi = async (
+  userId: string,
+  params: { page?: number; limit?: number; search?: string; sort?: string; status?: string } = {}
+) => {
+  try {
+    const res = await axiosInstance.get(`/admin/users/${userId}/referrals`, {
+      params: {
+        page: params.page ?? 1,
+        limit: params.limit ?? 25,
+        ...(params.search ? { search: params.search } : {}),
+        ...(params.sort ? { sort: params.sort } : {}),
+        ...(params.status ? { status: params.status } : {}),
+      },
+    });
+    return res.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to fetch referrals");
+  }
+};
+
+// Request a short-lived token, then build the browser-openable export URL.
+export const getReferralExportTokenApi = async (userId: string) => {
+  try {
+    const res = await axiosInstance.get(
+      `/admin/users/${userId}/referrals/export-token`
+    );
+    return res.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to prepare export");
   }
 };
 

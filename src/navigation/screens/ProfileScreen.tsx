@@ -229,6 +229,13 @@ const ProfileScreen = () => {
           />
 
           <MenuItem
+            icon="people-outline"
+            label="Referral Program"
+            onPress={() => (navigation as any).navigate('ReferralScreen')}
+            iconColor="#8B5CF6"
+          />
+
+          <MenuItem
             icon="storefront-outline"
             label="Are you a business?"
             onPress={() => (navigation as any).navigate('BusinessProfilesScreen')}
