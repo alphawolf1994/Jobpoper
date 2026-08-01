@@ -19,10 +19,30 @@ import { authMiddleware } from './middleware/authMiddleware';
 const persistConfig = {
   key: 'root', // Root key for storage
   storage: AsyncStorage, // Use AsyncStorage as storage
+  version: 1,
   // whitelist: ['auth'], // Only persist the auth state
   // Referral list/count must be fresh on every visit (the code itself lives
   // in auth.user), so exclude the referral slice from persistence.
   blacklist: ['referral'],
+  migrate: async (state: any) => {
+    // verification.loading → statusLoading + submitting
+    if (state?.verification) {
+      const v = state.verification;
+      if (v.submitting === undefined || v.statusLoading === undefined) {
+        state.verification = {
+          ...v,
+          statusLoading: false,
+          submitting: false,
+        };
+        delete state.verification.loading;
+      } else {
+        // Never rehydrate a stuck in-flight submit/status flag
+        state.verification.submitting = false;
+        state.verification.statusLoading = false;
+      }
+    }
+    return state;
+  },
 };
 
 // Combine reducers

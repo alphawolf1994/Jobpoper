@@ -19,6 +19,7 @@ import {
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import { useDispatch, useSelector } from "react-redux";
 import Button from "../../components/Button";
+import Loader from "../../components/Loader";
 import { Colors, isFreshLocalVerificationUri } from "../../utils";
 import { RootState, AppDispatch } from "../../redux/store";
 import {
@@ -38,7 +39,7 @@ const VerificationDetailsScreen = () => {
     idPhotoUri,
     status,
     reviewNotes,
-    loading,
+    submitting,
     error,
     submittedAt,
     reviewedAt,
@@ -181,6 +182,8 @@ const VerificationDetailsScreen = () => {
   }, [status]);
 
   const handlePrimaryAction = async () => {
+    if (submitting) return;
+
     if (status === "approved" || status === "under_review") {
       (navigation as any).navigate("VerificationSubmittedScreen");
       return;
@@ -457,13 +460,14 @@ const VerificationDetailsScreen = () => {
           </View>
 
           <Button
-            label={loading ? "Please wait..." : primaryLabel}
+            label={primaryLabel}
             onPress={handlePrimaryAction}
-            disabled={loading}
+            disabled={submitting}
             style={styles.primaryButton}
           />
         </ScrollView>
       </LinearGradient>
+      <Loader visible={submitting} message="Submitting verification..." />
       {alertModal}
     </SafeAreaView>
   );

@@ -261,40 +261,28 @@ export const submitVerificationDocumentsApi = async (verificationData: {
     photoIdUri: string;
 }) => {
     try {
+        const { compressVerificationImage } = await import(
+            "../utils/compressVerificationImage"
+        );
+
+        // Compress both images before upload so slow networks / HEIC don't hang submit.
+        const [selfieFile, photoIdFile] = await Promise.all([
+            compressVerificationImage(verificationData.selfieUri, "selfie"),
+            compressVerificationImage(verificationData.photoIdUri, "photo-id"),
+        ]);
+
         const formData = new FormData();
 
-        const selfieName = verificationData.selfieUri.split("/").pop() || "selfie.jpg";
-        const selfieExt = selfieName.split(".").pop()?.toLowerCase();
-        const selfieType =
-            selfieExt === "png"
-                ? "image/png"
-                : selfieExt === "webp"
-                ? "image/webp"
-                : selfieExt === "heic"
-                ? "image/heic"
-                : "image/jpeg";
-
-        const photoIdName = verificationData.photoIdUri.split("/").pop() || "photo-id.jpg";
-        const photoIdExt = photoIdName.split(".").pop()?.toLowerCase();
-        const photoIdType =
-            photoIdExt === "png"
-                ? "image/png"
-                : photoIdExt === "webp"
-                ? "image/webp"
-                : photoIdExt === "heic"
-                ? "image/heic"
-                : "image/jpeg";
-
         formData.append("selfie", {
-            uri: verificationData.selfieUri,
-            name: selfieName,
-            type: selfieType,
+            uri: selfieFile.uri,
+            name: selfieFile.name,
+            type: selfieFile.type,
         } as unknown as Blob);
 
         formData.append("photoId", {
-            uri: verificationData.photoIdUri,
-            name: photoIdName,
-            type: photoIdType,
+            uri: photoIdFile.uri,
+            name: photoIdFile.name,
+            type: photoIdFile.type,
         } as unknown as Blob);
 
         // Same multipart header pattern as job uploads (works against production).

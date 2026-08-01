@@ -4,6 +4,7 @@ import {
   submitVerificationDocumentsApi,
 } from "../../api/authApis";
 import { UserVerification } from "../../interface/interfaces";
+import { isFreshLocalVerificationUri } from "../../utils/verificationImageUri";
 import {
   clearAuth,
   completeProfile,
@@ -21,7 +22,10 @@ interface VerificationState {
   submittedAt: string | null;
   reviewedAt: string | null;
   reviewNotes: string;
-  loading: boolean;
+  /** True while fetching verification status from the server. */
+  statusLoading: boolean;
+  /** True only while submitting selfie + ID documents. */
+  submitting: boolean;
   error: string | null;
   promptDismissed: boolean;
 }
@@ -33,18 +37,38 @@ const initialState: VerificationState = {
   submittedAt: null,
   reviewedAt: null,
   reviewNotes: "",
-  loading: false,
+  statusLoading: false,
+  submitting: false,
   error: null,
   promptDismissed: false,
 };
 
+/**
+ * Apply server verification metadata without wiping freshly-picked local
+ * draft images (file://, content://, etc.). Status/notes always sync from
+ * the server so approved/under_review still updates correctly.
+ */
 const applyVerificationState = (
   state: VerificationState,
-  verification?: UserVerification | null
+  verification?: UserVerification | null,
+  options?: { forceReplaceImages?: boolean }
 ) => {
-  state.selfieUri = verification?.selfieImage || null;
-  state.idPhotoUri = verification?.idPhotoImage || null;
-  state.status = verification?.status || "not_submitted";
+  const nextStatus = verification?.status || "not_submitted";
+  const forceReplaceImages = options?.forceReplaceImages === true;
+
+  const keepLocalSelfie =
+    !forceReplaceImages && isFreshLocalVerificationUri(state.selfieUri);
+  const keepLocalId =
+    !forceReplaceImages && isFreshLocalVerificationUri(state.idPhotoUri);
+
+  if (!keepLocalSelfie) {
+    state.selfieUri = verification?.selfieImage || null;
+  }
+  if (!keepLocalId) {
+    state.idPhotoUri = verification?.idPhotoImage || null;
+  }
+
+  state.status = nextStatus;
   state.submittedAt = verification?.submittedAt || null;
   state.reviewedAt = verification?.reviewedAt || null;
   state.reviewNotes = verification?.reviewNotes || "";
@@ -125,30 +149,33 @@ const verificationSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchVerificationStatus.pending, (state) => {
-        state.loading = true;
+        state.statusLoading = true;
         state.error = null;
       })
       .addCase(fetchVerificationStatus.rejected, (state, action) => {
-        state.loading = false;
+        state.statusLoading = false;
         state.error = action.payload as string;
       })
       .addCase(fetchVerificationStatus.fulfilled, (state, action) => {
-        state.loading = false;
+        state.statusLoading = false;
         state.error = null;
         applyVerificationState(state, action.payload?.data?.verification);
       })
       .addCase(submitVerificationDocuments.pending, (state) => {
-        state.loading = true;
+        state.submitting = true;
         state.error = null;
       })
       .addCase(submitVerificationDocuments.rejected, (state, action) => {
-        state.loading = false;
+        state.submitting = false;
         state.error = action.payload as string;
       })
       .addCase(submitVerificationDocuments.fulfilled, (state, action) => {
-        state.loading = false;
+        state.submitting = false;
         state.error = null;
-        applyVerificationState(state, action.payload?.data?.verification);
+        // Server now owns the images — replace local drafts with saved paths.
+        applyVerificationState(state, action.payload?.data?.verification, {
+          forceReplaceImages: true,
+        });
         state.promptDismissed = true;
       })
       .addCase(registerUser.fulfilled, (state, action) => {
