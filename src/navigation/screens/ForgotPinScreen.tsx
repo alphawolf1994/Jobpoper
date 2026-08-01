@@ -137,6 +137,9 @@ const ForgotPinScreen = () => {
                 value={phoneNumber}
                 onChangeText={setPhoneNumber}
                 onChangeCallingCode={setCallingCode}
+                // Same GPS country auto-detect as Login / Signup (default true).
+                // Pre-filled digits from Login no longer block detection.
+                autoDetectCountry
                 firstContainerStyle={{ marginTop: 0 }}
               />
 

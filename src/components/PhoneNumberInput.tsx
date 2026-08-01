@@ -39,10 +39,11 @@ interface PhoneNumberInputProps {
   defaultCode?: any;
   disabled?: boolean;
   /**
-   * When true (default) and the caller has NOT already typed a number, the
+   * When true (default) and the user hasn't typed or picked a country yet, the
    * picker auto-selects the country detected from the device's GPS location
-   * (reverse-geocoded ISO code). The user can still change the country
-   * manually, and any manual change or typed digit locks out further
+   * (reverse-geocoded ISO code). Works even if `value` is pre-filled (e.g.
+   * Forgot PIN) — digits are preserved on remount. The user can still change
+   * the country manually; any manual change or typed digit locks out further
    * auto-selection. Pass false to keep the static `defaultCode` behavior.
    */
   autoDetectCountry?: boolean;
@@ -64,22 +65,32 @@ const PhoneNumberInput = ({
 }: PhoneNumberInputProps) => {
   const phoneInput = useRef<PhoneInput>(null);
 
-  // The ISO country the inner PhoneInput is initialized with. Starts at
-  // `defaultCode` and gets replaced by the GPS-detected country once (and only
-  // if) the user hasn't already interacted with the field.
-  const [activeCode, setActiveCode] = useState<string>(defaultCode);
+  // Detected ISO code from the device location (undefined until resolved).
+  // Still runs when the field is pre-filled (e.g. Forgot PIN receives digits
+  // from Login) — remount keeps those digits via `defaultValue`. Callers that
+  // must keep a fixed country should pass autoDetectCountry={false}.
+  const detectedCode = useAutoCountryCode(autoDetectCountry);
+
+  // Prefer a warm GPS cache immediately (Login/Signup already ran detection)
+  // so Forgot PIN doesn't briefly show the wrong default country.
+  const [activeCode, setActiveCode] = useState<string>(
+    autoDetectCountry && detectedCode ? detectedCode : defaultCode
+  );
 
   // `true` once the user has manually picked a country or typed a digit — from
   // that point we never auto-override their choice.
   const userLockedRef = useRef(false);
-  // Remember whether the caller mounted us with a pre-filled value (e.g. an
-  // edit form). A pre-filled number counts as "already interacted".
-  const hadInitialValueRef = useRef(!!value);
+  // Ignore the library's initial onChangeText(defaultValue) so a pre-filled
+  // number (Forgot PIN from Login) does not lock out GPS country detection.
+  const acceptUserEditsRef = useRef(false);
 
-  // Detected ISO code from the device location (undefined until resolved).
-  const detectedCode = useAutoCountryCode(
-    autoDetectCountry && !hadInitialValueRef.current
-  );
+  useEffect(() => {
+    acceptUserEditsRef.current = false;
+    const t = setTimeout(() => {
+      acceptUserEditsRef.current = true;
+    }, 400);
+    return () => clearTimeout(t);
+  }, [activeCode]);
 
   // Apply the detected country exactly once, and only if the user hasn't
   // touched the field yet. Changing `activeCode` remounts the inner
@@ -87,7 +98,6 @@ const PhoneNumberInput = ({
   useEffect(() => {
     if (!autoDetectCountry) return;
     if (userLockedRef.current) return;
-    if (hadInitialValueRef.current) return;
     if (!detectedCode) return;
     setActiveCode((prev) =>
       prev === detectedCode ? prev : detectedCode
@@ -119,8 +129,11 @@ const PhoneNumberInput = ({
           defaultCode={activeCode as any}
           layout="first"
           onChangeText={(text) => {
-            // Any typed digit locks out auto country-detection.
-            if (text) userLockedRef.current = true;
+            // Only lock after the field is ready — initial defaultValue sync
+            // must not block auto country-detection.
+            if (acceptUserEditsRef.current && text) {
+              userLockedRef.current = true;
+            }
             onChangeText?.(text);
           }}
           onChangeFormattedText={onChangeFormattedText}
