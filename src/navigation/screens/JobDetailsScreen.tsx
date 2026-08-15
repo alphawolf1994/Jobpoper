@@ -32,6 +32,7 @@ import ShowInterestSheet, { ShowInterestSheetHandle } from "../../components/Sho
 import ReportIssueSheet from "../../components/ReportIssueSheet";
 import ReviewModal from "../../components/ReviewModal";
 import { fetchVerificationStatus } from "../../redux/slices/verificationSlice";
+import { useRequirePhoneVerified } from "../../hooks/useRequirePhoneVerified";
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -46,6 +47,7 @@ const JobDetailsScreen = () => {
   const verificationSheetRef = useRef<VerificationBottomSheetHandle>(null);
   const pickupPrefSheetRef = useRef<PickupPreferencesBottomSheetHandle>(null);
   const showInterestSheetRef = useRef<ShowInterestSheetHandle>(null);
+  const { ensurePhoneVerified, phoneSheet } = useRequirePhoneVerified();
 
   // Get jobId from route params
   const jobId = (route.params as any)?.jobId;
@@ -245,6 +247,9 @@ const JobDetailsScreen = () => {
     if (!currentJob) return;
     if (!ensureProfessionalOrPrompt()) return;
 
+    // Contact details are only shared between users with verified numbers.
+    if (!ensurePhoneVerified('contact', handleContact)) return;
+
     const contactInfo =
       currentJob.contactInfo ||
       (currentJob.postedOnBehalf ? currentJob.externalContact?.phoneNumber : null) ||
@@ -293,7 +298,13 @@ const JobDetailsScreen = () => {
     // Must be a Professional / Worker before applying to tasks
     if (!ensureProfessionalOrPrompt()) return;
 
-    // Block unverified users
+    // Phone verification comes BEFORE the KYC document gate: a 60-second OTP is
+    // a far lighter ask than a selfie + ID upload. Returning false here means
+    // the phone sheet is open, so we must not also open the KYC sheet — two
+    // RBSheets on screen at once do not coordinate.
+    if (!ensurePhoneVerified('show_interest', handleShowInterest)) return;
+
+    // Block users who haven't passed ID verification
     if (!user?.isVerified) {
       verificationSheetRef.current?.open();
       return;
@@ -1571,6 +1582,10 @@ const JobDetailsScreen = () => {
                   ) || [];
 
                 const handleContactPress = () => {
+                  // The task owner viewing an applicant's number — same rule:
+                  // contact details are only shared between verified users.
+                  if (!ensurePhoneVerified('contact', handleContactPress)) return;
+
                   if (entry.user.phoneNumber) {
                     showAlert({
                       title: "Contact",
@@ -1847,6 +1862,7 @@ const JobDetailsScreen = () => {
           </TouchableOpacity>
         </View>
       )}
+      {phoneSheet}
       <VerificationBottomSheet ref={verificationSheetRef} />
       <PickupPreferencesBottomSheet
         ref={pickupPrefSheetRef}

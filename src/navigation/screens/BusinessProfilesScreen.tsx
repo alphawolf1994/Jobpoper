@@ -26,6 +26,7 @@ import VerificationBottomSheet, {
 } from "../../components/VerificationBottomSheet";
 import { AppDispatch, RootState } from "../../redux/store";
 import { fetchVerificationStatus } from "../../redux/slices/verificationSlice";
+import { useRequirePhoneVerified } from "../../hooks/useRequirePhoneVerified";
 
 const MAX_PROFILES = 3;
 
@@ -102,6 +103,7 @@ const BusinessProfilesScreen = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch<AppDispatch>();
   const verificationSheetRef = useRef<VerificationBottomSheetHandle>(null);
+  const { ensurePhoneVerified, phoneSheet } = useRequirePhoneVerified();
   const { user } = useSelector((state: RootState) => state.auth);
   const [profiles, setProfiles] = useState<BusinessProfileItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -160,6 +162,9 @@ const BusinessProfilesScreen = () => {
     remainingSlots != null ? remainingSlots <= 0 : profileCount >= maxProfiles;
 
   const handleAddPress = () => {
+    // Phone gate first (lighter ask), then the KYC document gate.
+    if (!ensurePhoneVerified('business_profile', handleAddPress)) return;
+
     if (!user?.isVerified) {
       verificationSheetRef.current?.open();
       return;
@@ -478,6 +483,7 @@ const BusinessProfilesScreen = () => {
           }
         />
       )}
+      {phoneSheet}
       <VerificationBottomSheet ref={verificationSheetRef} />
     </SafeAreaView>
   );

@@ -15,10 +15,17 @@ import VerifyWorkerSheet from "../../components/VerifyWorkerSheet";
 import CompleteJobSheet from "../../components/CompleteJobSheet";
 import ReviewModal from "../../components/ReviewModal";
 import ReportIssueSheet from "../../components/ReportIssueSheet";
+import { useRequirePhoneVerified } from "../../hooks/useRequirePhoneVerified";
 
 const MyJobsScreen = () => {
   const navigation = useNavigation<any>();
   const dispatch = useDispatch<AppDispatch>();
+  const { ensurePhoneVerified, phoneSheet } = useRequirePhoneVerified();
+
+  const handlePostJob = () => {
+    if (!ensurePhoneVerified('post_job', handlePostJob)) return;
+    navigation.navigate('PostJobScreen');
+  };
   const [activeTab, setActiveTab] = useState<'myJobs' | 'interested'>('myJobs');
   
   const { userJobs, interestedJobs, listLoading: loading, error } = useSelector((state: RootState) => state.job);
@@ -501,7 +508,7 @@ const MyJobsScreen = () => {
       {activeTab === 'myJobs' && (
         <TouchableOpacity 
           style={styles.emptyButton}
-          onPress={() => navigation.navigate('PostJobScreen')}
+          onPress={handlePostJob}
         >
           <Text style={styles.emptyButtonText}>Post Your First Task</Text>
         </TouchableOpacity>
@@ -566,7 +573,7 @@ const MyJobsScreen = () => {
           <TouchableOpacity 
             style={styles.plusButton} 
             activeOpacity={0.7}
-            onPress={() => navigation.navigate('PostJobScreen')}
+            onPress={handlePostJob}
           >
             <Ionicons name="add" size={24} color={Colors.white} />
           </TouchableOpacity>
@@ -669,6 +676,7 @@ const MyJobsScreen = () => {
           });
         }}
       />
+      {phoneSheet}
     </SafeAreaView>
   );
 };

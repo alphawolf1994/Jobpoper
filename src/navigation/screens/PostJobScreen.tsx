@@ -24,6 +24,7 @@ import { IMAGE_BASE_URL } from '../../api/baseURL';
 import CategoryPickerSheet, { getCategoryVisual } from "../../components/CategoryPickerSheet";
 import { fetchServiceCategories } from "../../redux/slices/serviceCategorySlice";
 import VoiceNoteRecorder from "../../components/VoiceNoteRecorder";
+import { useRequirePhoneVerified } from "../../hooks/useRequirePhoneVerified";
 
 const PostJobScreen = () => {
   const navigation = useNavigation();
@@ -32,6 +33,7 @@ const PostJobScreen = () => {
   const { createJobLoading } = useSelector((state: RootState) => state.job);
   const { items: savedLocations, loading: locationsLoading, lastAddedLocation } = useSelector((state: RootState) => state.locations);
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
+  const { ensurePhoneVerified, phoneSheet } = useRequirePhoneVerified();
 
   // Check if in edit mode
   const isEditMode = (route.params as any)?.isEditMode ?? false;
@@ -484,6 +486,17 @@ const PostJobScreen = () => {
         return;
       }
     }
+
+    // Posting a NEW task requires a verified phone number — task seekers need a
+    // reachable number. Editing an existing task is not gated (matches the
+    // server, which only guards POST /jobs).
+    //
+    // The gate sits after validation so that when verification succeeds and
+    // this handler is re-invoked, it re-runs against a form already known to be
+    // valid. The sheet is a sibling of the form, not a navigation push, so all
+    // form state survives untouched.
+    if (!isEditMode && !ensurePhoneVerified('post_job', handleSubmit)) return;
+
     try {
       // Separate attachments into existing and new
       const newAttachments = attachments.filter(uri => isNewAttachment(uri));
@@ -1092,6 +1105,8 @@ const PostJobScreen = () => {
           selectedId={selectedCategory?._id ?? null}
           onRetry={() => dispatch(fetchServiceCategories())}
         />
+
+        {phoneSheet}
       </SafeAreaView>
 
       {/* Location Selection Modal */}

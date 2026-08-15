@@ -13,6 +13,7 @@ import orderSlice from './slices/orderSlice';
 import jobVerificationSlice from './slices/jobVerificationSlice';
 import reportSlice from './slices/reportSlice';
 import referralSlice from './slices/referralSlice';
+import phoneVerificationSlice from './slices/phoneVerificationSlice';
 import { authMiddleware } from './middleware/authMiddleware';
 
 // Configuration for redux-persist
@@ -23,7 +24,11 @@ const persistConfig = {
   // whitelist: ['auth'], // Only persist the auth state
   // Referral list/count must be fresh on every visit (the code itself lives
   // in auth.user), so exclude the referral slice from persistence.
-  blacklist: ['referral'],
+  // phoneVerification holds only the transient state of an OTP exchange
+  // (sending / code_sent / verifying). Rehydrating it would restore a stuck
+  // in-flight status or an already-elapsed resend countdown. The durable
+  // answer lives on auth.user.isPhoneVerified.
+  blacklist: ['referral', 'phoneVerification'],
   migrate: async (state: any) => {
     // verification.loading → statusLoading + submitting
     if (state?.verification) {
@@ -59,6 +64,7 @@ const rootReducer = combineReducers({
   jobVerification: jobVerificationSlice,
   report: reportSlice,
   referral: referralSlice,
+  phoneVerification: phoneVerificationSlice,
 });
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);

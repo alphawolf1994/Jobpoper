@@ -18,7 +18,7 @@ import PhoneNumberInput from "../../components/PhoneNumberInput";
 import { useNavigation } from "@react-navigation/native";
 import { AntDesign, Feather, MaterialCommunityIcons } from "@expo/vector-icons";
 import { useDispatch, useSelector } from "react-redux";
-import { sendPhoneVerification, setPhoneNumber, clearError } from "../../redux/slices/authSlice";
+import { checkPhone, setPhoneNumber, clearError } from "../../redux/slices/authSlice";
 import { RootState, AppDispatch } from "../../redux/store";
 import { useAlertModal } from "../../hooks/useAlertModal";
 import { toE164, isValidE164 } from "../../utils/phoneFormat";
@@ -62,23 +62,39 @@ const SignupPhoneScreen = () => {
     }
 
     try {
-      // Store phone number in Redux state
-      dispatch(setPhoneNumber(formattedPhoneNumber));
+      // Signup no longer sends an OTP — the user verifies their number in-app,
+      // the first time they take an action that needs a reachable phone.
+      //
+      // We still need the "already registered" check that /send-verification
+      // used to perform implicitly. Without it the user would enter and confirm
+      // a PIN before discovering the number is taken.
+      const result = await dispatch(checkPhone(formattedPhoneNumber)).unwrap();
 
-      // Send verification code
-      const result = await dispatch(sendPhoneVerification(formattedPhoneNumber)).unwrap();
-
-      if (result.status === "success") {
-        (navigation as any).navigate("PhoneVerificationScreen", {
-          isSignup: true,
-          phoneNumber: formattedPhoneNumber,
+      if (result?.data?.exists) {
+        showAlert({
+          title: "Number already registered",
+          message:
+            "This phone number already has an account. Please log in instead.",
+          type: "info",
+          buttons: [
+            { label: "Cancel", variant: "secondary" },
+            {
+              label: "Login",
+              onPress: () => (navigation as any).navigate("LoginScreen"),
+            },
+          ],
         });
+        return;
       }
+
+      // Store phone number in Redux — CreatePinScreen reads it when registering.
+      dispatch(setPhoneNumber(formattedPhoneNumber));
+      (navigation as any).navigate("CreatePinScreen");
     } catch (error: any) {
       const errorMessage =
         typeof error === "string"
           ? error
-          : error?.message || "Failed to send verification code. Please try again.";
+          : error?.message || "Something went wrong. Please try again.";
       showAlert({
         title: "Error",
         message: errorMessage,
@@ -121,7 +137,7 @@ const SignupPhoneScreen = () => {
               </View>
               <Text style={styles.title}>Create your account</Text>
               <Text style={styles.subtitle}>
-                Signup is for new users. Start with your phone number, verify it, and continue to create your profile.
+                Signup is for new users. Enter your phone number, set a PIN, and you're in.
               </Text>
             </View>
 
@@ -146,7 +162,7 @@ const SignupPhoneScreen = () => {
                 firstContainerStyle={{ marginTop: 0 }}
               />
               <Button
-                label={loading ? "Sending..." : "Create Account"}
+                label={loading ? "Checking..." : "Create Account"}
                 onPress={handlePhoneSubmit}
                 style={[
                   styles.signupButton,
@@ -171,7 +187,7 @@ const SignupPhoneScreen = () => {
             />
           </ScrollView>
         </LinearGradient>
-        <Loader visible={loading} message="Sending verification code..." />
+        <Loader visible={loading} message="Checking number..." />
         {alertModal}
       </SafeAreaView>
     </KeyboardAvoidingView>

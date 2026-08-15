@@ -264,7 +264,8 @@ const CreatePinScreen = () => {
             <View style={styles.badge}>
               <MaterialCommunityIcons name="form-textbox-password" size={18} color={Colors.primary} />
               <Text style={styles.badgeText}>
-                {isResetPin ? (step === 1 ? "New PIN" : "Confirm PIN") : (step === 1 ? "Step 3 of 3" : "Final step")}
+                {/* Signup is now 2 steps (phone → PIN); the OTP step was removed. */}
+                {isResetPin ? (step === 1 ? "New PIN" : "Confirm PIN") : (step === 1 ? "Step 2 of 2" : "Final step")}
               </Text>
             </View>
 

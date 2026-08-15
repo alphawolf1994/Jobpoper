@@ -272,6 +272,22 @@ const authSlice = createSlice({
     setVerificationCode: (state, action: PayloadAction<string>) => {
       state.verificationCode = action.payload;
     },
+    /**
+     * Replace the cached user wholesale. Used after in-app phone verification,
+     * which returns the full, updated user — preferring the server's object
+     * over locally flipping a boolean keeps the client from drifting.
+     */
+    setUser: (state, action: PayloadAction<JobPoperUser>) => {
+      state.user = action.payload;
+      state.isPhoneVerified = !!action.payload?.isPhoneVerified;
+    },
+    /** Narrow fallback when only the flag is known (e.g. an idempotent re-verify). */
+    markPhoneVerified: (state) => {
+      if (state.user) {
+        state.user = { ...state.user, isPhoneVerified: true };
+      }
+      state.isPhoneVerified = true;
+    },
     clearAuth: (state) => {
       state.user = null;
       state.isAuthenticated = false;
@@ -534,5 +550,12 @@ const authSlice = createSlice({
   },
 });
 // Export the actions
-export const { setPhoneNumber, setVerificationCode, clearAuth, clearError } = authSlice.actions;
+export const {
+  setPhoneNumber,
+  setVerificationCode,
+  setUser,
+  markPhoneVerified,
+  clearAuth,
+  clearError,
+} = authSlice.actions;
 export default authSlice.reducer;

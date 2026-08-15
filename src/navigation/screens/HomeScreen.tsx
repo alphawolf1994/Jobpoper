@@ -16,6 +16,7 @@ import {
   fetchVerificationStatus,
 } from "../../redux/slices/verificationSlice";
 import VerificationBottomSheet, { VerificationBottomSheetHandle } from "../../components/VerificationBottomSheet";
+import { useRequirePhoneVerified } from "../../hooks/useRequirePhoneVerified";
 
 import { useFocusEffect } from "@react-navigation/native";
 
@@ -33,8 +34,10 @@ const HomeScreen = ({ navigation }: any) => {
   const isInitialMountRef = useRef(true);
   const verificationSheetRef = useRef<VerificationBottomSheetHandle>(null);
   const [isVerificationSheetVisible, setIsVerificationSheetVisible] = useState(false);
+  const { ensurePhoneVerified, phoneSheet } = useRequirePhoneVerified();
 
   const handlePostJob = () => {
+    if (!ensurePhoneVerified('post_job', handlePostJob)) return;
     navigation.navigate('PostJobScreen');
   };
 
@@ -240,6 +243,7 @@ const HomeScreen = ({ navigation }: any) => {
         <ListedJobs searchQuery={debouncedSearchQuery} scrollEnabled={false} />
       </ScrollView>
 
+      {phoneSheet}
       <VerificationBottomSheet
         ref={verificationSheetRef}
         dismissOnClose={true}

@@ -26,6 +26,7 @@ import VerificationBottomSheet, {
   VerificationBottomSheetHandle,
 } from "../../components/VerificationBottomSheet";
 import { useAlertModal } from "../../hooks/useAlertModal";
+import { useRequirePhoneVerified } from "../../hooks/useRequirePhoneVerified";
 import { AppDispatch, RootState } from "../../redux/store";
 import { fetchBusinessCategories } from "../../redux/slices/businessCategorySlice";
 import { fetchVerificationStatus } from "../../redux/slices/verificationSlice";
@@ -81,6 +82,8 @@ const AddBusinessProfileScreen = () => {
   const dispatch = useDispatch<AppDispatch>();
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
   const verificationSheetRef = useRef<VerificationBottomSheetHandle>(null);
+  const { ensurePhoneVerified, phoneSheet, needsPhoneVerification } =
+    useRequirePhoneVerified();
   const { user } = useSelector((state: RootState) => state.auth);
   const { items: savedLocations, lastAddedLocation } = useSelector(
     (state: RootState) => state.locations
@@ -169,14 +172,18 @@ const AddBusinessProfileScreen = () => {
     }, [dispatch, lastAddedLocation])
   );
 
+  // Auto-open the KYC sheet for unverified users on mount. Suppressed while the
+  // phone gate is outstanding — the phone sheet takes precedence and two
+  // RBSheets on screen at once do not coordinate. Once the number is verified
+  // this effect re-runs and the KYC sheet opens as before.
   useEffect(() => {
-    if (!isEditMode && user && !user.isVerified) {
+    if (!isEditMode && user && !user.isVerified && !needsPhoneVerification) {
       const timer = setTimeout(() => {
         verificationSheetRef.current?.open();
       }, 250);
       return () => clearTimeout(timer);
     }
-  }, [isEditMode, user]);
+  }, [isEditMode, user, needsPhoneVerification]);
 
   // Once categories arrive from the server, hydrate the selected category
   // with its display name (the route param may only carry an _id).
@@ -335,6 +342,9 @@ const AddBusinessProfileScreen = () => {
   };
 
   const handleSubmit = async () => {
+    // Phone gate first (lighter ask), then the KYC document gate.
+    if (!isEditMode && !ensurePhoneVerified('business_profile', handleSubmit)) return;
+
     if (!isEditMode && !user?.isVerified) {
       verificationSheetRef.current?.open();
       return;
@@ -775,6 +785,7 @@ const AddBusinessProfileScreen = () => {
         subtitle="Choose what kind of business you run"
       />
 
+      {phoneSheet}
       <VerificationBottomSheet ref={verificationSheetRef} />
 
       {alertModal}
