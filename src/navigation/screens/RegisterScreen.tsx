@@ -8,16 +8,18 @@ import ImagePath from "../../assets/images/ImagePath";
 import Checkbox from "expo-checkbox";
 import { useNavigation } from "@react-navigation/native";
 import { AntDesign } from "@expo/vector-icons";
+import { toE164, isValidE164 } from "../../utils/phoneFormat";
 
 const RegisterScreen = () => {
   const [phone, setPhone] = useState("");
-  const [formattedPhone, setFormattedPhone] = useState("");
+  const [callingCode, setCallingCode] = useState("1");
   const [agree, setAgree] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigation = useNavigation();
 
   const handleContinue = async () => {
-    if (!formattedPhone || formattedPhone.length < 10) {
+    const formattedPhone = toE164(phone, callingCode);
+    if (!isValidE164(formattedPhone)) {
       return;
     }
 
@@ -26,7 +28,7 @@ const RegisterScreen = () => {
     }
 
     setIsLoading(true);
-    
+
     // Simulate API call to send OTP
     setTimeout(() => {
       setIsLoading(false);
@@ -67,7 +69,7 @@ const RegisterScreen = () => {
             placeholder="Enter your phone number"
             value={phone}
             onChangeText={setPhone}
-            onChangeFormattedText={setFormattedPhone}
+            onChangeCallingCode={setCallingCode}
             defaultCode="US"
             firstContainerStyle={{ marginTop: 40 }}
           />
@@ -88,10 +90,10 @@ const RegisterScreen = () => {
             onPress={handleContinue}
             style={{
               ...styles.continueButton,
-              backgroundColor: (formattedPhone && formattedPhone.length >= 10 && agree) ? Colors.primary : Colors.gray,
-              opacity: (formattedPhone && formattedPhone.length >= 10 && agree) ? 1 : 0.6
+              backgroundColor: (phone && phone.length >= 7 && agree) ? Colors.primary : Colors.gray,
+              opacity: (phone && phone.length >= 7 && agree) ? 1 : 0.6
             }}
-            disabled={isLoading || !formattedPhone || formattedPhone.length < 10 || !agree}
+            disabled={isLoading || !phone || phone.length < 7 || !agree}
           />
 
           <View style={styles.loginContainer}>

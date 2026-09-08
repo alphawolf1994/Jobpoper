@@ -32,6 +32,7 @@ import { RootState, AppDispatch } from "../../redux/store";
 import { tryFlushPendingPushNavigation } from "../navigationRef";
 import { useAlertModal } from "../../hooks/useAlertModal";
 import ImagePath from "../../assets/images/ImagePath";
+import { toE164, isValidE164 } from "../../utils/phoneFormat";
 
 const LoginScreen = () => {
   const navigation = useNavigation();
@@ -43,6 +44,7 @@ const LoginScreen = () => {
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
 
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [callingCode, setCallingCode] = useState("91");
   const [formattedPhoneNumber, setFormattedPhoneNumber] = useState("");
   const [pin, setPin] = useState(['', '', '', '']);
   const [step, setStep] = useState(1); // 1 = phone, 2 = PIN
@@ -107,7 +109,9 @@ const LoginScreen = () => {
   };
 
   const handlePhoneSubmit = async () => {
-    if (!formattedPhoneNumber.trim()) {
+    const e164Phone = toE164(phoneNumber, callingCode);
+
+    if (!phoneNumber.trim()) {
       showAlert({
         title: "Error",
         message: "Please enter your phone number.",
@@ -116,9 +120,7 @@ const LoginScreen = () => {
       return;
     }
 
-    // Basic phone number validation for formatted number with country code
-    const phoneRegex = /^\+[1-9]\d{1,14}$/;
-    if (!phoneRegex.test(formattedPhoneNumber)) {
+    if (!isValidE164(e164Phone)) {
       showAlert({
         title: "Error",
         message: "Please enter a valid phone number with country code.",
@@ -127,11 +129,14 @@ const LoginScreen = () => {
       return;
     }
 
+    // Keep formattedPhoneNumber in sync for display and subsequent login call
+    setFormattedPhoneNumber(e164Phone);
+
     try {
       setIsCheckingPhone(true);
 
       // Check if phone number exists
-      const result = await dispatch(checkPhone(formattedPhoneNumber.trim())).unwrap();
+      const result = await dispatch(checkPhone(e164Phone)).unwrap();
       console.log("checkPhone result =>", result);
 
       if (result.status === 'success' && result.data) {
@@ -268,7 +273,8 @@ const LoginScreen = () => {
     // called the signup `/auth/send-verification` endpoint and relied on
     // catching its "already registered" error, which was brittle.
     setPin(['', '', '', '']);
-    dispatch(setAuthPhoneNumber(formattedPhoneNumber.trim()));
+    const e164Phone = toE164(phoneNumber, callingCode);
+    dispatch(setAuthPhoneNumber(e164Phone));
     (navigation as any).navigate("ForgotPinScreen", {
       initialPhone: phoneNumber, // raw national digits; ForgotPinScreen will re-format
     });
@@ -372,8 +378,8 @@ const LoginScreen = () => {
                       dispatch(clearError());
                     }
                   }}
-                  onChangeFormattedText={(formattedText) => {
-                    setFormattedPhoneNumber(formattedText);
+                  onChangeCallingCode={(code) => {
+                    setCallingCode(code);
                     if (error) {
                       dispatch(clearError());
                     }
@@ -386,9 +392,9 @@ const LoginScreen = () => {
                   onPress={handlePhoneSubmit}
                   style={[
                     styles.continueButton,
-                    !formattedPhoneNumber.trim() && styles.disabledActionButton,
+                    !phoneNumber.trim() && styles.disabledActionButton,
                   ]}
-                  disabled={!formattedPhoneNumber.trim()}
+                  disabled={!phoneNumber.trim()}
                 />
               </View>
             ) : (
