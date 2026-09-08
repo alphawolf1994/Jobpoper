@@ -9,6 +9,7 @@ interface ShowAlertOptions {
   message: string;
   type?: AlertModalType;
   buttons?: AlertModalButton[];
+  onClose?: () => void;
 }
 
 interface UseAlertModalResult {
@@ -25,9 +26,18 @@ export const useAlertModal = (): UseAlertModalResult => {
     type: "info",
   });
 
-  const hideAlert = React.useCallback(() => setVisible(false), []);
+  const onCloseRef = React.useRef<(() => void) | undefined>();
+
+  const hideAlert = React.useCallback(() => {
+    setVisible(false);
+    if (onCloseRef.current) {
+      onCloseRef.current();
+      onCloseRef.current = undefined;
+    }
+  }, []);
 
   const showAlert = React.useCallback((config: ShowAlertOptions) => {
+    onCloseRef.current = config.onClose;
     setOptions({
       title: config.title ?? "Alert",
       message: config.message,

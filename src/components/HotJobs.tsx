@@ -96,7 +96,11 @@ const HotJobs: React.FC<HotJobsProps> = ({ searchQuery = '' }) => {
       {/* Avatar and Title Row */}
       <View style={styles.avatarTitleRow}>
         <View style={styles.avatar}>
-          {job.postedBy?.profile?.profileImage ? (
+          {job.postedOnBehalf && job.externalContact?.name ? (
+            <Text style={styles.avatarText}>
+              {getInitials(job.externalContact.name)}
+            </Text>
+          ) : job.postedBy?.profile?.profileImage ? (
             <Image
               source={{ uri: `${IMAGE_BASE_URL}${job.postedBy.profile.profileImage.startsWith('/') ? job.postedBy.profile.profileImage : `/${job.postedBy.profile.profileImage}`}` }}
               style={styles.avatarImage}
@@ -112,7 +116,11 @@ const HotJobs: React.FC<HotJobsProps> = ({ searchQuery = '' }) => {
           <Text style={styles.jobTitle} numberOfLines={2} ellipsizeMode="tail">
             {job.title}
           </Text>
-          <Text style={styles.posterName}>{job.postedBy?.profile?.fullName || 'Unknown'}</Text>
+          <Text style={styles.posterName}>
+            {job.postedOnBehalf && job.externalContact?.name
+              ? job.externalContact.name
+              : job.postedBy?.profile?.fullName || 'Unknown'}
+          </Text>
         </View>
       </View>
 

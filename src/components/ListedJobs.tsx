@@ -85,7 +85,11 @@ const ListedJobs: React.FC<ListedJobsProps> = ({ searchQuery = '', scrollEnabled
       {/* Left Side - Avatar and Job Info */}
       <View style={styles.leftSection}>
         <View style={styles.avatar}>
-          {item.postedBy?.profile?.profileImage ? (
+          {item.postedOnBehalf && item.externalContact?.name ? (
+            <Text style={styles.avatarText}>
+              {getInitials(item.externalContact.name)}
+            </Text>
+          ) : item.postedBy?.profile?.profileImage ? (
             <Image
               source={{ uri: `${IMAGE_BASE_URL}${item.postedBy.profile.profileImage.startsWith('/') ? item.postedBy.profile.profileImage : `/${item.postedBy.profile.profileImage}`}` }}
               style={styles.avatarImage}
@@ -102,7 +106,9 @@ const ListedJobs: React.FC<ListedJobsProps> = ({ searchQuery = '', scrollEnabled
             {item.title}
           </Text>
           <Text style={styles.posterName} numberOfLines={1} ellipsizeMode="tail">
-            {item.postedBy?.profile?.fullName || 'Unknown'}
+            {item.postedOnBehalf && item.externalContact?.name
+              ? item.externalContact.name
+              : item.postedBy?.profile?.fullName || 'Unknown'}
           </Text>
         </View>
       </View>

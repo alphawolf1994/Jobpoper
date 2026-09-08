@@ -114,7 +114,22 @@ export function useAutoLocation(options: UseAutoLocationOptions = {}) {
 
   const detect = useCallback(
     async (forcePrompt: boolean) => {
-      if (moduleDetectionInFlight) return;
+      // When a detection is already in flight, skip automatic calls but
+      // let user-initiated (forced) calls wait for the current one to finish.
+      if (moduleDetectionInFlight) {
+        if (!forcePrompt) return;
+        // Wait for in-flight detection to complete, then proceed
+        const waitForInflight = () =>
+          new Promise<void>((resolve) => {
+            const interval = setInterval(() => {
+              if (!moduleDetectionInFlight) {
+                clearInterval(interval);
+                resolve();
+              }
+            }, 200);
+          });
+        await waitForInflight();
+      }
       // Respect a manual choice unless the user explicitly forces a refresh.
       if (locationSource === "manual" && !forcePrompt) return;
 

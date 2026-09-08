@@ -432,7 +432,9 @@ const MyJobsScreen = () => {
       <View style={styles.postedByRow}>
         <Ionicons name="person-outline" size={16} color={Colors.primary} />
         <Text style={styles.postedByText}>
-          Posted by {item.postedBy?.profile?.fullName || 'Unknown'}
+          Posted by {item.postedOnBehalf && item.externalContact?.name
+            ? item.externalContact.name
+            : item.postedBy?.profile?.fullName || 'Unknown'}
         </Text>
       </View>
 

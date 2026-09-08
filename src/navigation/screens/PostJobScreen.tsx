@@ -444,7 +444,7 @@ const PostJobScreen = () => {
       showErrorAlert('Please enter the cost/budget');
       return;
     }
-    if (!selectedCategory) {
+    if (jobType === 'OnSite' && !selectedCategory) {
       showErrorAlert('Please select a service category');
       return;
     }
@@ -661,36 +661,6 @@ const PostJobScreen = () => {
             </Text>
           </View>
 
-          {/* Service Category */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Service Category *</Text>
-            <TouchableOpacity
-              onPress={() => setShowCategorySheet(true)}
-              activeOpacity={0.85}
-            >
-              <View style={[styles.dropdown, styles.inputRow, styles.locationSelectable]}>
-                <View style={styles.categoryLeft}>
-                  <Ionicons
-                    name={selectedCategory ? selectedCategoryVisual.icon : "grid-outline"}
-                    size={20}
-                    color={selectedCategory ? selectedCategoryVisual.color : "#9AA0A6"}
-                    style={{ marginRight: 10 }}
-                  />
-                  <Text
-                    style={selectedCategory ? styles.dropdownText : styles.placeholder}
-                    numberOfLines={1}
-                  >
-                    {selectedCategory ? selectedCategory.name : "Select a service category..."}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-down" size={20} color="#9AA0A6" />
-              </View>
-            </TouchableOpacity>
-            {categoriesError && categoryItems.length === 0 ? (
-              <Text style={styles.categoryError}>{categoriesError}</Text>
-            ) : null}
-          </View>
-
           {/* Job Type Selection */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Task Type *</Text>
@@ -708,7 +678,7 @@ const PostJobScreen = () => {
 
               <TouchableOpacity
                 style={[styles.radioOptionHorizontal, jobType === 'Pickup' && styles.radioSelected]}
-                onPress={() => setJobType('Pickup')}
+                onPress={() => { setJobType('Pickup'); setSelectedCategory(null); }}
                 activeOpacity={0.7}
               >
                 <View style={[styles.radioCircle, jobType === 'Pickup' && styles.radioCircleSelected]}>
@@ -718,6 +688,38 @@ const PostJobScreen = () => {
               </TouchableOpacity>
             </View>
           </View>
+
+          {/* Service Category — only for OnSite jobs */}
+          {jobType === 'OnSite' && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Service Category *</Text>
+              <TouchableOpacity
+                onPress={() => setShowCategorySheet(true)}
+                activeOpacity={0.85}
+              >
+                <View style={[styles.dropdown, styles.inputRow, styles.locationSelectable]}>
+                  <View style={styles.categoryLeft}>
+                    <Ionicons
+                      name={selectedCategory ? selectedCategoryVisual.icon : "grid-outline"}
+                      size={20}
+                      color={selectedCategory ? selectedCategoryVisual.color : "#9AA0A6"}
+                      style={{ marginRight: 10 }}
+                    />
+                    <Text
+                      style={selectedCategory ? styles.dropdownText : styles.placeholder}
+                      numberOfLines={1}
+                    >
+                      {selectedCategory ? selectedCategory.name : "Select a service category..."}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-down" size={20} color="#9AA0A6" />
+                </View>
+              </TouchableOpacity>
+              {categoriesError && categoryItems.length === 0 ? (
+                <Text style={styles.categoryError}>{categoriesError}</Text>
+              ) : null}
+            </View>
+          )}
 
           {/* Location Input(s) based on job type */}
           <View style={styles.inputGroup}>

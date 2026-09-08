@@ -234,6 +234,7 @@ const UserDetailsScreen = () => {
                     title: "Success",
                     message: "Profile updated successfully!",
                     type: "success",
+                    onClose: () => navigation.goBack(),
                 });
             }
         } catch (error: any) {

@@ -176,7 +176,11 @@ const AllListedJobsScreen: React.FC = () => {
       {/* Left Side - Avatar and Job Info */}
       <View style={styles.leftSection}>
       <View style={styles.avatar}>
-          {job.postedBy?.profile?.profileImage ? (
+          {job.postedOnBehalf && job.externalContact?.name ? (
+            <Text style={styles.avatarText}>
+              {getInitials(job.externalContact.name)}
+            </Text>
+          ) : job.postedBy?.profile?.profileImage ? (
             <Image
               source={{ uri: `${IMAGE_BASE_URL}${job.postedBy.profile.profileImage.startsWith('/') ? job.postedBy.profile.profileImage : `/${job.postedBy.profile.profileImage}`}` }}
               style={styles.avatarImage}
@@ -193,7 +197,9 @@ const AllListedJobsScreen: React.FC = () => {
             {job.title}
           </Text>
           <Text style={styles.posterName} numberOfLines={1} ellipsizeMode="tail">
-            {job.postedBy?.profile?.fullName || 'Unknown'}
+            {job.postedOnBehalf && job.externalContact?.name
+              ? job.externalContact.name
+              : job.postedBy?.profile?.fullName || 'Unknown'}
           </Text>
         </View>
       </View>
