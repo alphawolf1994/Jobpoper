@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform } from "react-native";
+import React, { useEffect, useState, useCallback, useRef } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
@@ -8,13 +8,14 @@ import Button from "../../components/Button";
 import MyTextInput from "../../components/MyTextInput";
 import LocationAutocomplete from "../../components/LocationAutocomplete";
 import MapView, { Region } from "react-native-maps";
-import * as ExpoLocation from "expo-location";
 import { useDispatch, useSelector } from "react-redux";
 import { saveLocation, updateLocation } from "../../redux/slices/locationsSlice";
 import { RootState } from "../../redux/store";
 import Loader from "../../components/Loader";
 import { useAlertModal } from "../../hooks/useAlertModal";
 import { SavedLocation } from "../../redux/slices/locationsSlice";
+import { reverseGeocodeToAddress } from "../../utils/geocode";
+import { getDeviceCoordinatesFast } from "../../services/location/currentLocation";
 
 const AddLocationScreen = () => {
   const navigation = useNavigation();
@@ -42,24 +43,15 @@ const AddLocationScreen = () => {
       : null
   );
 
+  const [locating, setLocating] = useState(false);
+  const locatingRef = useRef(false);
+  const skipNextRegionGeocode = useRef(false);
+  const regionGeocodeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const GOOGLE_API_KEY = "AIzaSyDx-5zOU35lqenxx6TCR-OkQRj6cHpi5-U"; // keep consistent with LocationAutocomplete
 
-  const reverseGeocode = useCallback(async (latitude: number, longitude: number) => {
-    try {
-      const r = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?latlng=${latitude},${longitude}&key=${GOOGLE_API_KEY}`
-      );
-      const data = await r.json();
-      const addr = data?.results?.[0]?.formatted_address;
-      if (addr) setAddressLabel(addr);
-    } catch { }
-  }, []);
-
-  const requestAndSetCurrentLocation = useCallback(async () => {
-    const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
-    if (status !== "granted") return;
-    const current = await ExpoLocation.getCurrentPositionAsync({ accuracy: ExpoLocation.Accuracy.Balanced });
-    const { latitude, longitude } = current.coords;
+  const applyCoords = useCallback(async (latitude: number, longitude: number) => {
+    skipNextRegionGeocode.current = true;
     const nextRegion: Region = {
       latitude,
       longitude,
@@ -67,15 +59,56 @@ const AddLocationScreen = () => {
       longitudeDelta: 0.01,
     };
     setRegion(nextRegion);
-    // Reverse geocode to populate the address label
-    await reverseGeocode(latitude, longitude);
-  }, [reverseGeocode]);
+    const address = await reverseGeocodeToAddress(latitude, longitude);
+    if (address?.fullAddress) setAddressLabel(address.fullAddress);
+  }, []);
+
+  const requestAndSetCurrentLocation = useCallback(async (userInitiated = false) => {
+    if (locatingRef.current) return;
+    locatingRef.current = true;
+    setLocating(true);
+    try {
+      const result = await getDeviceCoordinatesFast({
+        forcePrompt: userInitiated,
+        onFirstFix: ({ latitude, longitude }) => {
+          setLocating(false);
+          void applyCoords(latitude, longitude);
+        },
+      });
+
+      if (result.ok) {
+        await applyCoords(result.latitude, result.longitude);
+        return;
+      }
+
+      if (!userInitiated) return;
+
+      const messages: Record<string, string> = {
+        permission_denied: "Enable location access in Settings to use your current location.",
+        services_disabled: "Turn on location services and try again.",
+        timeout: "Couldn't get your location. Please try again in a moment.",
+        unavailable: "We couldn't read your device location.",
+        geocode_failed: "We found your position but couldn't name the area.",
+      };
+      showAlert({
+        title: "Location",
+        message: messages[result.reason] || "Couldn't get your current location.",
+        type: "error",
+      });
+    } finally {
+      locatingRef.current = false;
+      setLocating(false);
+    }
+  }, [applyCoords, showAlert]);
 
   useEffect(() => {
     // Only request current location if not in edit mode or if no location data provided
     if (!isEditMode && !locationData) {
-      requestAndSetCurrentLocation();
+      requestAndSetCurrentLocation(false);
     }
+    return () => {
+      if (regionGeocodeTimer.current) clearTimeout(regionGeocodeTimer.current);
+    };
   }, [requestAndSetCurrentLocation, isEditMode, locationData]);
 
   const geocodeAddress = async (fullAddress: string) => {
@@ -148,7 +181,18 @@ const AddLocationScreen = () => {
                 region={region}
                 onRegionChangeComplete={(r: any) => {
                   setRegion(r);
-                  reverseGeocode(r.latitude, r.longitude);
+                  if (skipNextRegionGeocode.current) {
+                    skipNextRegionGeocode.current = false;
+                    return;
+                  }
+                  if (regionGeocodeTimer.current) {
+                    clearTimeout(regionGeocodeTimer.current);
+                  }
+                  regionGeocodeTimer.current = setTimeout(() => {
+                    reverseGeocodeToAddress(r.latitude, r.longitude).then((address) => {
+                      if (address?.fullAddress) setAddressLabel(address.fullAddress);
+                    });
+                  }, 400);
                 }}
               />
             ) : (
@@ -160,12 +204,19 @@ const AddLocationScreen = () => {
             </View>
             <TouchableOpacity 
               style={styles.useCurrentButton} 
-              onPress={async () => {
-                await requestAndSetCurrentLocation();
+              disabled={locating}
+              onPress={() => {
+                void requestAndSetCurrentLocation(true);
               }}
             >
-              <Ionicons name="locate-outline" size={16} color={Colors.primary} />
-              <Text style={styles.useCurrentButtonText}>Use current location</Text>
+              {locating ? (
+                <ActivityIndicator size="small" color={Colors.primary} />
+              ) : (
+                <Ionicons name="locate-outline" size={16} color={Colors.primary} />
+              )}
+              <Text style={styles.useCurrentButtonText}>
+                {locating ? "Finding you…" : "Use current location"}
+              </Text>
             </TouchableOpacity>
           </View>
 

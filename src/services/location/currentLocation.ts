@@ -34,7 +34,8 @@ export type DeviceLocationResult =
   | DeviceLocationSuccess
   | DeviceLocationFailure;
 
-const GET_POSITION_TIMEOUT_MS = 15000;
+const FAST_FIX_TIMEOUT_MS = 6000;
+const REFINE_FIX_TIMEOUT_MS = 4000;
 
 // Lightweight diagnostic logging (visible in Metro / device logs).
 const log = (...args: any[]) => console.log("[auto-location]", ...args);
@@ -46,6 +47,122 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
       setTimeout(() => reject(new Error("location_timeout")), ms)
     ),
   ]);
+}
+
+async function readLastKnownCoords(): Promise<{
+  latitude: number;
+  longitude: number;
+} | null> {
+  try {
+    const last: any = await ExpoLocation.getLastKnownPositionAsync();
+    if (last?.coords) {
+      return {
+        latitude: last.coords.latitude,
+        longitude: last.coords.longitude,
+      };
+    }
+  } catch (e: any) {
+    log("last-known failed:", e?.message);
+  }
+  return null;
+}
+
+async function readFreshCoords(
+  accuracy: number,
+  timeoutMs: number
+): Promise<{ latitude: number; longitude: number } | null> {
+  try {
+    const current: any = await withTimeout(
+      ExpoLocation.getCurrentPositionAsync({
+        accuracy,
+        // Android: prompt to turn on system location if it's off, instead of hanging.
+        mayShowUserSettingsDialog: true,
+      }),
+      timeoutMs
+    );
+    if (current?.coords) {
+      return {
+        latitude: current.coords.latitude,
+        longitude: current.coords.longitude,
+      };
+    }
+  } catch (e: any) {
+    log("fresh fix failed:", accuracy, e?.message);
+  }
+  return null;
+}
+
+async function ensureLocationReady(
+  options: { forcePrompt?: boolean } = {}
+): Promise<DeviceLocationFailure | null> {
+  let { status, canAskAgain } =
+    await ExpoLocation.getForegroundPermissionsAsync();
+  log("permission status:", status, "canAskAgain:", canAskAgain);
+
+  if (status !== "granted" && (canAskAgain || options.forcePrompt)) {
+    const req = await ExpoLocation.requestForegroundPermissionsAsync();
+    status = req.status;
+    log("permission after request:", status);
+  }
+
+  if (status !== "granted") {
+    return { ok: false, reason: "permission_denied" };
+  }
+
+  const servicesEnabled = await ExpoLocation.hasServicesEnabledAsync();
+  log("services enabled:", servicesEnabled);
+  if (!servicesEnabled) {
+    return { ok: false, reason: "services_disabled" };
+  }
+  return null;
+}
+
+/**
+ * Fast coordinates for "Use current location" buttons.
+ * Uses last-known immediately, then a short network (Low) fix.
+ * Never waits on GPS Balanced/Highest — those can hang 30s+ indoors on Android.
+ */
+export async function getDeviceCoordinatesFast(
+  options: {
+    forcePrompt?: boolean;
+    onFirstFix?: (coords: { latitude: number; longitude: number }) => void;
+  } = {}
+): Promise<
+  | { ok: true; latitude: number; longitude: number }
+  | DeviceLocationFailure
+> {
+  try {
+    const blocked = await ensureLocationReady(options);
+    if (blocked) return blocked;
+
+    let coords = await readLastKnownCoords();
+    if (coords) {
+      log("fast last-known:", coords);
+      options.onFirstFix?.(coords);
+    }
+
+    // Accuracy.Low = Android LOW_POWER (wifi/cell), typically 1–3s.
+    // Do not use Lowest (PASSIVE) — that waits for another app to request GPS.
+    const fresh = await readFreshCoords(
+      ExpoLocation.Accuracy.Low,
+      coords ? REFINE_FIX_TIMEOUT_MS : FAST_FIX_TIMEOUT_MS
+    );
+    if (fresh) {
+      coords = fresh;
+      log("fast fresh (low):", coords);
+      options.onFirstFix?.(coords);
+    }
+
+    if (!coords) {
+      log("fast path got no coordinates -> timeout");
+      return { ok: false, reason: "timeout" };
+    }
+
+    return { ok: true, ...coords };
+  } catch (e: any) {
+    log("fast path unexpected failure:", e?.message);
+    return { ok: false, reason: "unavailable" };
+  }
 }
 
 /**
@@ -63,85 +180,22 @@ export async function getDeviceLocation(
   options: { forcePrompt?: boolean } = {}
 ): Promise<DeviceLocationResult> {
   try {
-    // 1. Permission
-    let { status, canAskAgain } =
-      await ExpoLocation.getForegroundPermissionsAsync();
-    log("permission status:", status, "canAskAgain:", canAskAgain);
+    const blocked = await ensureLocationReady(options);
+    if (blocked) return blocked;
 
-    if (status !== "granted" && (canAskAgain || options.forcePrompt)) {
-      const req = await ExpoLocation.requestForegroundPermissionsAsync();
-      status = req.status;
-      log("permission after request:", status);
-    }
+    // Prefer a cached fix so the UI is not blocked on GPS.
+    // Then try a short Low-accuracy (network) refresh. Balanced GPS is not
+    // used here — on Android it routinely hangs 30s+ indoors.
+    let coords = await readLastKnownCoords();
+    if (coords) log("last-known fix:", coords);
 
-    if (status !== "granted") {
-      return { ok: false, reason: "permission_denied" };
-    }
-
-    // 2. Are location services actually on?
-    const servicesEnabled = await ExpoLocation.hasServicesEnabledAsync();
-    log("services enabled:", servicesEnabled);
-    if (!servicesEnabled) {
-      return { ok: false, reason: "services_disabled" };
-    }
-
-    // 3. Position acquisition. Strategy:
-    //    a) grab a cached last-known fix first (instant, may be null)
-    //    b) request a fresh fix; if it succeeds, prefer it
-    //    c) if the fresh fix times out, retry once at lower accuracy
-    //    Whichever produces coordinates first is used, so an emulator/indoor
-    //    device with a cached fix still succeeds.
-    let coords: { latitude: number; longitude: number } | null = null;
-
-    try {
-      const last: any = await ExpoLocation.getLastKnownPositionAsync();
-      if (last?.coords) {
-        coords = {
-          latitude: last.coords.latitude,
-          longitude: last.coords.longitude,
-        };
-        log("last-known fix:", coords);
-      }
-    } catch (e: any) {
-      log("last-known failed:", e?.message);
-    }
-
-    try {
-      const current: any = await withTimeout(
-        ExpoLocation.getCurrentPositionAsync({
-          accuracy: ExpoLocation.Accuracy.Balanced,
-        }),
-        GET_POSITION_TIMEOUT_MS
-      );
-      if (current?.coords) {
-        coords = {
-          latitude: current.coords.latitude,
-          longitude: current.coords.longitude,
-        };
-        log("fresh (balanced) fix:", coords);
-      }
-    } catch (e: any) {
-      log("fresh (balanced) fix failed:", e?.message);
-      // Retry once at the lowest accuracy — much faster to acquire indoors.
-      if (!coords) {
-        try {
-          const low: any = await withTimeout(
-            ExpoLocation.getCurrentPositionAsync({
-              accuracy: ExpoLocation.Accuracy.Lowest,
-            }),
-            GET_POSITION_TIMEOUT_MS
-          );
-          if (low?.coords) {
-            coords = {
-              latitude: low.coords.latitude,
-              longitude: low.coords.longitude,
-            };
-            log("fresh (lowest) fix:", coords);
-          }
-        } catch (e2: any) {
-          log("fresh (lowest) fix failed:", e2?.message);
-        }
-      }
+    const fresh = await readFreshCoords(
+      ExpoLocation.Accuracy.Low,
+      coords ? REFINE_FIX_TIMEOUT_MS : FAST_FIX_TIMEOUT_MS
+    );
+    if (fresh) {
+      coords = fresh;
+      log("fresh (low) fix:", coords);
     }
 
     if (!coords) {
