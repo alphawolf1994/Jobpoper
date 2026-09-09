@@ -12,7 +12,8 @@ import {
   updateJobStatusApi,
   expireOldJobsApi,
   searchHotJobsApi,
-  searchListedJobsApi
+  searchListedJobsApi,
+  forceCloseJobApi
 } from "../../api/jobApis";
 import { Job, JobResponse, CreateJobPayload, HotJobsResponse, ListedJobsResponse } from "../../interface/interfaces";
 import { geocodeAddressToCoordinates } from "../../utils/geocode";
@@ -399,6 +400,18 @@ export const expireOldJobs = createAsyncThunk(
       return response;
     } catch (error: any) {
       return rejectWithValue(error?.message || "Failed to expire old tasks");
+    }
+  }
+);
+
+export const forceCloseJob = createAsyncThunk(
+  "job/forceCloseJob",
+  async ({ jobId, reason }: { jobId: string; reason: string }, { rejectWithValue }) => {
+    try {
+      const response = await forceCloseJobApi(jobId, reason);
+      return response;
+    } catch (error: any) {
+      return rejectWithValue(error?.message || "Failed to force close task");
     }
   }
 );
@@ -832,6 +845,30 @@ const jobSlice = createSlice({
         state.error = null;
       })
       .addCase(expireOldJobs.rejected, (state, action) => {
+        state.error = action.payload as string;
+      })
+      // Force Close Job
+      .addCase(forceCloseJob.pending, (state) => {
+        state.error = null;
+      })
+      .addCase(forceCloseJob.fulfilled, (state, action) => {
+        state.error = null;
+        const jobData = action.payload?.data;
+        if (jobData?.jobId) {
+          const updateJob = (job: Job) => {
+            if (job._id === jobData.jobId) {
+              return { ...job, status: "force_closed" as const, forceCloseReason: jobData.forceCloseReason, forceClosedAt: jobData.forceClosedAt };
+            }
+            return job;
+          };
+          state.jobs = state.jobs.map(updateJob);
+          state.userJobs = state.userJobs.map(updateJob);
+          if (state.currentJob?._id === jobData.jobId) {
+            state.currentJob = { ...state.currentJob, status: "force_closed", forceCloseReason: jobData.forceCloseReason, forceClosedAt: jobData.forceClosedAt };
+          }
+        }
+      })
+      .addCase(forceCloseJob.rejected, (state, action) => {
         state.error = action.payload as string;
       });
   },

@@ -15,6 +15,7 @@ import VerifyWorkerSheet from "../../components/VerifyWorkerSheet";
 import CompleteJobSheet from "../../components/CompleteJobSheet";
 import ReviewModal from "../../components/ReviewModal";
 import ReportIssueSheet from "../../components/ReportIssueSheet";
+import ForceCloseTaskSheet from "../../components/ForceCloseTaskSheet";
 import { useRequirePhoneVerified } from "../../hooks/useRequirePhoneVerified";
 
 const MyJobsScreen = () => {
@@ -35,6 +36,7 @@ const MyJobsScreen = () => {
   const [reviewJob, setReviewJob] = useState<Job | null>(null);
   const [reviewEditing, setReviewEditing] = useState(false);
   const [reportJob, setReportJob] = useState<Job | null>(null);
+  const [forceCloseJob, setForceCloseJob] = useState<Job | null>(null);
 
   // Always refresh when this screen is focused so owner sees Completed + Leave Review
   // after the worker finishes via Task PIN.
@@ -131,6 +133,7 @@ const MyJobsScreen = () => {
       case 'job_started': return '#F59E0B';
       case 'in-progress': return Colors.primary;
       case 'cancelled': return Colors.red;
+      case 'force_closed': return '#991B1B';
       default: return Colors.gray;
     }
   };
@@ -142,6 +145,7 @@ const MyJobsScreen = () => {
       case 'job_started': return 'In Progress';
       case 'in-progress': return 'In Progress';
       case 'cancelled': return 'Cancelled';
+      case 'force_closed': return 'Closed';
       default: return 'Unknown';
     }
   };
@@ -676,6 +680,19 @@ const MyJobsScreen = () => {
           });
         }}
       />
+      <ForceCloseTaskSheet
+        visible={!!forceCloseJob}
+        job={forceCloseJob}
+        onClose={() => setForceCloseJob(null)}
+        onClosed={() => {
+          dispatch(getUserJobs());
+          showAlert({
+            title: "Task Closed",
+            message: "The task has been closed and the worker has been notified.",
+            type: "success",
+          });
+        }}
+      />
       {phoneSheet}
     </SafeAreaView>
   );
@@ -1067,6 +1084,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF2F2',
   },
   reportBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  forceCloseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1.5,
+    borderColor: '#DC2626',
+    borderRadius: 12,
+    paddingVertical: 10,
+    marginBottom: 10,
+    backgroundColor: '#FEF2F2',
+  },
+  forceCloseBtnText: {
     fontSize: 14,
     fontWeight: '700',
     color: '#DC2626',

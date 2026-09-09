@@ -483,3 +483,13 @@ export const getWorkerReviewsApi = async (userId: string, page = 1, limit = 10) 
         throw new Error(error.response?.data?.message || "Failed to fetch reviews");
     }
 };
+
+// Force close a job (client action after 24h in progress)
+export const forceCloseJobApi = async (jobId: string, reason: string) => {
+    try {
+        const res = await axiosInstance.post(`/jobs/${jobId}/force-close`, { reason });
+        return res.data;
+    } catch (error: any) {
+        throw new Error(error.response?.data?.message || "Failed to force close task");
+    }
+};

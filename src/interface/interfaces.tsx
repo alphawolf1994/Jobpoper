@@ -894,7 +894,7 @@ export interface Job {
   scheduledTime: string;
   attachments?: string[];
   voiceNote?: string | null;
-  status: 'open' | 'job_started' | 'completed' | 'cancelled';
+  status: 'open' | 'job_started' | 'completed' | 'cancelled' | 'force_closed';
   jobPin?: string | null;
   assignedWorker?:
     | string
@@ -921,6 +921,9 @@ export interface Job {
     | null;
   startedAt?: string | null;
   completedAt?: string | null;
+  forceCloseReason?: string | null;
+  forceClosedAt?: string | null;
+  forceClosedBy?: string | { _id: string; profile?: { fullName?: string }; phoneNumber?: string } | null;
   isReviewed?: boolean;
   /** The poster's review for this job (visible to poster + assigned worker). */
   myReview?: {

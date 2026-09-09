@@ -30,6 +30,7 @@ import VerificationBottomSheet, { VerificationBottomSheetHandle } from "../../co
 import PickupPreferencesBottomSheet, { PickupPreferencesBottomSheetHandle } from "../../components/PickupPreferencesBottomSheet";
 import ShowInterestSheet, { ShowInterestSheetHandle } from "../../components/ShowInterestSheet";
 import ReportIssueSheet from "../../components/ReportIssueSheet";
+import ForceCloseTaskSheet from "../../components/ForceCloseTaskSheet";
 import ReviewModal from "../../components/ReviewModal";
 import { fetchVerificationStatus } from "../../redux/slices/verificationSlice";
 import { useRequirePhoneVerified } from "../../hooks/useRequirePhoneVerified";
@@ -69,6 +70,7 @@ const JobDetailsScreen = () => {
   // can otherwise show the button through a gap under the sheet).
   const [interestSheetOpen, setInterestSheetOpen] = useState(false);
   const [reportSheetVisible, setReportSheetVisible] = useState(false);
+  const [forceCloseSheetVisible, setForceCloseSheetVisible] = useState(false);
   const [reviewModalVisible, setReviewModalVisible] = useState(false);
   const [reviewModalEditing, setReviewModalEditing] = useState(false);
 
@@ -184,7 +186,7 @@ const JobDetailsScreen = () => {
 
     // Add status
     if (job.status) {
-      tags.push(job.status);
+      tags.push(job.status === 'force_closed' ? 'Closed' : job.status === 'job_started' ? 'In Progress' : job.status);
     }
     if (job.cost)
       tags.push(job.cost);
@@ -1278,6 +1280,9 @@ const JobDetailsScreen = () => {
   const isJobCancelled =
     typeof currentJob.status === 'string' &&
     currentJob.status.toLowerCase() === 'cancelled';
+  const isJobForceClosed =
+    typeof currentJob.status === 'string' &&
+    currentJob.status.toLowerCase() === 'force_closed';
 
   // Point 7: the assigned worker may call the customer, but only after the
   // poster has verified & started the job (status === 'job_started'). This
@@ -1807,7 +1812,7 @@ const JobDetailsScreen = () => {
       )}
 
       {/* Action Button — hidden when the job has been cancelled or interest sheet is open */}
-      {!interestSheetOpen && !isMyJob && !isJobCancelled && !(isAssignedWorker && isJobStarted) && (
+      {!interestSheetOpen && !isMyJob && !isJobCancelled && !isJobForceClosed && !(isAssignedWorker && isJobStarted) && (
         <View style={styles.contactButtonContainer}>
           {!isDirectContact && hasShownInterest && (
             <View
@@ -1880,6 +1885,21 @@ const JobDetailsScreen = () => {
           });
         }}
       />
+      <ForceCloseTaskSheet
+        visible={forceCloseSheetVisible}
+        job={currentJob}
+        onClose={() => setForceCloseSheetVisible(false)}
+        onClosed={() => {
+          if (currentJob?._id) {
+            dispatch(getJobById(currentJob._id));
+          }
+          showAlert({
+            title: "Task Closed",
+            message: "The task has been closed and the worker has been notified.",
+            type: "success",
+          });
+        }}
+      />
       <ReviewModal
         visible={reviewModalVisible}
         job={currentJob}
@@ -1940,6 +1960,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEF2F2',
   },
   reportBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  forceCloseBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderWidth: 1.5,
+    borderColor: '#DC2626',
+    borderRadius: 12,
+    paddingVertical: 10,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    backgroundColor: '#FEF2F2',
+  },
+  forceCloseBtnText: {
     fontSize: 14,
     fontWeight: '700',
     color: '#DC2626',
