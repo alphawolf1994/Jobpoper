@@ -50,6 +50,8 @@ interface JobState {
   currentJob: Job | null;
   /** Home/list/search/my-jobs loading */
   listLoading: boolean;
+  hotLoading: boolean;
+  listedLoading: boolean;
   /** Full-screen job details first load */
   jobDetailsLoading: boolean;
   /** Create or update job submit */
@@ -111,6 +113,8 @@ const initialState: JobState = {
   allListedJobsPagination: null,
   currentJob: null,
   listLoading: false,
+  hotLoading: false,
+  listedLoading: false,
   jobDetailsLoading: false,
   createJobLoading: false,
   loadingMore: false,
@@ -589,7 +593,7 @@ const jobSlice = createSlice({
       })
       // Get Hot Tasks
       .addCase(getHotJobs.pending, (state) => {
-        state.listLoading = true;
+        state.hotLoading = true;
         state.error = null;
       })
       .addCase(getHotJobs.fulfilled, (state, action) => {
@@ -597,16 +601,16 @@ const jobSlice = createSlice({
         if (response.status === 'success' && response.data?.jobs) {
           state.hotJobs = response.data.jobs;
         }
-        state.listLoading = false;
+        state.hotLoading = false;
         state.error = null;
       })
       .addCase(getHotJobs.rejected, (state, action) => {
         state.error = action.payload as string;
-        state.listLoading = false;
+        state.hotLoading = false;
       })
       // Get Listed Tasks
       .addCase(getListedJobs.pending, (state) => {
-        state.listLoading = true;
+        state.listedLoading = true;
         state.error = null;
       })
       .addCase(getListedJobs.fulfilled, (state, action) => {
@@ -614,12 +618,12 @@ const jobSlice = createSlice({
         if (response.status === 'success' && response.data?.jobs) {
           state.listedJobs = response.data.jobs;
         }
-        state.listLoading = false;
+        state.listedLoading = false;
         state.error = null;
       })
       .addCase(getListedJobs.rejected, (state, action) => {
         state.error = action.payload as string;
-        state.listLoading = false;
+        state.listedLoading = false;
       })
       // Get All Hot Tasks Paginated
       .addCase(getAllHotJobsPaginated.pending, (state, action) => {

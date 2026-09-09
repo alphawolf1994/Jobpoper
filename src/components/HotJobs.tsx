@@ -24,11 +24,14 @@ const HotJobs: React.FC<HotJobsProps> = ({ searchQuery = '' }) => {
   const navigation = useNavigation<any>();
   const dispatch = useDispatch<AppDispatch>();
   const jobState = useSelector((state: RootState) => state.job);
-  const { hotJobs = [], listLoading: loading = false, currentLocation, allHotJobs = [] } = jobState || {};
+  const { hotJobs = [], hotLoading = false, listLoading = false, currentLocation, allHotJobs = [] } = jobState || {};
   const { user } = useSelector((state: RootState) => state.auth);
   
   // Use allHotJobs if searching, otherwise use hotJobs
   const displayJobs = searchQuery.trim() ? allHotJobs : hotJobs;
+  const showLoading = searchQuery.trim()
+    ? listLoading && displayJobs.length === 0
+    : hotLoading && hotJobs.length === 0;
 
   
   // Get location from Redux state, user profile, or use default
@@ -153,7 +156,7 @@ const HotJobs: React.FC<HotJobsProps> = ({ searchQuery = '' }) => {
       </View>
 
       {/* Job Cards ScrollView */}
-      {loading ? (
+      {showLoading ? (
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading hot tasks...</Text>
         </View>

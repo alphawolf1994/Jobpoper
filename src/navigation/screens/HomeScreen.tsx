@@ -23,15 +23,18 @@ import { useFocusEffect } from "@react-navigation/native";
 const HomeScreen = ({ navigation }: any) => {
   const dispatch = useDispatch<AppDispatch>();
   const { user } = useSelector((state: RootState) => state.auth);
-  const { currentLocation, error: jobError, listLoading: jobLoading } = useSelector((state: RootState) => state.job);
+  const { currentLocation, currentLocationCoordinates, error: jobError } = useSelector((state: RootState) => state.job);
   const { status: verificationStatus, promptDismissed } = useSelector(
     (state: RootState) => state.verification
   );
   
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isInitialMountRef = useRef(true);
+  const lastHomeFetchAtRef = useRef(0);
+  const prevCoordsKeyRef = useRef<string | null>(null);
   const verificationSheetRef = useRef<VerificationBottomSheetHandle>(null);
   const [isVerificationSheetVisible, setIsVerificationSheetVisible] = useState(false);
   const { ensurePhoneVerified, phoneSheet } = useRequirePhoneVerified();
@@ -52,11 +55,46 @@ const HomeScreen = ({ navigation }: any) => {
     return "New York, NY, USA";
   };
 
-  // Expire stale jobs when location context changes; job lists refresh on focus below.
+  const loadHomeJobs = useCallback((force = false) => {
+    const now = Date.now();
+    if (!force && lastHomeFetchAtRef.current && now - lastHomeFetchAtRef.current < 15000) {
+      return;
+    }
+    lastHomeFetchAtRef.current = now;
+    const location = getLocation();
+    dispatch(getHotJobs({
+      location,
+      page: 1,
+      limit: 10,
+      sortOrder: 'desc'
+    }));
+    dispatch(getListedJobs({
+      location,
+      page: 1,
+      limit: 10,
+      sortOrder: 'desc'
+    }));
+  }, [dispatch, currentLocation, user?.profile?.location]);
+
+  // Expire stale jobs in the background — never block Home loaders on this.
   useEffect(() => {
     dispatch(expireOldJobs());
     isInitialMountRef.current = false;
-  }, [dispatch, currentLocation, user?.profile?.location]);
+  }, [dispatch]);
+
+  // When GPS/manual location coordinates actually change, refresh lists
+  // in the background without a full-screen spinner.
+  useEffect(() => {
+    const key = currentLocationCoordinates
+      ? `${currentLocationCoordinates.latitude.toFixed(4)},${currentLocationCoordinates.longitude.toFixed(4)}`
+      : null;
+    if (!key || key === prevCoordsKeyRef.current) return;
+    const isFirst = prevCoordsKeyRef.current == null;
+    prevCoordsKeyRef.current = key;
+    if (!isFirst) {
+      loadHomeJobs(true);
+    }
+  }, [currentLocationCoordinates, loadHomeJobs]);
 
   // Debounced search effect - triggers when searchQuery changes
   useEffect(() => {
@@ -91,41 +129,33 @@ const HomeScreen = ({ navigation }: any) => {
 
   // Pull-to-refresh: reload hot jobs and listed jobs
   const onRefresh = useCallback(() => {
+    setRefreshing(true);
     dispatch(expireOldJobs());
-    dispatch(getHotJobs({
-      location: getLocation(),
-      page: 1,
-      limit: 10,
-      sortOrder: 'desc'
-    }));
-    dispatch(getListedJobs({
-      location: getLocation(),
-      page: 1,
-      limit: 10,
-      sortOrder: 'desc'
-    }));
+    const location = getLocation();
+    Promise.all([
+      dispatch(getHotJobs({
+        location,
+        page: 1,
+        limit: 10,
+        sortOrder: 'desc'
+      })),
+      dispatch(getListedJobs({
+        location,
+        page: 1,
+        limit: 10,
+        sortOrder: 'desc'
+      })),
+    ]).finally(() => {
+      lastHomeFetchAtRef.current = Date.now();
+      setRefreshing(false);
+    });
   }, [dispatch, currentLocation, user?.profile?.location]);
 
-  // Refresh Hot Tasks whenever Home is focused so the strip matches the Hot tab
+  // Refresh lists when Home is focused, but skip if we just fetched.
   useFocusEffect(
     useCallback(() => {
-      dispatch(
-        getHotJobs({
-          location: getLocation(),
-          page: 1,
-          limit: 10,
-          sortOrder: "desc",
-        })
-      );
-      dispatch(
-        getListedJobs({
-          location: getLocation(),
-          page: 1,
-          limit: 10,
-          sortOrder: "desc",
-        })
-      );
-    }, [dispatch, currentLocation, user?.profile?.location])
+      loadHomeJobs(false);
+    }, [loadHomeJobs])
   );
 
   // Handle Android back button
@@ -234,7 +264,7 @@ const HomeScreen = ({ navigation }: any) => {
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={jobLoading}
+            refreshing={refreshing}
             onRefresh={onRefresh}
           />
         }

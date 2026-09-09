@@ -25,11 +25,14 @@ const ListedJobs: React.FC<ListedJobsProps> = ({ searchQuery = '', scrollEnabled
   const navigation = useNavigation<any>();
   const dispatch = useDispatch<AppDispatch>();
   const jobState = useSelector((state: RootState) => state.job);
-  const { listedJobs = [], listLoading: loading = false, currentLocation, allListedJobs = [] } = jobState || {};
+  const { listedJobs = [], listedLoading = false, listLoading = false, currentLocation, allListedJobs = [] } = jobState || {};
   const { user } = useSelector((state: RootState) => state.auth);
   
   // Use allListedJobs if searching, otherwise use listedJobs
   const displayJobs = searchQuery.trim() ? allListedJobs : listedJobs;
+  const showLoading = searchQuery.trim()
+    ? listLoading && displayJobs.length === 0
+    : listedLoading && listedJobs.length === 0;
 
   // Get location from Redux state, user profile, or use default
   const getLocation = () => {
@@ -134,7 +137,7 @@ const ListedJobs: React.FC<ListedJobsProps> = ({ searchQuery = '', scrollEnabled
       </View>
 
       {/* Job Cards List */}
-      {loading ? (
+      {showLoading ? (
         <View style={styles.loadingContainer}>
           <Text style={styles.loadingText}>Loading listed tasks...</Text>
         </View>
