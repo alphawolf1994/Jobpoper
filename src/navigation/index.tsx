@@ -55,6 +55,7 @@ import VerificationIdScreen from "./screens/VerificationIdScreen";
 import VerificationSubmittedScreen from "./screens/VerificationSubmittedScreen";
 import OrdersScreen from "./screens/OrdersScreen";
 import MyReportsScreen from "./screens/MyReportsScreen";
+import HelpGuidesScreen from "./screens/HelpGuidesScreen";
 
 // ─── Admin Screens ─────────────────────────────────────────────────────────────
 import AdminDashboardScreen from "./screens/admin/AdminDashboardScreen";
@@ -310,6 +311,12 @@ const RootStack = createNativeStackNavigator({
     },
     AddLocationScreen: {
       screen: AddLocationScreen,
+      options: { headerShown: false },
+    },
+
+    // ── Help & Guides ───────────────────────────────────────────────────────
+    HelpGuidesScreen: {
+      screen: HelpGuidesScreen,
       options: { headerShown: false },
     },
 

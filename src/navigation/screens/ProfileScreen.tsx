@@ -278,6 +278,13 @@ const ProfileScreen = () => {
           />
 
           <MenuItem
+            icon="help-circle-outline"
+            label="Help & Guides"
+            onPress={() => (navigation as any).navigate('HelpGuidesScreen')}
+            iconColor="#0EA5E9"
+          />
+
+          <MenuItem
             icon="shield-checkmark-outline"
             label="Privacy Policy"
             onPress={() => (navigation as any).navigate('PrivacyPolicyScreen')}
