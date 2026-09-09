@@ -10,7 +10,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, getJobCategoryName } from '../../utils';
+import { Colors, getJobCategoryName, getJobSeekerDisplayName, getJobSeekerInitials, isJobPostedOnBehalf } from '../../utils';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import { getAllListedJobsPaginated, searchListedJobsPaginated } from '../../redux/slices/jobSlice';
@@ -154,10 +154,6 @@ const AllListedJobsScreen: React.FC = () => {
     loadJobs(1, false, '');
   }, [loadJobs]);
 
-  const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
-  };
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-GB', {
@@ -176,9 +172,9 @@ const AllListedJobsScreen: React.FC = () => {
       {/* Left Side - Avatar and Job Info */}
       <View style={styles.leftSection}>
       <View style={styles.avatar}>
-          {job.postedOnBehalf && job.externalContact?.name ? (
+          {isJobPostedOnBehalf(job) ? (
             <Text style={styles.avatarText}>
-              {getInitials(job.externalContact.name)}
+              {getJobSeekerInitials(job)}
             </Text>
           ) : job.postedBy?.profile?.profileImage ? (
             <Image
@@ -188,7 +184,7 @@ const AllListedJobsScreen: React.FC = () => {
             />
           ) : (
             <Text style={styles.avatarText}>
-              {getInitials(job.postedBy?.profile?.fullName || 'U')}
+              {getJobSeekerInitials(job)}
             </Text>
           )}
         </View>
@@ -197,9 +193,7 @@ const AllListedJobsScreen: React.FC = () => {
             {job.title}
           </Text>
           <Text style={styles.posterName} numberOfLines={1} ellipsizeMode="tail">
-            {job.postedOnBehalf && job.externalContact?.name
-              ? job.externalContact.name
-              : job.postedBy?.profile?.fullName || 'Unknown'}
+            {getJobSeekerDisplayName(job)}
           </Text>
         </View>
       </View>

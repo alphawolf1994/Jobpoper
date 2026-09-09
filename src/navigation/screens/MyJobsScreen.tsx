@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from "react";
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Linking } from "react-native";
-import { Colors, getJobCategoryName } from "../../utils";
+import { Colors, getJobCategoryName, getJobSeekerDisplayName } from "../../utils";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Header from "../../components/Header";
 import { Ionicons } from "@expo/vector-icons";
@@ -432,9 +432,7 @@ const MyJobsScreen = () => {
       <View style={styles.postedByRow}>
         <Ionicons name="person-outline" size={16} color={Colors.primary} />
         <Text style={styles.postedByText}>
-          Posted by {item.postedOnBehalf && item.externalContact?.name
-            ? item.externalContact.name
-            : item.postedBy?.profile?.fullName || 'Unknown'}
+          Posted by {getJobSeekerDisplayName(item)}
         </Text>
       </View>
 

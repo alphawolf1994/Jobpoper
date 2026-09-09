@@ -891,6 +891,9 @@ const PostJobScreen = () => {
                     mode="date"
                     value={tempDate ?? getTomorrow()}
                     display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    themeVariant="light"
+                    textColor="#000000"
+                    style={Platform.OS === 'ios' ? styles.iosPicker : undefined}
                     minimumDate={getTomorrow()}
                     onChange={(event, date) => {
                       if (Platform.OS === 'android') {
@@ -951,6 +954,9 @@ const PostJobScreen = () => {
                     mode="time"
                     value={tempTime ?? new Date()}
                     display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                    themeVariant="light"
+                    textColor="#000000"
+                    style={Platform.OS === 'ios' ? styles.iosPicker : undefined}
                     minuteInterval={1}
                     onChange={(event, date) => {
                       if (Platform.OS === 'android') {
@@ -1374,6 +1380,10 @@ const styles = StyleSheet.create({
   disabledInput: {
     backgroundColor: '#f0f0f0',
     opacity: 0.6,
+  },
+  iosPicker: {
+    height: 216,
+    width: '100%',
   },
   pickerActions: {
     flexDirection: 'row',

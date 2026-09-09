@@ -10,7 +10,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, getJobCategoryName } from '../../utils';
+import { Colors, getJobCategoryName, getJobSeekerDisplayName, getJobSeekerInitials, isJobPostedOnBehalf } from '../../utils';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Header from '../../components/Header';
 import MyTextInput from '../../components/MyTextInput';
@@ -178,10 +178,6 @@ const HotJobsScreen = () => {
     return tags;
   };
 
-  const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
-  };
-
   const renderJobCard = ({ item: job }: { item: Job }) => (
     <TouchableOpacity 
       style={styles.jobCard} 
@@ -196,9 +192,9 @@ const HotJobsScreen = () => {
       {/* Avatar and Title Row */}
       <View style={styles.avatarTitleRow}>
       <View style={styles.avatar}>
-          {job.postedOnBehalf && job.externalContact?.name ? (
+          {isJobPostedOnBehalf(job) ? (
             <Text style={styles.avatarText}>
-              {getInitials(job.externalContact.name)}
+              {getJobSeekerInitials(job)}
             </Text>
           ) : job.postedBy?.profile?.profileImage ? (
             <Image
@@ -208,16 +204,14 @@ const HotJobsScreen = () => {
             />
           ) : (
             <Text style={styles.avatarText}>
-              {getInitials(job.postedBy?.profile?.fullName || 'U')}
+              {getJobSeekerInitials(job)}
             </Text>
           )}
         </View>
         <View style={styles.titleContainer}>
           <Text style={styles.jobTitle}>{job.title}</Text>
           <Text style={styles.posterName}>
-            {job.postedOnBehalf && job.externalContact?.name
-              ? job.externalContact.name
-              : job.postedBy?.profile?.fullName || 'Unknown'}
+            {getJobSeekerDisplayName(job)}
           </Text>
         </View>
       </View>

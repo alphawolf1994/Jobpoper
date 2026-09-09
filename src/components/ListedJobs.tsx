@@ -8,7 +8,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, getJobCategoryName } from '../utils';
+import { Colors, getJobCategoryName, getJobSeekerDisplayName, getJobSeekerInitials, isJobPostedOnBehalf } from '../utils';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import { searchListedJobsPaginated } from '../redux/slices/jobSlice';
@@ -58,10 +58,6 @@ const ListedJobs: React.FC<ListedJobsProps> = ({ searchQuery = '', scrollEnabled
     }
   }, [dispatch, currentLocation, user?.profile?.location, searchQuery]);
 
-  const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
-  };
-
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-GB', {
@@ -85,9 +81,9 @@ const ListedJobs: React.FC<ListedJobsProps> = ({ searchQuery = '', scrollEnabled
       {/* Left Side - Avatar and Job Info */}
       <View style={styles.leftSection}>
         <View style={styles.avatar}>
-          {item.postedOnBehalf && item.externalContact?.name ? (
+          {isJobPostedOnBehalf(item) ? (
             <Text style={styles.avatarText}>
-              {getInitials(item.externalContact.name)}
+              {getJobSeekerInitials(item)}
             </Text>
           ) : item.postedBy?.profile?.profileImage ? (
             <Image
@@ -97,7 +93,7 @@ const ListedJobs: React.FC<ListedJobsProps> = ({ searchQuery = '', scrollEnabled
             />
           ) : (
             <Text style={styles.avatarText}>
-              {getInitials(item.postedBy?.profile?.fullName || 'U')}
+              {getJobSeekerInitials(item)}
             </Text>
           )}
         </View>
@@ -106,9 +102,7 @@ const ListedJobs: React.FC<ListedJobsProps> = ({ searchQuery = '', scrollEnabled
             {item.title}
           </Text>
           <Text style={styles.posterName} numberOfLines={1} ellipsizeMode="tail">
-            {item.postedOnBehalf && item.externalContact?.name
-              ? item.externalContact.name
-              : item.postedBy?.profile?.fullName || 'Unknown'}
+            {getJobSeekerDisplayName(item)}
           </Text>
         </View>
       </View>

@@ -8,7 +8,7 @@ import {
   Image,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, getJobCategoryName } from '../utils';
+import { Colors, getJobCategoryName, getJobSeekerDisplayName, getJobSeekerInitials, isJobPostedOnBehalf } from '../utils';
 import { useNavigation } from '@react-navigation/native';
 import { useDispatch, useSelector } from 'react-redux';
 import { searchHotJobsPaginated } from '../redux/slices/jobSlice';
@@ -81,10 +81,6 @@ const HotJobs: React.FC<HotJobsProps> = ({ searchQuery = '' }) => {
     return tags;
   };
 
-  const getInitials = (name: string) => {
-    return name.split(' ').map(n => n[0]).join('').toUpperCase();
-  };
-
   const renderJobCard = (job: Job) => (
     <TouchableOpacity key={job._id} style={styles.jobCard} activeOpacity={0.8} onPress={()=>{navigation.navigate('JobDetailsScreen', { jobId: job._id })}}>
       {/* Hot/Fire Label */}
@@ -96,9 +92,9 @@ const HotJobs: React.FC<HotJobsProps> = ({ searchQuery = '' }) => {
       {/* Avatar and Title Row */}
       <View style={styles.avatarTitleRow}>
         <View style={styles.avatar}>
-          {job.postedOnBehalf && job.externalContact?.name ? (
+          {isJobPostedOnBehalf(job) ? (
             <Text style={styles.avatarText}>
-              {getInitials(job.externalContact.name)}
+              {getJobSeekerInitials(job)}
             </Text>
           ) : job.postedBy?.profile?.profileImage ? (
             <Image
@@ -108,7 +104,7 @@ const HotJobs: React.FC<HotJobsProps> = ({ searchQuery = '' }) => {
             />
           ) : (
             <Text style={styles.avatarText}>
-              {getInitials(job.postedBy?.profile?.fullName || 'U')}
+              {getJobSeekerInitials(job)}
             </Text>
           )}
         </View>
@@ -117,9 +113,7 @@ const HotJobs: React.FC<HotJobsProps> = ({ searchQuery = '' }) => {
             {job.title}
           </Text>
           <Text style={styles.posterName}>
-            {job.postedOnBehalf && job.externalContact?.name
-              ? job.externalContact.name
-              : job.postedBy?.profile?.fullName || 'Unknown'}
+            {getJobSeekerDisplayName(job)}
           </Text>
         </View>
       </View>

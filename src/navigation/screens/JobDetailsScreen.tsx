@@ -15,7 +15,7 @@ import {
 import { Audio } from "expo-av";
 import * as Location from 'expo-location';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Colors } from "../../utils";
+import { Colors, getJobSeekerDisplayName, isJobPostedOnBehalf } from "../../utils";
 import { Ionicons, AntDesign } from "@expo/vector-icons";
 import { useNavigation, useRoute, useFocusEffect } from "@react-navigation/native";
 import { useDispatch, useSelector } from 'react-redux';
@@ -166,16 +166,6 @@ const JobDetailsScreen = () => {
   const getInitials = (name: string) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
   };
-
-  const getJobSeekerDisplayName = (job: Job) => {
-    if (job.postedOnBehalf && job.externalContact?.name) {
-      return job.externalContact.name;
-    }
-    return job.postedBy?.profile?.fullName || 'Unknown';
-  };
-
-  const isExternalJobSeeker = (job: Job) =>
-    !!(job.postedOnBehalf && job.externalContact?.name);
 
   const formatJobTags = (job: Job) => {
     const tags = [];
@@ -1197,7 +1187,7 @@ const JobDetailsScreen = () => {
     if (!currentJob) return null;
 
     const seekerName = getJobSeekerDisplayName(currentJob);
-    const externalSeeker = isExternalJobSeeker(currentJob);
+    const externalSeeker = isJobPostedOnBehalf(currentJob);
 
     return (
       <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
@@ -1276,7 +1266,7 @@ const JobDetailsScreen = () => {
   const jobTags = formatJobTags(currentJob);
   const locationDisplay = getLocationDisplay(currentJob);
   const seekerDisplayName = getJobSeekerDisplayName(currentJob);
-  const externalSeeker = isExternalJobSeeker(currentJob);
+  const externalSeeker = isJobPostedOnBehalf(currentJob);
   const isDirectContact = currentJob.responsePreference === 'direct_contact' || !currentJob.responsePreference;
   const isMyJob =
     !!user?.id &&
