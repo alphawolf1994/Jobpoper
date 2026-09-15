@@ -32,7 +32,8 @@ import { RootState, AppDispatch } from "../../redux/store";
 import { tryFlushPendingPushNavigation } from "../navigationRef";
 import { useAlertModal } from "../../hooks/useAlertModal";
 import ImagePath from "../../assets/images/ImagePath";
-import { toE164, isValidE164 } from "../../utils/phoneFormat";
+import { toE164, isValidE164, callingCodeFromIso } from "../../utils/phoneFormat";
+import { getCachedCountryIso } from "../../hooks/useAutoCountryCode";
 
 const LoginScreen = () => {
   const navigation = useNavigation();
@@ -44,7 +45,9 @@ const LoginScreen = () => {
   const { showAlert, AlertComponent: alertModal } = useAlertModal();
 
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [callingCode, setCallingCode] = useState("91");
+  const [callingCode, setCallingCode] = useState(
+    () => callingCodeFromIso(getCachedCountryIso()) ?? "91"
+  );
   const [formattedPhoneNumber, setFormattedPhoneNumber] = useState("");
   const [pin, setPin] = useState(['', '', '', '']);
   const [step, setStep] = useState(1); // 1 = phone, 2 = PIN

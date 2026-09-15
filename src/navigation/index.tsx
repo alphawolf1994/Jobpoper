@@ -67,6 +67,7 @@ import AdminVerificationsScreen from "./screens/admin/AdminVerificationsScreen";
 import AdminVerificationDetailScreen from "./screens/admin/AdminVerificationDetailScreen";
 import AdminBusinessApprovalsScreen from "./screens/admin/AdminBusinessApprovalsScreen";
 import AdminBusinessApprovalDetailScreen from "./screens/admin/AdminBusinessApprovalDetailScreen";
+import AdminForceClosedScreen from "./screens/admin/AdminForceClosedScreen";
 
 const ADMIN_ACCENT = "#1E40AF";
 
@@ -206,6 +207,10 @@ const RootStack = createNativeStackNavigator({
     },
     AdminBusinessApprovalDetailScreen: {
       screen: AdminBusinessApprovalDetailScreen,
+      options: { headerShown: false },
+    },
+    AdminForceClosedScreen: {
+      screen: AdminForceClosedScreen,
       options: { headerShown: false },
     },
 

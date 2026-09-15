@@ -71,7 +71,7 @@ function hasLocationChanged(
  */
 export function useAutoLocation(options: UseAutoLocationOptions = {}) {
   const dispatch = useDispatch<AppDispatch>();
-  const { locationSource, isDetectingLocation } = useSelector(
+  const { locationSource, isDetectingLocation, currentLocationCoordinates } = useSelector(
     (state: RootState) => state.job
   );
   const { isAuthenticated, user } = useSelector(
@@ -113,11 +113,11 @@ export function useAutoLocation(options: UseAutoLocationOptions = {}) {
   );
 
   const detect = useCallback(
-    async (forcePrompt: boolean) => {
+    async (forcePrompt: boolean): Promise<boolean> => {
       // When a detection is already in flight, skip automatic calls but
       // let user-initiated (forced) calls wait for the current one to finish.
       if (moduleDetectionInFlight) {
-        if (!forcePrompt) return;
+        if (!forcePrompt) return false;
         // Wait for in-flight detection to complete, then proceed
         const waitForInflight = () =>
           new Promise<void>((resolve) => {
@@ -131,7 +131,7 @@ export function useAutoLocation(options: UseAutoLocationOptions = {}) {
         await waitForInflight();
       }
       // Respect a manual choice unless the user explicitly forces a refresh.
-      if (locationSource === "manual" && !forcePrompt) return;
+      if (locationSource === "manual" && !forcePrompt) return false;
 
       moduleDetectionInFlight = true;
       dispatch(setIsDetectingLocation(true));
@@ -147,15 +147,20 @@ export function useAutoLocation(options: UseAutoLocationOptions = {}) {
               latitude: result.latitude,
               longitude: result.longitude,
               source: "auto",
+              force: forcePrompt,
             })
           );
 
-          // Only write to the backend when the location actually changed
-          // compared to what is already stored on the profile. Otherwise skip.
-          const changed = hasLocationChanged(storedProfileLocation, {
-            latitude: result.latitude,
-            longitude: result.longitude,
-          });
+          // Compare against the location currently shown in the header first
+          // (e.g. a searched city), then the profile. Otherwise picking Lahore
+          // and immediately tapping GPS would look "unchanged" vs an old profile.
+          const changed = hasLocationChanged(
+            currentLocationCoordinates ?? storedProfileLocation,
+            {
+              latitude: result.latitude,
+              longitude: result.longitude,
+            }
+          );
 
           if (options.persistToProfile && isAuthenticated && changed) {
             dispatch(
@@ -170,6 +175,7 @@ export function useAutoLocation(options: UseAutoLocationOptions = {}) {
                 /* device-local update already applied; ignore profile error */
               });
           }
+          return true;
         } else {
           if (result.reason === "permission_denied") {
             dispatch(setLocationPermissionStatus("denied"));
@@ -188,13 +194,22 @@ export function useAutoLocation(options: UseAutoLocationOptions = {}) {
             );
           }
           notifyFailure(result.reason, forcePrompt);
+          return false;
         }
       } finally {
         moduleDetectionInFlight = false;
         dispatch(setIsDetectingLocation(false));
       }
     },
-    [dispatch, locationSource, isAuthenticated, options.persistToProfile, notifyFailure, storedProfileLocation]
+    [
+      dispatch,
+      locationSource,
+      isAuthenticated,
+      options.persistToProfile,
+      notifyFailure,
+      storedProfileLocation,
+      currentLocationCoordinates,
+    ]
   );
 
   // Auto-run at most once per interval, GLOBALLY across all Header instances.

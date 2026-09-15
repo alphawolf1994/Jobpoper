@@ -20,7 +20,8 @@ import Loader from "../../components/Loader";
 import PhoneNumberInput from "../../components/PhoneNumberInput";
 import { useAlertModal } from "../../hooks/useAlertModal";
 import { sendForgotPinOtpApi } from "../../api/forgotPinApis";
-import { toE164, isValidE164 } from "../../utils/phoneFormat";
+import { toE164, isValidE164, callingCodeFromIso } from "../../utils/phoneFormat";
+import { getCachedCountryIso } from "../../hooks/useAutoCountryCode";
 
 // ---------------------------------------------------------------------------
 // Step 1 of the Forgot-PIN flow: collect the user's phone number and ask the
@@ -40,7 +41,9 @@ const ForgotPinScreen = () => {
   // utils/phoneFormat.ts for why. Instead we keep the raw national digits plus
   // the active calling code and assemble E.164 ourselves on submit.
   const [phoneNumber, setPhoneNumber] = useState<string>(initialPhone);
-  const [callingCode, setCallingCode] = useState<string>("91"); // India default
+  const [callingCode, setCallingCode] = useState<string>(
+    () => callingCodeFromIso(getCachedCountryIso()) ?? "91"
+  );
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSendCode = async () => {

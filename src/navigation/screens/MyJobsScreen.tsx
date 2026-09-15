@@ -16,6 +16,8 @@ import CompleteJobSheet from "../../components/CompleteJobSheet";
 import ReviewModal from "../../components/ReviewModal";
 import ReportIssueSheet from "../../components/ReportIssueSheet";
 import ForceCloseTaskSheet from "../../components/ForceCloseTaskSheet";
+import ForceCloseButton from "../../components/ForceCloseButton";
+import ForceClosedBanner from "../../components/ForceClosedBanner";
 import { useRequirePhoneVerified } from "../../hooks/useRequirePhoneVerified";
 
 const MyJobsScreen = () => {
@@ -256,8 +258,10 @@ const MyJobsScreen = () => {
         </TouchableOpacity>
       )}
 
+      <ForceClosedBanner job={item} />
+
       {/* Assigned worker chip — tap to view their public profile & reviews */}
-      {(item.status === 'job_started' || item.status === 'completed') &&
+      {(item.status === 'job_started' || item.status === 'completed' || item.status === 'force_closed') &&
         typeof item.assignedWorker === 'object' &&
         item.assignedWorker && (
           <TouchableOpacity
@@ -347,6 +351,8 @@ const MyJobsScreen = () => {
           </TouchableOpacity>
         )
       )}
+
+      <ForceCloseButton job={item} onPress={() => setForceCloseJob(item)} />
 
       {/* Action Buttons */}
       <View style={styles.actionRow}>
@@ -498,6 +504,8 @@ const MyJobsScreen = () => {
           <Text style={styles.enterPinBtnText}>Enter Task PIN to Complete</Text>
         </TouchableOpacity>
       )}
+
+      <ForceClosedBanner job={item} />
     </TouchableOpacity>
   );
 
@@ -540,6 +548,7 @@ const MyJobsScreen = () => {
       case 'completed':
         return 2;
       case 'cancelled':
+      case 'force_closed':
         return 3;
       default:
         return 1;

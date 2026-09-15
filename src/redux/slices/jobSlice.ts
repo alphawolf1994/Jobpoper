@@ -76,6 +76,8 @@ export interface SetDetectedLocationPayload {
   latitude: number;
   longitude: number;
   source: "auto" | "manual" | "profile" | "default";
+  // When true, GPS from "Use my current location" overwrites a searched city.
+  force?: boolean;
 }
 
 async function resolveCoordinates(state: RootState): Promise<{ latitude: number; longitude: number }> {
@@ -444,12 +446,13 @@ const jobSlice = createSlice({
     setLocationPermissionStatus: (state, action: PayloadAction<JobState["locationPermissionStatus"]>) => {
       state.locationPermissionStatus = action.payload;
     },
-    // Atomically set label + coordinates + source. Auto-detection will NOT
-    // overwrite a location the user chose manually in this session.
+    // Atomically set label + coordinates + source. Silent auto-detection will
+    // NOT overwrite a city the user searched for. An explicit "Use my current
+    // location" tap passes force: true so GPS can take over again.
     setDetectedLocation: (state, action: PayloadAction<SetDetectedLocationPayload>) => {
-      const { fullAddress, latitude, longitude, source } = action.payload;
-      if (source === "auto" && state.locationSource === "manual") {
-        return; // respect manual override
+      const { fullAddress, latitude, longitude, source, force } = action.payload;
+      if (source === "auto" && state.locationSource === "manual" && !force) {
+        return; // respect manual override until the user asks for GPS
       }
       state.currentLocation = fullAddress;
       state.currentLocationCoordinates = { latitude, longitude };
@@ -863,6 +866,12 @@ const jobSlice = createSlice({
           };
           state.jobs = state.jobs.map(updateJob);
           state.userJobs = state.userJobs.map(updateJob);
+          state.interestedJobs = state.interestedJobs.map((entry: any) => {
+            if (entry?.job) {
+              return { ...entry, job: updateJob(entry.job) };
+            }
+            return updateJob(entry);
+          });
           if (state.currentJob?._id === jobData.jobId) {
             state.currentJob = { ...state.currentJob, status: "force_closed", forceCloseReason: jobData.forceCloseReason, forceClosedAt: jobData.forceClosedAt };
           }

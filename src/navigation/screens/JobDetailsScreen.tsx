@@ -31,6 +31,8 @@ import PickupPreferencesBottomSheet, { PickupPreferencesBottomSheetHandle } from
 import ShowInterestSheet, { ShowInterestSheetHandle } from "../../components/ShowInterestSheet";
 import ReportIssueSheet from "../../components/ReportIssueSheet";
 import ForceCloseTaskSheet from "../../components/ForceCloseTaskSheet";
+import ForceCloseButton from "../../components/ForceCloseButton";
+import ForceClosedBanner from "../../components/ForceClosedBanner";
 import ReviewModal from "../../components/ReviewModal";
 import { fetchVerificationStatus } from "../../redux/slices/verificationSlice";
 import { useRequirePhoneVerified } from "../../hooks/useRequirePhoneVerified";
@@ -727,7 +729,7 @@ const JobDetailsScreen = () => {
     if (!worker) return null;
 
     const status = (currentJob.status || "").toLowerCase();
-    if (status !== "job_started" && status !== "completed") return null;
+    if (status !== "job_started" && status !== "completed" && status !== "force_closed") return null;
 
     const resolveUri = (uri?: string | null) => {
       if (!uri) return null;
@@ -934,6 +936,8 @@ const JobDetailsScreen = () => {
       <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
         {renderSelectedWorkerCard()}
 
+        <ForceClosedBanner job={currentJob} padded />
+
         {/* Leave a review — client only, after completion */}
         {showLeaveReview && (
           <TouchableOpacity
@@ -1086,6 +1090,14 @@ const JobDetailsScreen = () => {
               )}
             </>
           )}
+
+        {amOwner && (
+          <ForceCloseButton
+            job={currentJob}
+            padded
+            onPress={() => setForceCloseSheetVisible(true)}
+          />
+        )}
 
         {!!currentJob.description?.trim() && (
           <View style={styles.section}>

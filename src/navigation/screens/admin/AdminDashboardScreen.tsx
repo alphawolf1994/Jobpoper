@@ -27,16 +27,22 @@ interface StatCardProps {
   icon: string;
   color: string;
   bg: string;
+  onPress?: () => void;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ label, value, icon, color, bg }) => (
-  <View style={[styles.statCard, { backgroundColor: bg }]}>
+const StatCard: React.FC<StatCardProps> = ({ label, value, icon, color, bg, onPress }) => (
+  <TouchableOpacity
+    style={[styles.statCard, { backgroundColor: bg }]}
+    onPress={onPress}
+    activeOpacity={onPress ? 0.7 : 1}
+    disabled={!onPress}
+  >
     <View style={[styles.statIconBox, { backgroundColor: color + "20" }]}>
       <Ionicons name={icon as any} size={22} color={color} />
     </View>
     <Text style={[styles.statValue, { color }]}>{value}</Text>
     <Text style={styles.statLabel}>{label}</Text>
-  </View>
+  </TouchableOpacity>
 );
 
 // ─── Row item ─────────────────────────────────────────────────────────────────
@@ -101,9 +107,11 @@ const AdminDashboardScreen = () => {
   const getStatusBadgeColor = (status: string) => {
     switch (status) {
       case "open": return Colors.green;
+      case "job_started":
       case "in-progress": return Colors.primary;
       case "completed": return Colors.gray;
       case "cancelled": return Colors.Red;
+      case "force_closed": return "#991B1B";
       default: return Colors.gray;
     }
   };
@@ -142,6 +150,14 @@ const AdminDashboardScreen = () => {
           <StatCard label="Verified Users" value={dashboardStats?.verifiedUsers ?? 0} icon="shield-checkmark-outline" color="#0891B2" bg="#E0F7FA" />
           <StatCard label="Pending Reviews" value={dashboardStats?.pendingVerifications ?? 0} icon="time-outline" color={Colors.orange} bg="#FFF3E0" />
           <StatCard label="Business Requests" value={dashboardStats?.pendingBusinessApprovals ?? 0} icon="storefront-outline" color="#EA580C" bg="#FFF7ED" />
+          <StatCard
+            label="Force Closed"
+            value={dashboardStats?.forceClosedJobs ?? 0}
+            icon="close-circle-outline"
+            color="#991B1B"
+            bg="#FEF2F2"
+            onPress={() => (navigation as any).navigate("AdminForceClosedScreen")}
+          />
         </View>
 
         {/* Recent Users */}
@@ -188,7 +204,7 @@ const AdminDashboardScreen = () => {
                 left={j.title}
                 sub={`By: ${j.postedBy?.fullName || "Unknown"}`}
                 right=""
-                badge={j.status}
+                badge={j.status === "force_closed" ? "Closed" : j.status === "job_started" ? "In Progress" : j.status}
                 badgeColor={getStatusBadgeColor(j.status)}
                 onPress={() => (navigation as any).navigate("AdminJobDetailScreen", { jobId: j.id })}
               />

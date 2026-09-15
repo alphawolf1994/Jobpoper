@@ -41,6 +41,11 @@ async function resolveCountryCode(): Promise<string | null> {
   return detectionInFlight;
 }
 
+/** ISO code already resolved this session, if any. Used to seed calling-code state. */
+export function getCachedCountryIso(): string | null {
+  return cachedCountryCode;
+}
+
 export function useAutoCountryCode(enabled: boolean = true) {
   const [countryCode, setCountryCode] = useState<string | undefined>(
     cachedCountryCode ?? undefined

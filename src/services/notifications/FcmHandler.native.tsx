@@ -21,7 +21,7 @@ import {
   getUnreadOrdersCount,
   incrementUnreadOrders,
 } from "@/src/redux/slices/orderSlice";
-import { getUserJobs, markJobStatusLocally } from "@/src/redux/slices/jobSlice";
+import { getUserJobs, getMyInterestedJobs, markJobStatusLocally } from "@/src/redux/slices/jobSlice";
 import type { Notification } from "@/src/interface/interfaces";
 import type { AppDispatch, RootState } from "@/src/redux/store";
 import {
@@ -120,6 +120,19 @@ function syncFromMessage(dispatch: AppDispatch, remote: RemoteMessage) {
   }
   if (type === "job_started") {
     void dispatch(getUserJobs());
+  }
+  if (type === "job_force_closed") {
+    const jobId = String(d?.relatedEntityId || "").trim();
+    if (jobId) {
+      dispatch(
+        markJobStatusLocally({
+          jobId,
+          status: "force_closed",
+        })
+      );
+    }
+    void dispatch(getUserJobs());
+    void dispatch(getMyInterestedJobs({ page: 1, limit: 10 }));
   }
   Toast.show({
     type: "info",

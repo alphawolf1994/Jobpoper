@@ -7,13 +7,15 @@ import {
   TouchableOpacity,
   TextInput,
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useDispatch } from "react-redux";
 import { AppDispatch } from "../redux/store";
-import { forceCloseJob, markJobStatusLocally } from "../redux/slices/jobSlice";
+import { forceCloseJob } from "../redux/slices/jobSlice";
 import { Colors } from "../utils";
 import { Job } from "../interface/interfaces";
 
@@ -26,11 +28,13 @@ interface Props {
 
 const ForceCloseTaskSheet: React.FC<Props> = ({ visible, job, onClose, onClosed }) => {
   const dispatch = useDispatch<AppDispatch>();
+  const insets = useSafeAreaInsets();
 
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
 
   useEffect(() => {
     if (visible) {
@@ -38,7 +42,24 @@ const ForceCloseTaskSheet: React.FC<Props> = ({ visible, job, onClose, onClosed 
       setDone(false);
       setLocalError(null);
       setLoading(false);
+      setKeyboardHeight(0);
     }
+  }, [visible]);
+
+  useEffect(() => {
+    if (!visible) return;
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const onShow = Keyboard.addListener(showEvent, (e) => {
+      setKeyboardHeight(e.endCoordinates.height);
+    });
+    const onHide = Keyboard.addListener(hideEvent, () => {
+      setKeyboardHeight(0);
+    });
+    return () => {
+      onShow.remove();
+      onHide.remove();
+    };
   }, [visible]);
 
   const handleSubmit = async () => {
@@ -56,12 +77,6 @@ const ForceCloseTaskSheet: React.FC<Props> = ({ visible, job, onClose, onClosed 
     setLoading(true);
     try {
       await dispatch(forceCloseJob({ jobId: job._id, reason: trimmed })).unwrap();
-      dispatch(
-        markJobStatusLocally({
-          jobId: job._id,
-          status: "force_closed",
-        })
-      );
       setDone(true);
       setTimeout(() => {
         onClosed();
@@ -74,17 +89,26 @@ const ForceCloseTaskSheet: React.FC<Props> = ({ visible, job, onClose, onClosed 
     }
   };
 
+  const sheetBottomPad = Math.max(insets.bottom, Platform.OS === "ios" ? 28 : 16);
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.overlay}
-      >
-        <View style={styles.sheet}>
-          {/* Handle bar */}
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
+      <View style={styles.overlay}>
+        <TouchableWithoutFeedback onPress={onClose}>
+          <View style={styles.backdrop} />
+        </TouchableWithoutFeedback>
+
+        <View
+          style={[
+            styles.sheet,
+            {
+              paddingBottom: sheetBottomPad,
+              marginBottom: keyboardHeight,
+            },
+          ]}
+        >
           <View style={styles.handleBar} />
 
-          {/* Header */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>Close Task</Text>
             <TouchableOpacity onPress={onClose} hitSlop={12}>
@@ -93,7 +117,6 @@ const ForceCloseTaskSheet: React.FC<Props> = ({ visible, job, onClose, onClosed 
           </View>
 
           <View style={styles.body}>
-            {/* Job reference */}
             {job && (
               <View style={styles.jobRef}>
                 <Ionicons name="briefcase-outline" size={15} color={Colors.primary} />
@@ -103,22 +126,20 @@ const ForceCloseTaskSheet: React.FC<Props> = ({ visible, job, onClose, onClosed 
               </View>
             )}
 
-            {/* Warning box */}
             <View style={styles.warningBox}>
               <Ionicons name="alert-circle" size={28} color="#DC2626" />
               <View style={{ flex: 1 }}>
                 <Text style={styles.warningTitle}>Force Close Task</Text>
                 <Text style={styles.warningText}>
-                  This task has been in progress for over 24 hours. You can close it if the worker has not completed the work. The worker will be notified.
+                  This will permanently close the task. The assigned professional will be notified.
                 </Text>
               </View>
             </View>
 
-            {/* Reason input */}
             <Text style={styles.label}>Reason for closing</Text>
             <TextInput
               style={styles.reasonInput}
-              placeholder="Explain why you are closing this task..."
+              placeholder="Why are you closing this task?"
               placeholderTextColor="#9CA3AF"
               value={reason}
               onChangeText={(t) => {
@@ -133,7 +154,6 @@ const ForceCloseTaskSheet: React.FC<Props> = ({ visible, job, onClose, onClosed 
             />
             <Text style={styles.charCount}>{reason.length}/500</Text>
 
-            {/* Error */}
             {localError ? (
               <View style={styles.errorBanner}>
                 <Ionicons name="warning-outline" size={16} color="#DC2626" />
@@ -141,7 +161,6 @@ const ForceCloseTaskSheet: React.FC<Props> = ({ visible, job, onClose, onClosed 
               </View>
             ) : null}
 
-            {/* Success */}
             {done ? (
               <View style={styles.successBanner}>
                 <Ionicons name="checkmark-circle" size={22} color="#10B981" />
@@ -166,7 +185,7 @@ const ForceCloseTaskSheet: React.FC<Props> = ({ visible, job, onClose, onClosed 
             )}
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 };
@@ -176,14 +195,16 @@ export default ForceCloseTaskSheet;
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.45)",
     justifyContent: "flex-end",
+  },
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.45)",
   },
   sheet: {
     backgroundColor: Colors.white,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    paddingBottom: Platform.OS === "ios" ? 36 : 20,
   },
   handleBar: {
     width: 40,

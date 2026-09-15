@@ -11,6 +11,7 @@ import PhoneInput from "react-native-phone-number-input";
 import { Colors } from "../utils";
 import ErrorText from "./ErrorText";
 import useAutoCountryCode from "../hooks/useAutoCountryCode";
+import { callingCodeFromIso } from "../utils/phoneFormat";
 
 // Account for status bar + extra breathing room so the search input / close
 // button never sit underneath the system status bar on Android devices that
@@ -83,6 +84,8 @@ const PhoneNumberInput = ({
   // Ignore the library's initial onChangeText(defaultValue) so a pre-filled
   // number (Forgot PIN from Login) does not lock out GPS country detection.
   const acceptUserEditsRef = useRef(false);
+  const onChangeCallingCodeRef = useRef(onChangeCallingCode);
+  onChangeCallingCodeRef.current = onChangeCallingCode;
 
   useEffect(() => {
     acceptUserEditsRef.current = false;
@@ -104,16 +107,37 @@ const PhoneNumberInput = ({
     );
   }, [detectedCode, autoDetectCountry]);
 
-  // Push the current calling code up to the parent after each (re)mount so
-  // consumers don't have to wait for a manual country change to know which
-  // code is active. The lib's ref methods are only available after a render.
+  // Push the current calling code up whenever the ISO country changes
+  // (initial default + GPS auto-detect remount). Do NOT read it from
+  // phoneInput.getCallingCode(): that library stores `code` as undefined
+  // until an async lookup in componentDidMount, so the parent would keep
+  // its hardcoded India default ("91") even after the flag already updated.
   useEffect(() => {
-    if (!onChangeCallingCode) return;
-    const code = phoneInput.current?.getCallingCode?.();
-    if (code) onChangeCallingCode(code);
-    // Re-run whenever the active country changes (initial mount + auto-detect
-    // remount). Subsequent manual updates come through onChangeCountry below.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const notify = onChangeCallingCodeRef.current;
+    if (!notify) return;
+    const fromIso = callingCodeFromIso(activeCode);
+    if (fromIso) {
+      notify(fromIso);
+      return;
+    }
+    let cancelled = false;
+    let attempt = 0;
+    const retry = () => {
+      if (cancelled) return;
+      const code = phoneInput.current?.getCallingCode?.();
+      if (code) {
+        notify(String(code));
+        return;
+      }
+      if (attempt < 20) {
+        attempt += 1;
+        setTimeout(retry, 50);
+      }
+    };
+    retry();
+    return () => {
+      cancelled = true;
+    };
   }, [activeCode]);
 
   return (

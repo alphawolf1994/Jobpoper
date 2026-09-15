@@ -386,8 +386,10 @@ const Header: React.FC = () => {
               activeOpacity={0.7}
               disabled={isDetectingLocation}
               onPress={async () => {
-                await detectNow();
-                setIsLocationModalVisible(false);
+                const ok = await detectNow();
+                if (ok) {
+                  setIsLocationModalVisible(false);
+                }
               }}
             >
               <Ionicons name="locate-outline" size={20} color={Colors.primary} />

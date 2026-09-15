@@ -146,6 +146,23 @@ export const getAdminJobByIdApi = async (jobId: string) => {
   }
 };
 
+export const getAdminForceClosedJobsApi = async (
+  params: { page?: number; limit?: number; search?: string } = {}
+) => {
+  try {
+    const res = await axiosInstance.get("/admin/force-closed-jobs", {
+      params: {
+        page: params.page ?? 1,
+        limit: params.limit ?? 50,
+        ...(params.search ? { search: params.search } : {}),
+      },
+    });
+    return res.data;
+  } catch (error: any) {
+    throw new Error(error.response?.data?.message || "Failed to fetch force-closed tasks");
+  }
+};
+
 // ─── Business Approvals ──────────────────────────────────────────────────────
 
 export const getAdminBusinessApprovalRequestsApi = async (

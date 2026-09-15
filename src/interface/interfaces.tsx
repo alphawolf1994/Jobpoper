@@ -1050,7 +1050,7 @@ export interface ListedJobsResponse {
 export interface Notification {
   _id: string;
   recipient: string;
-  type: 'job_created' | 'job_interest' | 'job_started' | 'job_completed' | 'job_review' | 'verification_review' | 'business_profile_review' | 'order_received';
+  type: 'job_created' | 'job_interest' | 'job_started' | 'job_completed' | 'job_review' | 'verification_review' | 'business_profile_review' | 'order_received' | 'job_force_closed';
   title: string;
   message: string;
   relatedEntityType: string;

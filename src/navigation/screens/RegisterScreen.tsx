@@ -8,11 +8,14 @@ import ImagePath from "../../assets/images/ImagePath";
 import Checkbox from "expo-checkbox";
 import { useNavigation } from "@react-navigation/native";
 import { AntDesign } from "@expo/vector-icons";
-import { toE164, isValidE164 } from "../../utils/phoneFormat";
+import { toE164, isValidE164, callingCodeFromIso } from "../../utils/phoneFormat";
+import { getCachedCountryIso } from "../../hooks/useAutoCountryCode";
 
 const RegisterScreen = () => {
   const [phone, setPhone] = useState("");
-  const [callingCode, setCallingCode] = useState("1");
+  const [callingCode, setCallingCode] = useState(
+    () => callingCodeFromIso(getCachedCountryIso()) ?? "1"
+  );
   const [agree, setAgree] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const navigation = useNavigation();

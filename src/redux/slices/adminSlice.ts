@@ -7,6 +7,7 @@ import {
   deleteAdminWorkImageApi,
   getAdminJobsApi,
   getAdminJobByIdApi,
+  getAdminForceClosedJobsApi,
   getAdminBusinessApprovalRequestsApi,
   getAdminApprovedBusinessProfilesApi,
   reviewBusinessProfileApi,
@@ -78,7 +79,7 @@ export interface AdminJob {
   id: string;             // _id mapped to id by backend
   title: string;
   urgency: "Urgent" | "Normal";
-  status: "open" | "in-progress" | "completed" | "cancelled";
+  status: "open" | "job_started" | "in-progress" | "completed" | "cancelled" | "force_closed";
   jobType?: "OnSite" | "Pickup";
   responsePreference?: string;
   cost: string;
@@ -102,6 +103,21 @@ export interface AdminJob {
     phoneNumber: string;
   } | null;
   createdAt: string;
+  startedAt?: string | null;
+  forceCloseReason?: string | null;
+  forceClosedAt?: string | null;
+  forceClosedBy?: {
+    id: string | null;
+    phoneNumber: string;
+    fullName: string;
+  } | null;
+  assignedWorker?: {
+    id: string | null;
+    phoneNumber: string;
+    fullName: string;
+    workerId?: string;
+  } | null;
+  durationInProgress?: string | null;
   // Detail-only fields (buildAdminJobDetail)
   description?: string;
   isActive?: boolean;
@@ -148,6 +164,7 @@ export interface DashboardStats {
   verifiedUsers: number;
   pendingVerifications: number;
   pendingBusinessApprovals: number;
+  forceClosedJobs: number;
 }
 
 interface AdminState {
@@ -173,6 +190,11 @@ interface AdminState {
   selectedJob: AdminJob | null;
   jobsLoading: boolean;
   jobsError: string | null;
+
+  forceClosedJobs: AdminJob[];
+  forceClosedLoading: boolean;
+  forceClosedError: string | null;
+  forceClosedTotal: number;
 
   businessApprovalRequests: AdminBusinessApprovalRequest[];
   businessApprovalsLoading: boolean;
@@ -232,6 +254,11 @@ const initialState: AdminState = {
   selectedJob: null,
   jobsLoading: false,
   jobsError: null,
+
+  forceClosedJobs: [],
+  forceClosedLoading: false,
+  forceClosedError: null,
+  forceClosedTotal: 0,
 
   businessApprovalRequests: [],
   businessApprovalsLoading: false,
@@ -377,6 +404,17 @@ export const fetchAdminJobById = createAsyncThunk(
   }
 );
 
+export const fetchAdminForceClosedJobs = createAsyncThunk(
+  "admin/fetchForceClosedJobs",
+  async (
+    params: { page?: number; limit?: number; search?: string } = {},
+    { rejectWithValue }
+  ) => {
+    try { return await getAdminForceClosedJobsApi(params); }
+    catch (e: any) { return rejectWithValue(e?.message || "Failed to fetch force-closed tasks"); }
+  }
+);
+
 export const fetchAdminBusinessApprovalRequests = createAsyncThunk(
   "admin/fetchBusinessApprovalRequests",
   async (limit: number = 100, { rejectWithValue }) => {
@@ -484,6 +522,7 @@ const adminSlice = createSlice({
             verifiedUsers:        s.verifiedUsers            ?? 0,
             pendingVerifications: s.pendingVerificationRequests ?? 0,
             pendingBusinessApprovals: s.pendingBusinessApprovalRequests ?? 0,
+            forceClosedJobs:      s.forceClosedJobs          ?? 0,
           };
           state.recentUsers = data.recentUsers ?? [];
           state.recentJobs  = data.recentJobs  ?? [];
@@ -676,6 +715,23 @@ const adminSlice = createSlice({
       .addCase(fetchAdminJobById.rejected, (state, action) => {
         state.jobsLoading = false;
         state.jobsError = action.payload as string;
+      });
+
+    // ── Force-closed jobs ─────────────────────────────────────────────────────
+    builder
+      .addCase(fetchAdminForceClosedJobs.pending, (state) => {
+        state.forceClosedLoading = true;
+        state.forceClosedError = null;
+      })
+      .addCase(fetchAdminForceClosedJobs.fulfilled, (state, action) => {
+        state.forceClosedLoading = false;
+        const data = action.payload?.data;
+        state.forceClosedJobs = Array.isArray(data?.jobs) ? data.jobs : [];
+        state.forceClosedTotal = data?.pagination?.total ?? state.forceClosedJobs.length;
+      })
+      .addCase(fetchAdminForceClosedJobs.rejected, (state, action) => {
+        state.forceClosedLoading = false;
+        state.forceClosedError = action.payload as string;
       });
 
     // ── Business approval requests ───────────────────────────────────────────

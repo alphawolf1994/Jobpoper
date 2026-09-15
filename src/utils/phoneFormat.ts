@@ -1,3 +1,5 @@
+import { ISO_CALLING_CODES } from "./callingCodes";
+
 // E.164 phone-number helpers.
 //
 // Why this file exists:
@@ -13,6 +15,19 @@
 //   The fix is to construct E.164 ourselves from the raw national digits
 //   (`onChangeText`) plus the country's calling code (read from the input ref
 //   via `getCallingCode()`).
+
+/**
+ * Map an ISO 3166-1 alpha-2 country (e.g. "PK") to its calling code ("92").
+ * Prefer this over PhoneInput.getCallingCode() after a GPS auto-select: the
+ * library leaves `code` undefined until an async lookup finishes, so parents
+ * would otherwise keep the India default ("91").
+ */
+export const callingCodeFromIso = (
+  iso?: string | null
+): string | undefined => {
+  if (!iso) return undefined;
+  return ISO_CALLING_CODES[iso.toUpperCase()];
+};
 
 /** Strip everything except digits. */
 export const onlyDigits = (value: string | null | undefined): string =>

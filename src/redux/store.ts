@@ -20,7 +20,7 @@ import { authMiddleware } from './middleware/authMiddleware';
 const persistConfig = {
   key: 'root', // Root key for storage
   storage: AsyncStorage, // Use AsyncStorage as storage
-  version: 1,
+  version: 2,
   // whitelist: ['auth'], // Only persist the auth state
   // Referral list/count must be fresh on every visit (the code itself lives
   // in auth.user), so exclude the referral slice from persistence.
@@ -44,6 +44,24 @@ const persistConfig = {
         // Never rehydrate a stuck in-flight submit/status flag
         state.verification.submitting = false;
         state.verification.statusLoading = false;
+      }
+    }
+    // Persisted admin state from older builds lacks force-closed fields.
+    if (state?.admin) {
+      if (!Array.isArray(state.admin.forceClosedJobs)) {
+        state.admin.forceClosedJobs = [];
+      }
+      if (typeof state.admin.forceClosedLoading !== "boolean") {
+        state.admin.forceClosedLoading = false;
+      }
+      if (state.admin.forceClosedError === undefined) {
+        state.admin.forceClosedError = null;
+      }
+      if (typeof state.admin.forceClosedTotal !== "number") {
+        state.admin.forceClosedTotal = 0;
+      }
+      if (state.admin.dashboardStats && state.admin.dashboardStats.forceClosedJobs == null) {
+        state.admin.dashboardStats.forceClosedJobs = 0;
       }
     }
     return state;

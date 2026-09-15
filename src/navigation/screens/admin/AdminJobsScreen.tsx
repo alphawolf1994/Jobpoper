@@ -15,11 +15,18 @@ const ADMIN_ACCENT = "#1E40AF";
 const getStatusColor = (status: string) => {
   switch (status) {
     case "open":        return Colors.green;
+    case "job_started":
     case "in-progress": return Colors.primary;
     case "completed":   return Colors.gray;
     case "cancelled":   return Colors.Red;
+    case "force_closed": return "#991B1B";
     default:            return Colors.gray;
   }
+};
+const statusLabel = (status: string) => {
+  if (status === "job_started" || status === "in-progress") return "In Progress";
+  if (status === "force_closed") return "Closed";
+  return status;
 };
 const getUrgencyColor = (u: string) => (u === "Urgent" ? Colors.Red : Colors.orange);
 
@@ -63,7 +70,7 @@ const JobRow: React.FC<JobRowProps> = ({ job, onPress }) => {
 
       <View style={styles.rowBadges}>
         <View style={[styles.badge, { backgroundColor: statusColor + "20" }]}>
-          <Text style={[styles.badgeText, { color: statusColor }]}>{job.status}</Text>
+          <Text style={[styles.badgeText, { color: statusColor }]}>{statusLabel(job.status)}</Text>
         </View>
         <View style={[styles.badge, { backgroundColor: urgencyColor + "20", marginTop: 4 }]}>
           <Text style={[styles.badgeText, { color: urgencyColor }]}>{job.urgency}</Text>
@@ -81,17 +88,24 @@ const AdminJobsScreen = () => {
   const dispatch   = useDispatch<AppDispatch>();
   const { jobs, jobsLoading, jobsError } = useSelector((state: RootState) => state.admin);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "job_started" | "force_closed">("all");
 
   const load = useCallback(() => { dispatch(fetchAdminJobs(100)); }, [dispatch]);
   useEffect(() => { load(); }, [load]);
 
-  const filtered = search.trim()
-    ? jobs.filter(
-        (j) =>
-          j.title?.toLowerCase().includes(search.toLowerCase()) ||
-          j.postedBy?.fullName?.toLowerCase().includes(search.toLowerCase())
-      )
-    : jobs;
+  const filtered = jobs.filter((j) => {
+    const matchesSearch = !search.trim()
+      ? true
+      : j.title?.toLowerCase().includes(search.toLowerCase()) ||
+        j.postedBy?.fullName?.toLowerCase().includes(search.toLowerCase());
+    const matchesStatus =
+      statusFilter === "all"
+        ? true
+        : statusFilter === "job_started"
+          ? j.status === "job_started" || j.status === "in-progress"
+          : j.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
 
   return (
     <SafeAreaView edges={["top", "left", "right"]} style={styles.container}>
@@ -114,6 +128,24 @@ const AdminJobsScreen = () => {
             <Ionicons name="close-circle" size={18} color={Colors.gray} />
           </TouchableOpacity>
         )}
+      </View>
+
+      <View style={styles.filterRow}>
+        {([
+          { id: "all", label: "All" },
+          { id: "job_started", label: "In Progress" },
+          { id: "force_closed", label: "Force Closed" },
+        ] as const).map((chip) => (
+          <TouchableOpacity
+            key={chip.id}
+            style={[styles.filterChip, statusFilter === chip.id && styles.filterChipActive]}
+            onPress={() => setStatusFilter(chip.id)}
+          >
+            <Text style={[styles.filterChipText, statusFilter === chip.id && styles.filterChipTextActive]}>
+              {chip.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       {jobsError ? (
@@ -168,6 +200,26 @@ const styles = StyleSheet.create({
   },
   searchIcon:  { marginRight: 8 },
   searchInput: { flex: 1, fontSize: 14, color: Colors.black, padding: 0 },
+  filterRow: {
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 16,
+    marginBottom: 12,
+  },
+  filterChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: Colors.white,
+    borderWidth: 1,
+    borderColor: Colors.lightGray,
+  },
+  filterChipActive: {
+    backgroundColor: ADMIN_ACCENT,
+    borderColor: ADMIN_ACCENT,
+  },
+  filterChipText: { fontSize: 12, fontWeight: "600", color: Colors.gray },
+  filterChipTextActive: { color: Colors.white },
   errorBox: {
     flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: "#FEE2E2",
     borderRadius: 10, padding: 12, marginHorizontal: 16, marginBottom: 8,

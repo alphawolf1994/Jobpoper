@@ -26,11 +26,18 @@ const InfoRow: React.FC<InfoRowProps> = ({ label, value, valueColor }) => (
 const getStatusColor = (s: string) => {
   switch (s) {
     case "open":        return Colors.green;
+    case "job_started":
     case "in-progress": return Colors.primary;
     case "completed":   return Colors.gray;
     case "cancelled":   return Colors.Red;
+    case "force_closed": return "#991B1B";
     default:            return Colors.gray;
   }
+};
+const statusLabel = (s: string) => {
+  if (s === "job_started" || s === "in-progress") return "In Progress";
+  if (s === "force_closed") return "Closed";
+  return s;
 };
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
@@ -108,7 +115,7 @@ const AdminJobDetailScreen = () => {
           <Text style={styles.jobTitle}>{j.title}</Text>
           <View style={styles.titleBadges}>
             <View style={[styles.badge, { backgroundColor: statusColor + "20" }]}>
-              <Text style={[styles.badgeText, { color: statusColor }]}>{j.status}</Text>
+              <Text style={[styles.badgeText, { color: statusColor }]}>{statusLabel(j.status)}</Text>
             </View>
             <View style={[styles.badge, { backgroundColor: urgencyColor + "20" }]}>
               <Text style={[styles.badgeText, { color: urgencyColor }]}>{j.urgency}</Text>
@@ -128,7 +135,7 @@ const AdminJobDetailScreen = () => {
             <InfoRow label="Cost"           value={`PKR ${j.cost}`}                            valueColor={Colors.green} />
             <InfoRow label="Type"           value={j.jobType || "OnSite"} />
             <InfoRow label="Urgency"        value={j.urgency}                                  valueColor={urgencyColor} />
-            <InfoRow label="Status"         value={j.status}                                   valueColor={statusColor} />
+            <InfoRow label="Status"         value={statusLabel(j.status)}                       valueColor={statusColor} />
             <InfoRow label="Response"       value={j.responsePreference?.replace("_", " ") || "—"} />
             <InfoRow label="Scheduled Date" value={j.scheduledDate ? new Date(j.scheduledDate).toLocaleDateString() : "—"} />
             <InfoRow label="Scheduled Time" value={j.scheduledTime || "—"} />
@@ -188,6 +195,35 @@ const AdminJobDetailScreen = () => {
               </View>
               <Ionicons name="chevron-forward" size={18} color={Colors.gray} />
             </TouchableOpacity>
+          </View>
+        )}
+
+        {j.status === "force_closed" && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Force Close</Text>
+            <View style={styles.card}>
+              <InfoRow label="Started At" value={j.startedAt ? new Date(j.startedAt).toLocaleString() : "—"} />
+              <InfoRow label="Closed At" value={j.forceClosedAt ? new Date(j.forceClosedAt).toLocaleString() : "—"} />
+              <InfoRow label="Duration" value={j.durationInProgress || "—"} />
+              <InfoRow
+                label="Closed By"
+                value={j.forceClosedBy?.fullName || j.forceClosedBy?.phoneNumber || "—"}
+              />
+              <InfoRow
+                label="Worker"
+                value={
+                  j.assignedWorker
+                    ? `${j.assignedWorker.fullName || j.assignedWorker.phoneNumber || "Unknown"}${j.assignedWorker.workerId ? ` (${j.assignedWorker.workerId})` : ""}`
+                    : "None"
+                }
+              />
+              <View style={styles.descBox}>
+                <Text style={styles.infoLabel}>Reason</Text>
+                <Text style={[styles.descText, { marginTop: 6 }]}>
+                  {j.forceCloseReason || "No reason provided"}
+                </Text>
+              </View>
+            </View>
           </View>
         )}
 

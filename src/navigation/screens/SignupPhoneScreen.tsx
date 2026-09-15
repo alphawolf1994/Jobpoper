@@ -21,7 +21,8 @@ import { useDispatch, useSelector } from "react-redux";
 import { checkPhone, setPhoneNumber, clearError } from "../../redux/slices/authSlice";
 import { RootState, AppDispatch } from "../../redux/store";
 import { useAlertModal } from "../../hooks/useAlertModal";
-import { toE164, isValidE164 } from "../../utils/phoneFormat";
+import { toE164, isValidE164, callingCodeFromIso } from "../../utils/phoneFormat";
+import { getCachedCountryIso } from "../../hooks/useAutoCountryCode";
 
 const SignupPhoneScreen = () => {
   const navigation = useNavigation();
@@ -38,7 +39,9 @@ const SignupPhoneScreen = () => {
   // national digits plus the active calling code and assemble a clean E.164
   // number ourselves on submit (see utils/phoneFormat.ts).
   const [phoneNumber, setPhoneNumber1] = useState("");
-  const [callingCode, setCallingCode] = useState("91"); // India default, matches PhoneNumberInput's defaultCode="IN"
+  const [callingCode, setCallingCode] = useState(
+    () => callingCodeFromIso(getCachedCountryIso()) ?? "91"
+  );
 
   const handlePhoneSubmit = async () => {
     const formattedPhoneNumber = toE164(phoneNumber, callingCode);
